@@ -1,0 +1,76 @@
+# -------------------------
+# Node.js
+# -------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Build / Cache
+dist/
+build/
+.cache/
+.tmp/
+
+# -------------------------
+# Environment Files (VERY IMPORTANT)
+# -------------------------
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Don’t upload ANY key files
+*.pem
+*.key
+*.crt
+
+# -------------------------
+# Logs
+# -------------------------
+logs/
+*.log
+*.log.*
+debug.log
+error.log
+
+# State files (our bot may store last-ball state here)
+state/
+
+# -------------------------
+# OS / Editor Junk
+# -------------------------
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# VS Code
+.vscode/
+.history/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+
+# -------------------------
+# Temporary test files
+# -------------------------
+test.json
+test*.js
+
+# -------------------------
+# Project-specific
+# -------------------------
+cricketdata/test.js
+cricketdata/testSingleMatch.js
+cricbuzz/testCricbuzz.js
+espn/testEspn.js
+dummyData.js
+theme-app/
