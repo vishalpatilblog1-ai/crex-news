@@ -170,7 +170,33 @@ function detectEvents_(prev, curr, match, battingTeam, bowlingTeam) {
 /**
  * Convert event object into a simple summary string (fallback if AI fails)
  */
+
 function buildFallbackTweet(event) {
+  const { type, battingTeam, bowlingTeam, current } = event;
+  const scoreStr = `${battingTeam} ${current.r}/${current.w} in ${current.o} overs`;
+
+  let mainLine = "";
+  let detailLine = "";
+  const hashtags = "#INDvSA #Cricket";
+
+  if (type === "WICKET") {
+    mainLine = `⚡ WICKET! ${bowlingTeam} strike!`;
+    detailLine = `${scoreStr}. Big moment in the match.`;
+  } else if (type === "SIX") {
+    mainLine = `💥 SIX! ${battingTeam} go big!`;
+    detailLine = `${scoreStr}. Clean hitting!`;
+  } else if (type === "FOUR") {
+    mainLine = `🔥 FOUR! ${battingTeam} find the gap!`;
+    detailLine = `${scoreStr}. Lovely timing!`;
+  } else {
+    mainLine = `${scoreStr}`;
+    detailLine = ``;
+  }
+
+  return formatTweetRandomly(mainLine, detailLine, hashtags);
+}
+
+function buildFallbackTweet_(event) {
   const { type, match, battingTeam, bowlingTeam, current } = event;
   const scoreStr = `${current.r}/${current.w} in ${current.o} overs`;
 
@@ -228,6 +254,23 @@ async function handleEvent(event) {
   }
 }
 
+function formatTweetRandomly(mainLine, detailLine, hashtags) {
+  const styles = [
+    // Style 1 — Energetic multi-line
+    `${mainLine}\n\n${detailLine}\n\n${hashtags}`,
+
+    // Style 2 — Punchy
+    `${mainLine}\n\n${detailLine}\n\n${hashtags}`,
+
+    // Style 3 — Minimal clean
+    `${mainLine}\n${detailLine}\n\n${hashtags}`,
+  ];
+
+  // Pick random style
+  const idx = Math.floor(Math.random() * styles.length);
+  return styles[idx];
+}
+
 /**
  * Main loop
  */
@@ -239,7 +282,7 @@ async function startLiveTracker() {
   let match = null;
 
   while (!match) {
-    console.log("🔎 Looking for today's India vs South Africa match…");
+    console.log("🔎 Looking for today's India vs South Africa match.....");
     try {
       match = await findTodayIndVsSaMatch();
     } catch (err) {
