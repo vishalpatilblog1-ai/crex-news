@@ -3,9 +3,9 @@ import "dotenv/config";
 const BASE_URL = "https://api.cricapi.com/v1";
 const API_KEY = process.env.CRICKETDATA_API_KEY;
 
-if (!API_KEY) {
-  console.error("❌ CRICKETDATA_API_KEY missing in .env");
-}
+// if (!API_KEY) {
+//   console.error("❌ CRICKETDATA_API_KEY missing in .env");
+// }
 
 /**
  * Helper to call CricketData API

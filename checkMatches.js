@@ -3,10 +3,10 @@ import "dotenv/config";
 async function getAllMatches() {
   const apiKey = process.env.CRICKETDATA_API_KEY;
 
-  if (!apiKey) {
-    console.error("❌ CRICKETDATA_API_KEY missing in .env");
-    return;
-  }
+  //   if (!apiKey) {
+  //     console.error("❌ CRICKETDATA_API_KEY missing in .env");
+  //     return;
+  //   }
 
   const url = `https://api.cricapi.com/v1/matches?apikey=${apiKey}`;
 
