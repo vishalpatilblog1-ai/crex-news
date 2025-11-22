@@ -1,6 +1,8 @@
 // index.js
 import dotenv from "dotenv";
-import { initPuppeteer, postTweet } from "./Puppeteer/postTweet.js";
+
+import { startBrowser } from "./Puppeteer/browser.js";
+import postTweet from "./twitter.js";
 
 import {
   fetchCommentary,
@@ -9,12 +11,13 @@ import {
 
 import { findAnyLiveMatch } from "./Puppeteer/findAnyLiveMatch.js";
 import generateTweet from "./ai.js";
-import { cleanTweet } from "./utils/cleanTweet.js";
+import { buildFinalTweet } from "./utils/matchFormatting.js";
 
 dotenv.config();
 
 const MATCH_POLL_INTERVAL = 15000;
 
+// STATE KEEPERS
 let LAST_BALL_ID = null;
 let LAST_SESSION = "";
 let LAST_WINNER = "";
@@ -24,7 +27,8 @@ let LAST_PARTNERSHIP_50 = new Set();
 
 async function startBot() {
   console.log("🚀 Starting bot with Puppeteer…");
-  await initPuppeteer();
+
+  await startBrowser(); // FIXED
 
   console.log("🔎 Searching for ANY live match…");
 
@@ -39,17 +43,20 @@ async function startBot() {
   console.log(`🏏 LIVE MATCH FOUND: ${match.name}`);
   console.log(`📌 MATCH_ID = ${match.id}`);
 
-  pollLoop(match.id);
+  pollLoop(match.id, match.name); // FIXED
 }
 
-async function pollLoop(matchId) {
+async function pollLoop(matchId, matchName) {
   try {
     const commentary = await fetchCommentary(matchId);
     const scorecard = await fetchScorecard(matchId);
 
     if (!scorecard?.scorecard?.[0]) {
       console.log("⚠ No innings found");
-      return setTimeout(() => pollLoop(matchId), MATCH_POLL_INTERVAL);
+      return setTimeout(
+        () => pollLoop(matchId, matchName),
+        MATCH_POLL_INTERVAL
+      );
     }
 
     const innings = scorecard.scorecard[0];
@@ -63,11 +70,14 @@ async function pollLoop(matchId) {
     if (event) {
       console.log("🔥 Event detected:", event.type);
 
-      const rawTweet = await generateTweet(event);
-      const tweet = cleanTweet(rawTweet);
+      // Generate AI tweet
+      const eventText = await generateTweet(event); // FIXED
 
-      console.log("✍️ Generated Tweet:", tweet);
-      await postTweet(tweet);
+      // Format tweet with team emojis + title
+      const finalTweet = buildFinalTweet(matchName, eventText); // FIXED
+
+      await postTweet(finalTweet);
+
       console.log("🟢 Tweet posted!");
     } else {
       console.log("🟡 No event yet...");
@@ -76,7 +86,7 @@ async function pollLoop(matchId) {
     console.log("❌ Error:", e.message);
   }
 
-  setTimeout(() => pollLoop(matchId), MATCH_POLL_INTERVAL);
+  setTimeout(() => pollLoop(matchId, matchName), MATCH_POLL_INTERVAL);
 }
 
 function detectEvent(commentary, scorecard, innings) {
@@ -133,7 +143,6 @@ function detectEvent(commentary, scorecard, innings) {
       const isSix = lastBall.event?.includes("SIX");
       const isWicket = lastBall.event?.includes("WICKET");
 
-      // IGNORE FOURS — per your instruction
       if (isSix) {
         return {
           type: "SIX",
