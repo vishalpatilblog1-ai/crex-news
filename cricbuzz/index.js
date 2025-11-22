@@ -1,15 +1,10 @@
 // cricbuzz/index.js
 import generateTweet from "../ai.js";
 import postTweet from "../twitter.js";
-import { detectEvents } from "./events.js";
 import { extractDetailsFromCommentary } from "./commentaryParser.js";
+import { detectEvents } from "./events.js";
 
-import {
-  findIndiaMatch,
-  getMatchScore,
-  getCommentary,
-  findPakistanVsSriLankaMatch,
-} from "./cricbuzzApi.js";
+import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 
 let MATCH_ID = null;
 
@@ -19,8 +14,7 @@ async function startBot() {
   console.log("🔎 Searching for India vs South Africa match...");
 
   while (!MATCH_ID) {
-    // const match = await findIndiaMatch();
-    const match = await findPakistanVsSriLankaMatch();
+    const match = await findIndiaMatch();
 
     if (match) {
       MATCH_ID = match.id;

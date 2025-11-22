@@ -5,7 +5,7 @@
   "main": "liveTracker.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node cricbuzz/index.js",
     "live": "node liveTracker.js",
     "dev": "nodemon liveTracker.js"
   },

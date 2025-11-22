@@ -134,17 +134,34 @@ function detectEvent(commentary, scorecard, innings) {
       const isWicket = lastBall.event?.includes("WICKET");
 
       // 4 or 6
-      if (isFour || isSix) {
+      //   if (isFour || isSix) {
+      //     return {
+      //       type: isFour ? "FOUR" : "SIX",
+      //       batsman,
+      //       bowler,
+      //       runs: isSix ? 6 : 4,
+      //       battingTeam: innings.batteamname,
+      //       score: innings.score,
+      //       wickets: innings.wickets,
+      //       overs: innings.overs,
+      //     };
+      //   }
+
+      if (isSix) {
         return {
-          type: isFour ? "FOUR" : "SIX",
+          type: "SIX",
           batsman,
           bowler,
-          runs: isSix ? 6 : 4,
+          runs: 6,
           battingTeam: innings.batteamname,
           score: innings.score,
           wickets: innings.wickets,
           overs: innings.overs,
         };
+      }
+
+      if (isFour) {
+        return null; // skip fours
       }
 
       // WICKET
