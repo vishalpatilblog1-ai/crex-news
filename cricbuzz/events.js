@@ -70,7 +70,6 @@ function extractFielderFromOutdec(outdec) {
 }
 
 function parseTossFromStatus(status) {
-  // Example: "Day 1: Stumps - South Africa opt to bat"
   if (!status) return null;
   const m = status.match(/-([^–-]+)opt to (bat|bowl|field)/i);
   if (!m) return null;
@@ -89,7 +88,7 @@ export function detectEvents(data) {
   const currWkts = innings.wickets;
   const currOvers = innings.overs; // already number
   const currBallnbr = innings.ballnbr ?? 0;
-  const battingTeam = innings.batteamname; // "South Africa" / "India"
+  const battingTeam = innings.batteamname;
   const bowlingTeam = battingTeam === "India" ? "South Africa" : "India"; // OK for IND vs RSA
   const currBatsmanMap = buildBatsmanMap(innings);
   const activeBatsmen = getActiveBatsmen(innings);

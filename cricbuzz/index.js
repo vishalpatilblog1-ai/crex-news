@@ -4,7 +4,12 @@ import postTweet from "../twitter.js";
 import { detectEvents } from "./events.js";
 import { extractDetailsFromCommentary } from "./commentaryParser.js";
 
-import { findIndiaMatch, getMatchScore, getCommentary } from "./cricbuzzApi.js";
+import {
+  findIndiaMatch,
+  getMatchScore,
+  getCommentary,
+  findPakistanVsSriLankaMatch,
+} from "./cricbuzzApi.js";
 
 let MATCH_ID = null;
 
@@ -14,7 +19,8 @@ async function startBot() {
   console.log("🔎 Searching for India vs South Africa match...");
 
   while (!MATCH_ID) {
-    const match = await findIndiaMatch();
+    // const match = await findIndiaMatch();
+    const match = await findPakistanVsSriLankaMatch();
 
     if (match) {
       MATCH_ID = match.id;
@@ -86,40 +92,5 @@ async function pollingLoop() {
   await wait(5000);
   pollingLoop();
 }
-
-// async function pollingLoop() {
-//   try {
-//     const score = await getMatchScore(MATCH_ID);
-//     const comm = await getCommentary(MATCH_ID);
-
-//     console.log("Polling the data123...");
-
-//     const event = detectEvents(score);
-
-//     if (event) {
-//       console.log("🔥 Event detected:", event);
-
-//       // Extract batsman / bowler / shot info safely
-//       const details = extractDetailsFromCommentary(comm, event.type);
-
-//       const finalEvent = {
-//         ...event,
-//         ...details,
-//       };
-
-//       console.log("🎯 Final event payload:", finalEvent);
-
-//       const tweetText = await generateTweet(finalEvent);
-//       await postTweet(tweetText);
-
-//       console.log("🟢 Tweet posted!");
-//     }
-//   } catch (err) {
-//     console.log("❌ Error:", err.message);
-//   }
-
-//   await wait(5000);
-//   pollingLoop();
-// }
 
 startBot();

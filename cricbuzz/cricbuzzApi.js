@@ -30,7 +30,6 @@ export async function getLiveMatches() {
   return await fetchJson(`${BASE_URL}/matches/v1/live`);
 }
 
-/** 2️⃣ FIND INDIA vs SOUTH AFRICA MATCH */
 export async function findIndiaMatch() {
   const data = await getLiveMatches();
   if (!data?.typeMatches) return null;
@@ -57,6 +56,39 @@ export async function findIndiaMatch() {
           return {
             id: info.matchId,
             name: info.seriesName,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+export async function findPakistanVsSriLankaMatch() {
+  const data = await getLiveMatches();
+  if (!data?.typeMatches) return null;
+
+  for (const block of data.typeMatches) {
+    for (const series of block.seriesMatches || []) {
+      const matches = series.seriesAdWrapper?.matches || [];
+
+      for (const match of matches) {
+        const info = match.matchInfo;
+        if (!info) continue;
+
+        const t1 = info.team1?.teamName?.toLowerCase() || "";
+        const t2 = info.team2?.teamName?.toLowerCase() || "";
+
+        const isPakVsSL =
+          (t1.includes("pakistan") && t2.includes("sri")) ||
+          (t1.includes("sri") && t2.includes("pakistan"));
+
+        if (isPakVsSL) {
+          return {
+            id: info.matchId,
+            name: info.seriesName,
+            teams: `${info.team1.teamName} vs ${info.team2.teamName}`,
           };
         }
       }

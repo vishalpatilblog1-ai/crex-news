@@ -16,6 +16,16 @@ function indiaEmoji() {
   return "🇮🇳🔥";
 }
 
+export function cleanTweet(text) {
+  const bannedFlags = ["🇵🇰", "🇱🇰"];
+
+  bannedFlags.forEach((flag) => {
+    text = text.replaceAll(flag, "");
+  });
+
+  return text.trim();
+}
+
 export default async function generateTweet(event) {
   const indiaBatting = isIndia(event.battingTeam);
   const indiaBowling = isIndia(event.bowlingTeam);
