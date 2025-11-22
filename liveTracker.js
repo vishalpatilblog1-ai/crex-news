@@ -28,7 +28,9 @@ async function startBot() {
       const liveMatch = await findAnyLiveMatch();
 
       if (!liveMatch) {
-        console.log("⏳ No live match. Checking... again in 60 seconds...\n");
+        console.log(
+          "⏳ No live match. Checking priority based again in 60 seconds...\n"
+        );
         await WAIT(60000);
         continue;
       }

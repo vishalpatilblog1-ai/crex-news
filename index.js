@@ -1,94 +1,109 @@
-// index.js
+// index.js (Railway-safe version)
+// --------------------------------
+// NO PUPPETEER HERE ✔
+// USES TWITTER API ✔
+// USES CRICBUZZ API DIRECT FETCH ✔
+
 import dotenv from "dotenv";
-
-import { startBrowser } from "./Puppeteer/browser.js";
 import postTweet from "./twitter.js";
-
-import {
-  fetchCommentary,
-  fetchScorecard,
-} from "./Puppeteer/fetchCricbuzzViaBrowser.js";
-
-import { findAnyLiveMatch } from "./Puppeteer/findAnyLiveMatch.js";
+import { findBestLiveMatch } from "./findBestLiveMatch.js";
 import generateTweet from "./ai.js";
 import { buildFinalTweet } from "./utils/matchFormatting.js";
+import { fetchScorecard } from "./cricbuzz/fetchScorecard.js";
+import { fetchCommentary } from "./cricbuzz/fetchCommentary.js";
 
 dotenv.config();
 
-const MATCH_POLL_INTERVAL = 15000;
-
-// STATE KEEPERS
+let CURRENT_MATCH_ID = null;
+let CURRENT_MATCH_NAME = "";
 let LAST_BALL_ID = null;
 let LAST_SESSION = "";
 let LAST_WINNER = "";
 let LAST_TOSS_DONE = false;
-let LAST_50 = new Set();
-let LAST_PARTNERSHIP_50 = new Set();
 
+const POLL_INTERVAL = 15000; // 15 sec score check
+const SWITCH_INTERVAL = 60000; // 60 sec match switching check
+
+// 🔥 Start Bot
 async function startBot() {
-  console.log("🚀 Starting bot with Puppeteer…");
+  console.log("🚀 Starting Railway Bot (API mode)…");
 
-  await startBrowser(); // FIXED
+  await pickMatch(true); // pick match first time
 
-  console.log("🔎 Searching for ANY live match…");
+  pollLoop(); // score polling
+  switchLoop(); // match switching
+}
 
-  // 🔥 AUTO-DETECT LIVE MATCH
-  const match = await findAnyLiveMatch();
+// 🔍 Pick best match using priority
+async function pickMatch(firstTime = false) {
+  const match = await findBestLiveMatch();
 
   if (!match) {
     console.log("❌ No live match found.");
-    return process.exit(0);
+    return;
   }
 
-  console.log(`🏏 LIVE MATCH FOUND: ${match.name}`);
-  console.log(`📌 MATCH_ID = ${match.id}`);
+  // No match selected yet OR switching to better match
+  if (match.id !== CURRENT_MATCH_ID) {
+    console.log(`🔄 Switching to: ${match.name}`);
 
-  pollLoop(match.id, match.name); // FIXED
+    // reset memory
+    LAST_BALL_ID = null;
+    LAST_SESSION = "";
+    LAST_WINNER = "";
+    LAST_TOSS_DONE = false;
+
+    CURRENT_MATCH_ID = match.id;
+    CURRENT_MATCH_NAME = match.name;
+
+    if (!firstTime) {
+      await postTweet(`🆕 Switching to higher priority match: ${match.name}`);
+    }
+  }
 }
 
-async function pollLoop(matchId, matchName) {
+// 🔁 Poll live data
+async function pollLoop() {
+  if (!CURRENT_MATCH_ID) {
+    return setTimeout(pollLoop, POLL_INTERVAL);
+  }
+
   try {
-    const commentary = await fetchCommentary(matchId);
-    const scorecard = await fetchScorecard(matchId);
+    const commentary = await fetchCommentary(CURRENT_MATCH_ID);
+    const scorecard = await fetchScorecard(CURRENT_MATCH_ID);
 
-    if (!scorecard?.scorecard?.[0]) {
-      console.log("⚠ No innings found");
-      return setTimeout(
-        () => pollLoop(matchId, matchName),
-        MATCH_POLL_INTERVAL
-      );
+    const innings = scorecard?.scorecard?.[0];
+    if (!innings) {
+      return setTimeout(pollLoop, POLL_INTERVAL);
     }
-
-    const innings = scorecard.scorecard[0];
-
-    console.log(
-      `📊 Score: ${innings.score}/${innings.wickets} (${innings.overs})`
-    );
 
     const event = detectEvent(commentary, scorecard, innings);
 
     if (event) {
-      console.log("🔥 Event detected:", event.type);
+      console.log("🔥 Event:", event.type);
 
-      // Generate AI tweet
-      const eventText = await generateTweet(event); // FIXED
+      const eventText = await generateTweet(event);
+      const tweet = buildFinalTweet(CURRENT_MATCH_NAME, eventText);
 
-      // Format tweet with team emojis + title
-      const finalTweet = buildFinalTweet(matchName, eventText); // FIXED
-
-      await postTweet(finalTweet);
-
+      await postTweet(tweet);
       console.log("🟢 Tweet posted!");
     } else {
-      console.log("🟡 No event yet...");
+      console.log("🟡 No new event");
     }
-  } catch (e) {
-    console.log("❌ Error:", e.message);
+  } catch (err) {
+    console.log("❌ Polling error:", err.message);
   }
 
-  setTimeout(() => pollLoop(matchId, matchName), MATCH_POLL_INTERVAL);
+  setTimeout(pollLoop, POLL_INTERVAL);
 }
 
+// 🔁 Auto-switching loop
+async function switchLoop() {
+  await pickMatch(false);
+  setTimeout(switchLoop, SWITCH_INTERVAL);
+}
+
+// 🎯 Event detection
 function detectEvent(commentary, scorecard, innings) {
   // TOSS
   if (!LAST_TOSS_DONE && commentary?.matchHeader?.tossResults) {
@@ -103,14 +118,16 @@ function detectEvent(commentary, scorecard, innings) {
   }
 
   // SESSION EVENTS
+  const status = scorecard.status || "";
+
   if (
-    scorecard.status.includes("Lunch") ||
-    scorecard.status.includes("Tea") ||
-    scorecard.status.includes("Stumps")
+    status.includes("Lunch") ||
+    status.includes("Tea") ||
+    status.includes("Stumps")
   ) {
-    const session = scorecard.status.includes("Lunch")
+    const session = status.includes("Lunch")
       ? "LUNCH"
-      : scorecard.status.includes("Tea")
+      : status.includes("Tea")
       ? "TEA"
       : "STUMPS";
 
@@ -119,35 +136,30 @@ function detectEvent(commentary, scorecard, innings) {
       return {
         type: "SESSION",
         session,
-        battingTeam: innings.batteamname,
         runs: innings.score,
         wickets: innings.wickets,
         overs: innings.overs,
+        battingTeam: innings.batteamname,
       };
     }
   }
 
-  // BALL-BY-BALL
+  // BALL EVENT
   const lastBall = commentary.commentaryList?.find(
-    (x) => x?.eventType === "BALL"
+    (x) => x.eventType === "BALL"
   );
-
   if (lastBall) {
-    const ballId = lastBall.id;
+    if (lastBall.id !== LAST_BALL_ID) {
+      LAST_BALL_ID = lastBall.id;
 
-    if (ballId !== LAST_BALL_ID) {
-      LAST_BALL_ID = ballId;
-
-      const batsman = lastBall.batsmanName || "";
-      const bowler = lastBall.bowlerName || "";
       const isSix = lastBall.event?.includes("SIX");
       const isWicket = lastBall.event?.includes("WICKET");
 
       if (isSix) {
         return {
           type: "SIX",
-          batsman,
-          bowler,
+          batsman: lastBall.batsmanName,
+          bowler: lastBall.bowlerName,
           score: innings.score,
           wickets: innings.wickets,
           overs: innings.overs,
@@ -157,44 +169,15 @@ function detectEvent(commentary, scorecard, innings) {
       if (isWicket) {
         return {
           type: "WICKET",
-          batsman,
-          bowler,
-          fielder: lastBall.fielderName || "",
+          batsman: lastBall.batsmanName,
+          bowler: lastBall.bowlerName,
+          fielder: lastBall.fielderName,
           score: innings.score,
           wickets: innings.wickets,
           overs: innings.overs,
         };
       }
     }
-  }
-
-  // BATSMAN 50
-  for (const b of innings.batsman || []) {
-    if (b.runs >= 50 && b.runs % 50 === 0 && !LAST_50.has(b.id)) {
-      LAST_50.add(b.id);
-      return {
-        type: "BATSMAN_50",
-        name: b.name,
-        runs: b.runs,
-        balls: b.balls,
-      };
-    }
-  }
-
-  // PARTNERSHIP 50
-  const lastP = innings.partnership?.partnership?.at(-1);
-  if (
-    lastP &&
-    lastP.totalruns >= 50 &&
-    !LAST_PARTNERSHIP_50.has(lastP.totalruns)
-  ) {
-    LAST_PARTNERSHIP_50.add(lastP.totalruns);
-    return {
-      type: "PARTNERSHIP_50",
-      runs: lastP.totalruns,
-      bat1: lastP.bat1name,
-      bat2: lastP.bat2name,
-    };
   }
 
   // MATCH END

@@ -2,29 +2,16 @@
   "name": "sports-ai-auto-tweet-bot",
   "version": "1.0.0",
   "description": "Automated sports tweet generator using AI + X(Twitter) API + Node.js",
-  "main": "liveTracker.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node liveTracker.js",
-    "dev": "nodemon liveTracker.js",
-    "test": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "keywords": [
-    "sports",
-    "cricket",
-    "twitter-bot",
-    "auto-tweet",
-    "ai-bot",
-    "openai",
-    "nodejs"
-  ],
-  "author": "Vishal Zinjade",
-  "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.5",
     "node-fetch": "^3.3.2",
     "openai": "^4.67.0",
-    "puppeteer": "^24.31.0",
     "twitter-api-v2": "^1.16.0"
   },
   "devDependencies": {

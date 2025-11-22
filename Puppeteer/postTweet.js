@@ -18,7 +18,7 @@ export async function postTweet(text) {
 
   const page = getPage();
   if (!page) {
-    throw new Error("Puppeteer page not ready. Call initPuppeteer() first.");
+    throw new Error("❌ Puppeteer page not ready. Call initPuppeteer() first.");
   }
 
   console.log("📝 Opening X compose page…");
@@ -27,45 +27,67 @@ export async function postTweet(text) {
     waitUntil: "networkidle2",
   });
 
-  // Wait for the tweet textbox
-  await page.waitForSelector('div[role="textbox"]', { timeout: 20000 });
-
-  const textboxSelector = 'div[role="textbox"]';
-
-  // Focus and clear existing text
-  await page.click(textboxSelector);
-  // CMD/CTRL + A then delete
-  const isMac = process.platform === "darwin";
-  await page.keyboard.down(isMac ? "Meta" : "Control");
-  await page.keyboard.press("KeyA");
-  await page.keyboard.up(isMac ? "Meta" : "Control");
-  await page.keyboard.press("Backspace");
-
-  // Type tweet
-  await page.type(textboxSelector, text);
-
-  // Click Post/Tweet button
-  const buttonSelectors = [
-    'div[data-testid="tweetButtonInline"]',
-    'div[data-testid="tweetButton"]',
-    'button[data-testid="tweetButtonInline"]',
+  // Possible textbox selectors (X keeps changing)
+  const textboxSelectors = [
+    'div[role="textbox"]',
+    "div.public-DraftStyleDefault-block",
+    "div.DraftEditor-editorContainer",
+    'div[aria-label="Tweet text"]',
+    'div[data-testid="tweetTextarea_0"]',
   ];
 
-  let clicked = false;
-  for (const sel of buttonSelectors) {
-    const btn = await page.$(sel);
+  let textboxFound = false;
+
+  for (const sel of textboxSelectors) {
+    try {
+      await page.waitForSelector(sel, { timeout: 5000 });
+      console.log(`🟢 Found textbox using selector: ${sel}`);
+      await page.click(sel);
+      textboxFound = true;
+
+      // Clear any default text
+      const isMac = process.platform === "darwin";
+      await page.keyboard.down(isMac ? "Meta" : "Control");
+      await page.keyboard.press("KeyA");
+      await page.keyboard.up(isMac ? "Meta" : "Control");
+      await page.keyboard.press("Backspace");
+
+      // Type tweet
+      await page.type(sel, text, { delay: 20 });
+      break;
+    } catch (err) {}
+  }
+
+  if (!textboxFound) {
+    console.log("❌ Could not find textbox in compose page");
+    return;
+  }
+
+  // Tweet button selectors
+  const tweetButtonSelectors = [
+    'div[data-testid="tweetButtonInline"]',
+    'button[data-testid="tweetButtonInline"]',
+    'div[data-testid="tweetButton"]',
+    'button[data-testid="tweetButton"]',
+  ];
+
+  let buttonClicked = false;
+
+  for (const btnSel of tweetButtonSelectors) {
+    const btn = await page.$(btnSel);
     if (btn) {
+      console.log(`🟢 Clicking Post button: ${btnSel}`);
       await btn.click();
-      clicked = true;
+      buttonClicked = true;
       break;
     }
   }
 
-  if (!clicked) {
-    console.log("❌ Could not find tweet button");
+  if (!buttonClicked) {
+    console.log("❌ Could not find any tweet/post button.");
     return;
   }
 
-  console.log("📤 Tweet submitted, waiting a bit…");
-  await page.waitForTimeout(4000);
+  console.log("📤 Tweet submitted, waiting for confirmation…");
+  await page.waitForTimeout(5000);
 }

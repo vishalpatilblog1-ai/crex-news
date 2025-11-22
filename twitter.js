@@ -1,3 +1,4 @@
+// twitter.js
 import { TwitterApi } from "twitter-api-v2";
 import dotenv from "dotenv";
 
@@ -14,6 +15,7 @@ export default async function postTweet(text) {
   try {
     const res = await twitterClient.v2.tweet(text);
     console.log("Tweet Response:", res);
+    return res.data;
   } catch (err) {
     console.error("❌ Error posting tweet:", err);
   }
