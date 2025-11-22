@@ -67,8 +67,13 @@ export async function findIndiaMatch() {
 }
 
 /** 3️⃣ SCORECARD */
+// export async function getMatchScore(matchId) {
+//   return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}`);
+// }
+
+/** 3️⃣ SCORECARD (CORRECT ENDPOINT) */
 export async function getMatchScore(matchId) {
-  return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}`);
+  return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
 }
 
 /** 4️⃣ COMMENTARY (optional) */

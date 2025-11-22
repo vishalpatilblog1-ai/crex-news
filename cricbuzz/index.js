@@ -2,6 +2,7 @@
 import generateTweet from "../ai.js";
 import postTweet from "../twitter.js";
 import { detectEvents } from "./events.js";
+import { extractDetailsFromCommentary } from "./commentaryParser.js";
 
 import { findIndiaMatch, getMatchScore, getCommentary } from "./cricbuzzApi.js";
 
@@ -34,23 +35,26 @@ async function pollingLoop() {
     const score = await getMatchScore(MATCH_ID);
     const comm = await getCommentary(MATCH_ID);
 
-    const event = detectEvents(score);
     console.log("Polling the data...");
 
+    const event = detectEvents(score);
+
     if (event) {
-      console.log("🔥 Event detected:", event.type);
+      console.log("🔥 Event detected:", event);
 
-      const testEvent = {
-        type: "FOUR",
-        batsman: "Test Player",
-        bowler: "Test Bowler",
-        runs: 120,
-        wickets: 2,
-        overs: "35.4",
+      // Extract batsman / bowler / shot info safely
+      const details = extractDetailsFromCommentary(comm, event.type);
+
+      const finalEvent = {
+        ...event,
+        ...details,
       };
-      const tweet = await generateTweet(event);
 
-      await postTweet(tweet);
+      console.log("🎯 Final event payload:", finalEvent);
+
+      const tweetText = await generateTweet(finalEvent);
+      await postTweet(tweetText);
+
       console.log("🟢 Tweet posted!");
     }
   } catch (err) {
