@@ -33,17 +33,15 @@ export default async function generateTweet(event) {
   let toneRule = "";
   let allowedEmoji = "";
 
-  // ---- India positive batting events ----
   if (
     indiaBatting &&
     ["SIX", "MILESTONE", "PARTNERSHIP"].includes(event.type)
   ) {
     toneRule =
       "Positive but simple tone. You can show happiness because it is good for India. Use at most one exclamation mark.";
-    allowedEmoji = indiaEmoji(); // exactly one snippet
+    allowedEmoji = indiaEmoji();
   }
 
-  // ---- Opponent positive batting events (neutral only) ----
   if (
     !indiaBatting &&
     ["SIX", "MILESTONE", "PARTNERSHIP"].includes(event.type)
@@ -53,21 +51,18 @@ export default async function generateTweet(event) {
     allowedEmoji = "";
   }
 
-  // ---- India bowling wicket (good for India) ----
   if (indiaBowling && event.type === "WICKET") {
     toneRule =
       "Positive but simple tone, because India took a wicket. Use at most one exclamation mark.";
     allowedEmoji = indiaEmoji();
   }
 
-  // ---- India batting wicket (good for opponent) ----
   if (!indiaBowling && event.type === "WICKET") {
     toneRule =
       "Neutral tone, because India lost a wicket. No emojis, no hype. Just factual description.";
     allowedEmoji = "";
   }
 
-  // ---- Sessions, Toss, Match End ----
   if (["SESSION", "TOSS"].includes(event.type)) {
     toneRule = "Neutral, informational tone. No emojis.";
     allowedEmoji = "";
