@@ -7,17 +7,18 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function generateTweet(eventData) {
+export default async function generateTweet(event) {
   const prompt = `
-You are a cricket commentator bot. Write a short, exciting tweet for this event:
-${JSON.stringify(eventData)}
+Write a short cricket tweet for this event:
+${JSON.stringify(event)}
 
 Rules:
-- Add emojis
-- Add 2-3 trending cricket hashtags
-- Keep under 220 characters
-- Write in a human style
-  `;
+- Very simple English
+- Max 2 emojis
+- Factual, neutral
+- No hype
+- Under 180 characters
+`;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",

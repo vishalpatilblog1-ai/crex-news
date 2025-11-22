@@ -12,7 +12,7 @@ async function getLiveMatches() {
 
   try {
     const data = await res.json();
-    console.log(JSON.stringify(data, null, 2));
+    console.log("espn response::", JSON.stringify(data, null, 2));
   } catch (err) {
     console.error("❌ Could not parse JSON!");
     const text = await res.text();

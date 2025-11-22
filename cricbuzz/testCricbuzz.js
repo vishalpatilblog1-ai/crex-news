@@ -9,7 +9,7 @@ async function run() {
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+        "x-rapidapi-key": "ceec5445d1msh723541043d1f4dfp1aacd1jsncede49dbe11e",
         "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
       },
     });

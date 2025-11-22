@@ -1,32 +1,64 @@
-import "dotenv/config";
-
-import generateTweet from "./ai.js";
-import postTweet from "./twitter.js";
-import { getMatchScore } from "./cricketApi.js";
+// cricbuzz/index.js
+import generateTweet from "../ai.js";
+import postTweet from "../twitter.js";
 import { detectEvents } from "./events.js";
 
-const MATCH_ID = "YOUR_MATCH_ID_HERE"; // paste tomorrow’s IND vs SA match ID
+import { findIndiaMatch, getMatchScore, getCommentary } from "./cricbuzzApi.js";
 
-async function runLiveBot() {
-  console.log("🔁 Checking for new events...");
+let MATCH_ID = null;
 
-  try {
-    const score = await getMatchScore(MATCH_ID);
-    const event = detectEvents(score);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    if (event) {
-      console.log("🔥 New Event Detected:", event.type);
+async function startBot() {
+  console.log("🔎 Searching for India vs South Africa match...");
 
-      const tweet = await generateTweet(event.data);
-      await postTweet(tweet);
+  while (!MATCH_ID) {
+    const match = await findIndiaMatch();
 
-      console.log("🟢 Tweet posted for:", event.type);
+    if (match) {
+      MATCH_ID = match.id;
+      console.log(`✅ Match found: ${match.name}`);
+      console.log(`🏏 MATCH_ID: ${MATCH_ID}`);
+      break;
     }
-  } catch (err) {
-    console.error("❌ Error in loop:", err);
+
+    console.log("⏳ Not found. Retrying in 30 sec...");
+    await wait(30000);
   }
 
-  setTimeout(runLiveBot, 5000); // runs every 5 sec
+  pollingLoop();
 }
 
-runLiveBot();
+async function pollingLoop() {
+  try {
+    const score = await getMatchScore(MATCH_ID);
+    const comm = await getCommentary(MATCH_ID);
+
+    const event = detectEvents(score);
+    console.log("Polling the data...");
+
+    if (event) {
+      console.log("🔥 Event detected:", event.type);
+
+      const testEvent = {
+        type: "FOUR",
+        batsman: "Test Player",
+        bowler: "Test Bowler",
+        runs: 120,
+        wickets: 2,
+        overs: "35.4",
+      };
+      const tweet = await generateTweet(event);
+
+      await postTweet(tweet);
+      console.log("🟢 Tweet posted!");
+    }
+  } catch (err) {
+    console.log("❌ Error:", err.message);
+  }
+
+  await wait(5000);
+  pollingLoop();
+}
+
+startBot();
