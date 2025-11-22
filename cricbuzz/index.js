@@ -35,7 +35,7 @@ async function pollingLoop() {
     const score = await getMatchScore(MATCH_ID);
     const comm = await getCommentary(MATCH_ID);
 
-    console.log("Polling the data...");
+    console.log("Polling the data123...");
 
     const event = detectEvents(score);
 
