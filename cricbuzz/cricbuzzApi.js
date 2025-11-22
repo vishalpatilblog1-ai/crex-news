@@ -66,14 +66,13 @@ export async function findIndiaMatch() {
   return null;
 }
 
-/** 3️⃣ SCORECARD */
-// export async function getMatchScore(matchId) {
-//   return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}`);
-// }
-
 /** 3️⃣ SCORECARD (CORRECT ENDPOINT) */
 export async function getMatchScore(matchId) {
-  return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
+  const data = await await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
+  console.log(data);
+  return data;
+
+  // return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
 }
 
 /** 4️⃣ COMMENTARY (optional) */

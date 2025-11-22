@@ -1,178 +1,177 @@
-// events.js — Scoreboard-only event detection (NO commentary, ZERO false positives)
+// events.js — NEW VERSION
 
-let lastState = {
+let last = {
+  ballId: null,
   runs: 0,
   wickets: 0,
   overs: 0,
-  inningsKey: null, // store inning identifier so we detect innings change
+  striker: "",
+  nonStriker: "",
+  bowler: "",
+  partnership: 0,
+  inningsKey: null,
+  milestonePlayers: new Set(),
+  partnershipMilestones: new Set(),
+  tossTweeted: false,
+  session: "",
 };
 
-export function detectEvents(matchData) {
-  if (!matchData || !matchData.matchScore || !matchData.matchInfo) return null;
+export function detectEvents(data) {
+  if (!data?.scorecard) return null;
 
-  const score = matchData.matchScore;
-  const info = matchData.matchInfo;
-
-  // ------------------------------------------------------
-  // IDENTIFY CURRENT INNINGS STRICTLY USING currBatTeamId
-  // ------------------------------------------------------
-
-  const batTeamId = info.currBatTeamId;
-  let innings = null;
-  let inningsKey = null;
-
-  function check(team, inngsName, data) {
-    if (data && team?.teamId === batTeamId) {
-      return { obj: data, key: `${team.teamId}-${inngsName}` };
-    }
-    return null;
-  }
-
-  // team1 innings
-  const t1i1 = check(info.team1, "i1", score.team1Score?.inngs1);
-  const t1i2 = check(info.team1, "i2", score.team1Score?.inngs2);
-  const t1i3 = check(info.team1, "i3", score.team1Score?.inngs3);
-
-  // team2 innings
-  const t2i1 = check(info.team2, "i1", score.team2Score?.inngs1);
-  const t2i2 = check(info.team2, "i2", score.team2Score?.inngs2);
-  const t2i3 = check(info.team2, "i3", score.team2Score?.inngs3);
-
-  const candidates = [t1i1, t1i2, t1i3, t2i1, t2i2, t2i3].filter(Boolean);
-
-  if (candidates.length > 0) {
-    innings = candidates[0].obj;
-    inningsKey = candidates[0].key;
-  }
-
-  // fallback if nothing found (rare)
+  const innings = data.scorecard[0];
   if (!innings) return null;
 
-  // ------------------------------------------------------
-  // EXTRACT CURRENT METRICS SAFELY
-  // ------------------------------------------------------
+  console.log("INNINGS KEYS:", Object.keys(innings));
 
-  const currRuns = Number(innings.runs || 0);
-  const currWickets = Number(innings.wickets || 0);
-  const currOvers = parseFloat(innings.overs || 0);
+  // Extract essential info
+  const currRuns = innings.score;
+  const currWkts = innings.wickets;
+  const currOvers = parseFloat(innings.overs);
+  const striker = innings.batsman?.[0]?.name || "";
+  const nonStriker = innings.batsman?.[1]?.name || "";
+  const bowler = innings.bowler?.[0]?.name || "";
+  const lastBall = innings.recentBalls?.[0] || ""; // ← Critical: true event detection
+  const ballId = `${currOvers}-${lastBall}`;
 
-  const prev = { ...lastState };
+  // Build previous snapshot
+  const prev = { ...last };
 
-  // FIRST EVENT — ignore because prev is zero
-  if (prev.inningsKey === null) {
-    lastState = {
+  // Initial setup
+  if (!prev.inningsKey) {
+    last = {
+      ...last,
+      ballId,
       runs: currRuns,
-      wickets: currWickets,
+      wickets: currWkts,
       overs: currOvers,
-      inningsKey,
+      striker,
+      nonStriker,
+      bowler,
+      inningsKey: "inn1",
     };
     return null;
   }
 
-  // ------------------------------------------------------
-  // INNINGS CHANGE DETECTION
-  // ------------------------------------------------------
-  if (inningsKey !== prev.inningsKey) {
-    lastState = {
-      runs: currRuns,
-      wickets: currWickets,
-      overs: currOvers,
-      inningsKey,
-    };
-
+  // Toss detection (do once)
+  if (!last.tossTweeted && data.toss) {
+    last.tossTweeted = true;
     return {
-      type: "INNINGS_CHANGE",
-      teamId: batTeamId,
+      type: "TOSS",
+      wonBy: data.toss.winner,
+      decision: data.toss.decision,
+    };
+  }
+
+  // Session detection
+  const status = data.status?.toLowerCase() || "";
+  if (status.includes("lunch") && last.session !== "LUNCH") {
+    last.session = "LUNCH";
+    return {
+      type: "SESSION",
+      session: "LUNCH",
       runs: currRuns,
-      wickets: currWickets,
+      wkts: currWkts,
+      overs: currOvers,
+    };
+  }
+  if (status.includes("tea") && last.session !== "TEA") {
+    last.session = "TEA";
+    return {
+      type: "SESSION",
+      session: "TEA",
+      runs: currRuns,
+      wkts: currWkts,
+      overs: currOvers,
+    };
+  }
+  if (status.includes("stumps") && last.session !== "STUMPS") {
+    last.session = "STUMPS";
+    return {
+      type: "SESSION",
+      session: "STUMPS",
+      runs: currRuns,
+      wkts: currWkts,
       overs: currOvers,
     };
   }
 
-  const runDiff = currRuns - prev.runs;
-  const wktDiff = currWickets - prev.wickets;
-  const overDiff = currOvers - prev.overs;
+  // Ball duplicate protection
+  if (ballId === prev.ballId) return null;
 
-  // ------------------------------------------------------
-  // WICKET
-  // ------------------------------------------------------
-  if (wktDiff === 1) {
-    lastState = {
+  // Wicket detection from ball data
+  if (lastBall === "W") {
+    const dismissed = innings.lastWicket || {}; // Your API MUST include this
+    last = {
+      ...last,
+      ballId,
       runs: currRuns,
-      wickets: currWickets,
+      wickets: currWkts,
       overs: currOvers,
-      inningsKey,
     };
     return {
       type: "WICKET",
+      ...dismissed,
       runs: currRuns,
-      wickets: currWickets,
+      wickets: currWkts,
       overs: currOvers,
     };
   }
 
-  // ------------------------------------------------------
-  // SIX (runs jumped by 6, 7, 8 due to extras)
-  // ------------------------------------------------------
-  if (runDiff >= 6 && runDiff < 10) {
-    lastState = {
-      runs: currRuns,
-      wickets: currWickets,
-      overs: currOvers,
-      inningsKey,
-    };
+  // SIX detection
+  if (lastBall === "6") {
+    last = { ...last, ballId, runs: currRuns };
     return {
       type: "SIX",
+      striker,
+      bowler,
       runs: currRuns,
-      wickets: currWickets,
+      wickets: currWkts,
       overs: currOvers,
     };
   }
 
-  // ------------------------------------------------------
-  // FOUR (runs jumped by 4 or 5 due to extras)
-  // ------------------------------------------------------
-  if (runDiff >= 4 && runDiff < 6) {
-    lastState = {
-      runs: currRuns,
-      wickets: currWickets,
-      overs: currOvers,
-      inningsKey,
-    };
+  // FOUR detection
+  if (lastBall === "4") {
+    last = { ...last, ballId, runs: currRuns };
     return {
       type: "FOUR",
+      striker,
+      bowler,
       runs: currRuns,
-      wickets: currWickets,
+      wickets: currWkts,
       overs: currOvers,
     };
   }
 
-  // ------------------------------------------------------
-  // OVER CHANGE
-  // ------------------------------------------------------
-  if (overDiff > 0) {
-    lastState = {
-      runs: currRuns,
-      wickets: currWickets,
-      overs: currOvers,
-      inningsKey,
-    };
-    return {
-      type: "OVER_CHANGE",
-      runs: currRuns,
-      wickets: currWickets,
-      overs: currOvers,
-    };
+  // Milestones
+  for (const b of innings.batsman || []) {
+    if (
+      b.runs >= 50 &&
+      b.runs % 50 === 0 &&
+      !last.milestonePlayers.has(b.name)
+    ) {
+      last.milestonePlayers.add(b.name);
+      return { type: "MILESTONE", player: b.name, runs: b.runs };
+    }
   }
 
-  // ------------------------------------------------------
-  // NO EVENT
-  // ------------------------------------------------------
-  lastState = {
+  // Winner
+  if (data.matchWinner && !last.matchWinner) {
+    last.matchWinner = data.matchWinner;
+    return { type: "MATCH_END", winner: data.matchWinner };
+  }
+
+  // Update state
+  last = {
+    ...last,
+    ballId,
     runs: currRuns,
-    wickets: currWickets,
+    wickets: currWkts,
     overs: currOvers,
-    inningsKey,
+    striker,
+    bowler,
   };
+
   return null;
 }

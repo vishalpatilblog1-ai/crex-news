@@ -31,7 +31,6 @@ async function startBot() {
 }
 async function pollingLoop() {
   try {
-    console.log("\n--------------------------------------");
     console.log("🔄 Polling the data...");
 
     const score = await getMatchScore(MATCH_ID);
@@ -43,8 +42,8 @@ async function pollingLoop() {
       return pollingLoop();
     }
 
-    // Extract scoreboard
     const innings = score?.scorecard?.[0];
+
     const totalRuns = innings?.score ?? "?";
     const totalWkts = innings?.wickets ?? "?";
     const totalOvers = innings?.overs ?? "?";
