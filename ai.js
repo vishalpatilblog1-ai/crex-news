@@ -36,7 +36,7 @@ export default async function generateTweet(event) {
   // ---- India positive batting events ----
   if (
     indiaBatting &&
-    ["FOUR", "SIX", "MILESTONE", "PARTNERSHIP"].includes(event.type)
+    ["SIX", "MILESTONE", "PARTNERSHIP"].includes(event.type)
   ) {
     toneRule =
       "Positive but simple tone. You can show happiness because it is good for India. Use at most one exclamation mark.";
@@ -46,7 +46,7 @@ export default async function generateTweet(event) {
   // ---- Opponent positive batting events (neutral only) ----
   if (
     !indiaBatting &&
-    ["FOUR", "SIX", "MILESTONE", "PARTNERSHIP"].includes(event.type)
+    ["SIX", "MILESTONE", "PARTNERSHIP"].includes(event.type)
   ) {
     toneRule =
       "Strictly neutral tone. No hype words like great, brilliant, superb, on fire, outstanding. No exclamation marks. Just factual score update.";
@@ -97,7 +97,7 @@ Rules:
 - Max 150 characters.
 - Do NOT start with hashtags.
 - Put score in this style when possible: "<Team> <runs>/<wickets> (<overs>)".
-- Mention batsman and bowler for FOUR and SIX if available.
+- Mention batsman and bowler for SIX if available.
 - For WICKET, mention batsman, bowler and fielder if available, plus team score.
 - For milestones, mention player name and runs.
 - For partnership milestones, mention both players and partnership runs.

@@ -17,7 +17,6 @@ export function extractDetailsFromCommentary(commentaryData, eventType) {
     if (text.includes("partnership")) continue;
     if (text.includes("runs needed")) continue;
 
-    if (eventType === "FOUR" && text.includes(" four")) selected = item;
     if (eventType === "SIX" && text.includes(" six")) selected = item;
     if (eventType === "WICKET" && text.includes("out")) selected = item;
 

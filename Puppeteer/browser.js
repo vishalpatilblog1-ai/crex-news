@@ -1,3 +1,4 @@
+// Puppeteer/browser.js
 import puppeteer from "puppeteer";
 import fs from "fs";
 
@@ -7,18 +8,19 @@ let page = null;
 const COOKIES_PATH = "./x-cookies.json";
 
 export async function startBrowser() {
+  if (browser) return { browser, page };
+
   console.log("➡ Initializing Puppeteer…");
 
   browser = await puppeteer.launch({
-    headless: false,
+    headless: process.env.HEADLESS !== "false",
     defaultViewport: null,
-    userDataDir: "./chrome-data",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
-      "--disable-web-security",
       "--disable-dev-shm-usage",
+      "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     ],
   });
 
@@ -31,14 +33,13 @@ export async function startBrowser() {
   if (fs.existsSync(COOKIES_PATH)) {
     const cookies = JSON.parse(fs.readFileSync(COOKIES_PATH, "utf8"));
     await page.setCookie(...cookies);
-    console.log("🍪 Cookies loaded. Logged in session restored.");
+    console.log("🍪 Cookies loaded. Logged-in session restored.");
+  } else {
+    console.log("⚠ x-cookies.json not found. Run login.js once.");
   }
 
   return { browser, page };
 }
-
-// Alias — so both old and new code work
-export const initBrowser = startBrowser;
 
 export function getBrowser() {
   return browser;

@@ -5,9 +5,9 @@
   "main": "liveTracker.js",
   "type": "module",
   "scripts": {
-    "start": "node cricbuzz/index.js",
-    "live": "node liveTracker.js",
-    "dev": "nodemon liveTracker.js"
+    "start": "node liveTracker.js",
+    "dev": "nodemon liveTracker.js",
+    "test": "node index.js"
   },
   "keywords": [
     "sports",

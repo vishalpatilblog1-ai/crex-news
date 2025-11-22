@@ -7,7 +7,7 @@ let last = {
   wickets: 0,
   overs: 0,
   ballnbr: 0,
-  batsmanMap: {}, // { [id]: { runs, fours, sixes, outdec } }
+  batsmanMap: {},
   partnershipRuns: 0,
   session: null,
   tossTweeted: false,
@@ -279,7 +279,7 @@ export function detectEvents(data) {
     }
   }
 
-  // ---------- SIX / FOUR detection (based on batsman stats) ----------
+  // ---------- SIX detection (based on batsman stats) ----------
   if (!event) {
     const prevMap = prev.batsmanMap || {};
 
@@ -301,25 +301,24 @@ export function detectEvents(data) {
       }
     }
 
-    // then FOUR
-    if (!event) {
-      for (const b of activeBatsmen) {
-        const prevB = prevMap[b.id];
-        if (prevB && b.fours > prevB.fours) {
-          event = {
-            type: "FOUR",
-            battingTeam,
-            bowlingTeam,
-            batsman: b.name,
-            bowler: currentBowler,
-            runs: currRuns,
-            wickets: currWkts,
-            overs: currOvers,
-          };
-          break;
-        }
-      }
-    }
+    // if (!event) {
+    //   for (const b of activeBatsmen) {
+    //     const prevB = prevMap[b.id];
+    //     if (prevB && b.fours > prevB.fours) {
+    //       event = {
+    //         type: "FOUR",
+    //         battingTeam,
+    //         bowlingTeam,
+    //         batsman: b.name,
+    //         bowler: currentBowler,
+    //         runs: currRuns,
+    //         wickets: currWkts,
+    //         overs: currOvers,
+    //       };
+    //       break;
+    //     }
+    //   }
+    // }
   }
 
   // ---------- Batter milestones (50/100/150/200...) ----------
