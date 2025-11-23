@@ -109,36 +109,6 @@ export function detectEvents(data) {
   const newLast = { ...last };
 
   // ------------------------------------------------------------------
-  // TOSS — Only once BEFORE match starts
-  // ------------------------------------------------------------------
-  if (!newLast.tossTweeted && typeof data.status === "string") {
-    const toss = parseToss(data.status);
-    if (toss) {
-      newLast.tossTweeted = true;
-
-      Object.assign(newLast, {
-        inningsKey,
-        runs: currRuns,
-        wickets: currWkts,
-        overs: currOvers,
-        ballnbr: currBall,
-        batsmanMap: currMap,
-        partnershipRuns: currPRuns,
-      });
-
-      last = newLast;
-
-      return {
-        type: "TOSS",
-        battingTeam,
-        bowlingTeam,
-        wonBy: toss.wonBy,
-        decision: toss.decision,
-      };
-    }
-  }
-
-  // ------------------------------------------------------------------
   // SESSION — Lunch / Tea / Stumps / Drinks
   // ------------------------------------------------------------------
   const st = (data.status || "").toLowerCase();

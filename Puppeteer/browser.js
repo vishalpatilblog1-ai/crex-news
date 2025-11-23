@@ -5,6 +5,9 @@ import fs from "fs";
 let browser = null;
 let page = null;
 
+const CHROME_PATH =
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
 const COOKIES_PATH = "./x-cookies.json";
 
 export async function startBrowser() {
@@ -13,14 +16,16 @@ export async function startBrowser() {
   console.log("➡ Initializing Puppeteer…");
 
   browser = await puppeteer.launch({
-    headless: process.env.HEADLESS !== "false",
+    headless: false, // MUST be false for X
+    executablePath: CHROME_PATH, // USE REAL CHROME
+    userDataDir: "./Puppeteer/chrome-profile", // persistent login
     defaultViewport: null,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
       "--disable-dev-shm-usage",
-      "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "--start-maximized",
     ],
   });
 
@@ -29,20 +34,20 @@ export async function startBrowser() {
   const pages = await browser.pages();
   page = pages.length ? pages[0] : await browser.newPage();
 
-  // Load cookies if present
+  // Load cookies
   if (fs.existsSync(COOKIES_PATH)) {
-    const cookies = JSON.parse(fs.readFileSync(COOKIES_PATH, "utf8"));
-    await page.setCookie(...cookies);
-    console.log("🍪 Cookies loaded. Logged-in session restored.");
+    try {
+      const cookies = JSON.parse(fs.readFileSync(COOKIES_PATH, "utf8"));
+      await page.setCookie(...cookies);
+      console.log("🍪 Cookies loaded. Logged-in session restored.");
+    } catch (err) {
+      console.log("⚠ Error loading cookies:", err);
+    }
   } else {
     console.log("⚠ x-cookies.json not found. Run login.js once.");
   }
 
   return { browser, page };
-}
-
-export function getBrowser() {
-  return browser;
 }
 
 export function getPage() {

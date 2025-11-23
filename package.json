@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test-fake": "node testFakeEvent.js"
+    "test-fake": "node testFakeEvent.js",
+    "local": "node localBot.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

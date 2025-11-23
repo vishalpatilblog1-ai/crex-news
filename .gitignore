@@ -1,6 +1,28 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment files
 .env
 .env.local
 .env.production
 .env.development
+
+# Puppeteer login/session storage
+Puppeteer/chrome-profile/
+x-cookies.json
+
+# Local app state (if used)
 state/
+
+# macOS trash
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs (optional)
+dist/
+build/
