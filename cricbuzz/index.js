@@ -62,7 +62,6 @@ async function pollingLoop() {
 
     console.log("🔥 Event detected:", event.type);
 
-    // Commentary extraction logs
     const details = extractDetailsFromCommentary(comm, event.type);
     if (details) {
       console.log("📝 Commentary details:", details);

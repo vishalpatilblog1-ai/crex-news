@@ -25,13 +25,15 @@ async function fetchJson(url) {
   }
 }
 
-/** 1️⃣ LIVE MATCHES */
 export async function getLiveMatches() {
   return await fetchJson(`${BASE_URL}/matches/v1/live`);
 }
 
 export async function findIndiaMatch() {
   const data = await getLiveMatches();
+
+  console.log("🔵 RAW API RESPONSE puppetter:", JSON.stringify(data, null, 2));
+
   if (!data?.typeMatches) return null;
 
   for (const block of data.typeMatches) {
@@ -103,8 +105,6 @@ export async function getMatchScore(matchId) {
   const data = await await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
   console.log(data);
   return data;
-
-  // return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
 }
 
 /** 4️⃣ COMMENTARY (optional) */

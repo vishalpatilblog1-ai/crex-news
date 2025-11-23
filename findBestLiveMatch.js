@@ -3,6 +3,11 @@ import { getLiveMatches } from "./cricbuzz/getLiveMatches.js";
 
 const PRIORITY = ["India", "India A", "India U19", "India Women"];
 
+// Normalize names for safer comparison
+function norm(name) {
+  return (name || "").toLowerCase().replace(/\./g, "").trim();
+}
+
 export async function findBestLiveMatch() {
   console.log("🔍 [findBestLiveMatch] Fetching live matches...");
 
@@ -30,16 +35,14 @@ export async function findBestLiveMatch() {
         if (!info) continue;
 
         const state = info.state?.toLowerCase() || "";
-        if (state !== "live" && state !== "inprogress") continue;
+        if (!state.includes("live") && !state.includes("progress")) continue;
 
-        const obj = {
+        liveMatches.push({
           id: info.matchId,
           name: `${info.team1.teamName} vs ${info.team2.teamName}`,
           team1: info.team1.teamName,
           team2: info.team2.teamName,
-        };
-
-        liveMatches.push(obj);
+        });
       }
     }
   }
@@ -53,20 +56,19 @@ export async function findBestLiveMatch() {
     return null;
   }
 
-  // ⭐ Debug log all live matches
   liveMatches.forEach((m, i) => {
     console.log(`   ${i + 1}. ${m.name} (ID: ${m.id})`);
   });
 
-  // ⭐ Priority sort
+  // ⭐ FIXED PRIORITY SORT (normalised)
   liveMatches.sort((a, b) => {
     const aScore =
-      (PRIORITY.includes(a.team1) ? PRIORITY.indexOf(a.team1) : 999) +
-      (PRIORITY.includes(a.team2) ? PRIORITY.indexOf(a.team2) : 999);
+      (PRIORITY.some((p) => norm(p) === norm(a.team1)) ? 0 : 999) +
+      (PRIORITY.some((p) => norm(p) === norm(a.team2)) ? 0 : 999);
 
     const bScore =
-      (PRIORITY.includes(b.team1) ? PRIORITY.indexOf(b.team1) : 999) +
-      (PRIORITY.includes(b.team2) ? PRIORITY.indexOf(b.team2) : 999);
+      (PRIORITY.some((p) => norm(p) === norm(b.team1)) ? 0 : 999) +
+      (PRIORITY.some((p) => norm(p) === norm(b.team2)) ? 0 : 999);
 
     return aScore - bScore;
   });

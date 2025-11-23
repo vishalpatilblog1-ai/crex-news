@@ -1,12 +1,15 @@
 // cricbuzz/fetchCommentary.js
 import fetch from "node-fetch";
+const BASE_URL = "https://cricbuzz-cricket.p.rapidapi.com";
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
-export async function fetchCommentary(matchId) {
-  const url = `https://m.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
-
+async function fetchJson(url) {
   try {
     const res = await fetch(url, {
+      method: "GET",
       headers: {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
         "User-Agent": "Mozilla/5.0",
         Accept: "application/json",
       },
@@ -14,6 +17,11 @@ export async function fetchCommentary(matchId) {
 
     return await res.json();
   } catch (err) {
-    return { error: "COMMENTARY_FETCH_FAILED", message: err.message };
+    console.error("❌ Fetch JSON error:", err.message);
+    return null;
   }
+}
+
+export async function fetchCommentary(matchId) {
+  return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/comm`);
 }

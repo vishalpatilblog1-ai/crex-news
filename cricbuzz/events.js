@@ -1,6 +1,5 @@
-// events.js
+// events.js  — FULL CLEAN PRODUCTION VERSION
 
-// Keeps state between polls
 let last = {
   inningsKey: null,
   runs: 0,
@@ -12,14 +11,13 @@ let last = {
   session: null,
   tossTweeted: false,
   matchComplete: false,
-  playerMilestones: {}, // { [id]: multipleOf50 }  e.g. 1 => 50, 2 => 100
-  partnershipMultiple: 0, // last partnership multiple of 50 tweeted
+  playerMilestones: {},
+  partnershipMultiple: 0,
 };
 
-// Small helpers
-function buildBatsmanMap(innings) {
+function buildBatsmanMap(inn) {
   const map = {};
-  for (const b of innings.batsman || []) {
+  for (const b of inn.batsman || []) {
     map[b.id] = {
       runs: b.runs,
       fours: b.fours,
@@ -31,35 +29,31 @@ function buildBatsmanMap(innings) {
   return map;
 }
 
-function getActiveBatsmen(innings) {
-  // those currently "batting"
-  return (innings.batsman || []).filter((b) => b.outdec === "batting");
+function getActiveBatsmen(inn) {
+  return (inn.batsman || []).filter((b) => b.outdec === "batting");
 }
 
-function getCurrentBowler(innings) {
-  const arr = innings.bowler || [];
+function getCurrentBowler(inn) {
+  const arr = inn.bowler || [];
   if (!arr.length) return null;
-  return arr[arr.length - 1].name; // last bowler = current
+  return arr[arr.length - 1].name;
 }
 
-function getCurrentPartnership(innings) {
-  const plist = innings.partnership?.partnership || [];
-  if (!plist.length) return null;
-  return plist[plist.length - 1];
+function getCurrentPartnership(inn) {
+  const ps = inn.partnership?.partnership || [];
+  if (!ps.length) return null;
+  return ps[ps.length - 1];
 }
 
-function extractBowlerFromOutdec(outdec) {
-  // e.g. "c Pant b Kuldeep Yadav" → "Kuldeep Yadav"
-  //      "b Bumrah" → "Bumrah"
+function extractBowler(outdec) {
   if (!outdec) return null;
   const m = outdec.match(/b\s(.+)$/);
   return m ? m[1].trim() : null;
 }
 
-function extractFielderFromOutdec(outdec) {
-  // e.g. "c Pant b Kuldeep Yadav" → "Pant"
-  //      "run out (Jadeja)" → "Jadeja"
+function extractFielder(outdec) {
   if (!outdec) return null;
+
   let m = outdec.match(/c\s([^b]+)/);
   if (m) return m[1].trim();
 
@@ -69,209 +63,96 @@ function extractFielderFromOutdec(outdec) {
   return null;
 }
 
-function parseTossFromStatus(status) {
+function parseToss(status) {
   if (!status) return null;
   const m = status.match(/-([^–-]+)opt to (bat|bowl|field)/i);
   if (!m) return null;
-  const team = m[1].trim();
-  const decisionWord = m[2].toLowerCase();
-  const decision = decisionWord === "bat" ? "BAT" : "FIELD";
-  return { wonBy: team, decision };
+  return {
+    wonBy: m[1].trim(),
+    decision: m[2].toLowerCase() === "bat" ? "BAT" : "FIELD",
+  };
 }
 
 export function detectEvents(data) {
   if (!data?.scorecard || !data.scorecard[0]) return null;
 
-  const innings = data.scorecard[0];
-  const inningsKey = innings.inningsid;
-  const currRuns = innings.score;
-  const currWkts = innings.wickets;
-  const currOvers = innings.overs; // already number
-  const currBallnbr = innings.ballnbr ?? 0;
-  const battingTeam = innings.batteamname;
-  const bowlingTeam = battingTeam === "India" ? "South Africa" : "India"; // OK for IND vs RSA
-  const currBatsmanMap = buildBatsmanMap(innings);
-  const activeBatsmen = getActiveBatsmen(innings);
-  const currentBowler = getCurrentBowler(innings);
-  const currPartnership = getCurrentPartnership(innings);
-  const currPartnershipRuns = currPartnership?.totalruns ?? 0;
+  const inn = data.scorecard[0];
+  const inningsKey = inn.inningsid;
+
+  const currRuns = inn.score;
+  const currWkts = inn.wickets;
+  const currOvers = inn.overs;
+  const currBall = inn.ballnbr ?? 0;
+
+  const battingTeam = inn.batteamname;
+  const currMap = buildBatsmanMap(inn);
+  const active = getActiveBatsmen(inn);
+  const bowler = getCurrentBowler(inn);
+
+  const currPartnership = getCurrentPartnership(inn);
+  const currPRuns = currPartnership?.totalruns ?? 0;
 
   const prev = { ...last };
-  const newLast = { ...last }; // we’ll mutate this then assign at end
+  const newLast = { ...last };
 
-  // ---------- TOSS (only once) ----------
+  // ------------------------------------------------------------------
+  // TOSS — Only once BEFORE match starts
+  // ------------------------------------------------------------------
   if (!newLast.tossTweeted && typeof data.status === "string") {
-    const toss = parseTossFromStatus(data.status);
+    const toss = parseToss(data.status);
     if (toss) {
       newLast.tossTweeted = true;
-      // snapshot update
-      newLast.inningsKey = inningsKey;
-      newLast.runs = currRuns;
-      newLast.wickets = currWkts;
-      newLast.overs = currOvers;
-      newLast.ballnbr = currBallnbr;
-      newLast.batsmanMap = currBatsmanMap;
-      newLast.partnershipRuns = currPartnershipRuns;
+      Object.assign(newLast, {
+        inningsKey,
+        runs: currRuns,
+        wickets: currWkts,
+        overs: currOvers,
+        ballnbr: currBall,
+        batsmanMap: currMap,
+        partnershipRuns: currPRuns,
+      });
       last = newLast;
+
       return {
         type: "TOSS",
         battingTeam,
-        bowlingTeam,
-        ...toss,
+        wonBy: toss.wonBy,
+        decision: toss.decision,
       };
     }
   }
 
-  // ---------- Session (Lunch / Tea / Stumps / Drinks) ----------
-  const statusLower = (data.status || "").toLowerCase();
-  if (statusLower.includes("lunch") && newLast.session !== "LUNCH") {
-    newLast.session = "LUNCH";
-    newLast.inningsKey = inningsKey;
-    newLast.runs = currRuns;
-    newLast.wickets = currWkts;
-    newLast.overs = currOvers;
-    newLast.ballnbr = currBallnbr;
-    newLast.batsmanMap = currBatsmanMap;
-    newLast.partnershipRuns = currPartnershipRuns;
-    last = newLast;
-    return {
-      type: "SESSION",
-      session: "LUNCH",
-      battingTeam,
-      bowlingTeam,
-      runs: currRuns,
-      wickets: currWkts,
-      overs: currOvers,
-    };
-  }
-  if (statusLower.includes("tea") && newLast.session !== "TEA") {
-    newLast.session = "TEA";
-    newLast.inningsKey = inningsKey;
-    newLast.runs = currRuns;
-    newLast.wickets = currWkts;
-    newLast.overs = currOvers;
-    newLast.ballnbr = currBallnbr;
-    newLast.batsmanMap = currBatsmanMap;
-    newLast.partnershipRuns = currPartnershipRuns;
-    last = newLast;
-    return {
-      type: "SESSION",
-      session: "TEA",
-      battingTeam,
-      bowlingTeam,
-      runs: currRuns,
-      wickets: currWkts,
-      overs: currOvers,
-    };
-  }
-  if (statusLower.includes("stumps") && newLast.session !== "STUMPS") {
-    newLast.session = "STUMPS";
-    newLast.inningsKey = inningsKey;
-    newLast.runs = currRuns;
-    newLast.wickets = currWkts;
-    newLast.overs = currOvers;
-    newLast.ballnbr = currBallnbr;
-    newLast.batsmanMap = currBatsmanMap;
-    newLast.partnershipRuns = currPartnershipRuns;
-    last = newLast;
-    return {
-      type: "SESSION",
-      session: "STUMPS",
-      battingTeam,
-      bowlingTeam,
-      runs: currRuns,
-      wickets: currWkts,
-      overs: currOvers,
-    };
-  }
+  // ------------------------------------------------------------------
+  // SESSION — Lunch / Tea / Stumps / Drinks
+  // ------------------------------------------------------------------
+  const st = (data.status || "").toLowerCase();
 
-  // ---------- First-time init / innings change ----------
-  if (!prev.inningsKey) {
-    newLast.inningsKey = inningsKey;
-    newLast.runs = currRuns;
-    newLast.wickets = currWkts;
-    newLast.overs = currOvers;
-    newLast.ballnbr = currBallnbr;
-    newLast.batsmanMap = currBatsmanMap;
-    newLast.partnershipRuns = currPartnershipRuns;
-    last = newLast;
-    return null;
-  }
+  const sessionTypes = [
+    { key: "lunch", type: "LUNCH" },
+    { key: "tea", type: "TEA" },
+    { key: "stumps", type: "STUMPS" },
+    { key: "drinks", type: "DRINKS" },
+  ];
 
-  if (inningsKey !== prev.inningsKey) {
-    newLast.inningsKey = inningsKey;
-    newLast.runs = currRuns;
-    newLast.wickets = currWkts;
-    newLast.overs = currOvers;
-    newLast.ballnbr = currBallnbr;
-    newLast.batsmanMap = currBatsmanMap;
-    newLast.partnershipRuns = currPartnershipRuns;
-    newLast.playerMilestones = {};
-    newLast.partnershipMultiple = 0;
-    last = newLast;
-    return {
-      type: "INNINGS_CHANGE",
-      battingTeam,
-      bowlingTeam,
-    };
-  }
+  for (const s of sessionTypes) {
+    if (st.includes(s.key) && newLast.session !== s.type) {
+      newLast.session = s.type;
 
-  // ---------- Match complete ----------
-  if (data.ismatchcomplete && !newLast.matchComplete) {
-    newLast.matchComplete = true;
-    newLast.inningsKey = inningsKey;
-    newLast.runs = currRuns;
-    newLast.wickets = currWkts;
-    newLast.overs = currOvers;
-    newLast.ballnbr = currBallnbr;
-    newLast.batsmanMap = currBatsmanMap;
-    newLast.partnershipRuns = currPartnershipRuns;
+      Object.assign(newLast, {
+        inningsKey,
+        runs: currRuns,
+        wickets: currWkts,
+        overs: currOvers,
+        ballnbr: currBall,
+        batsmanMap: currMap,
+        partnershipRuns: currPRuns,
+      });
 
-    // crude winner parse from status like "India won by 5 wickets"
-    let winner = null;
-    const m = (data.status || "").match(/^([^,]+?)\s+won by/i);
-    if (m) winner = m[1].trim();
-
-    last = newLast;
-    return {
-      type: "MATCH_END",
-      battingTeam,
-      bowlingTeam,
-      winner,
-      status: data.status,
-    };
-  }
-
-  // ---------- WICKET detection ----------
-  let event = null;
-
-  if (currWkts > prev.wickets) {
-    // find newly out batsman
-    const prevMap = prev.batsmanMap || {};
-    let outBatsman = null;
-
-    for (const b of innings.batsman || []) {
-      const was = prevMap[b.id];
-      const nowOut = b.outdec && b.outdec !== "batting";
-      const wasBatting = !was || was.outdec === "batting" || !was.outdec;
-      if (nowOut && wasBatting) {
-        outBatsman = b;
-        break;
-      }
-    }
-
-    if (outBatsman) {
-      const bowler = extractBowlerFromOutdec(outBatsman.outdec);
-      const fielder = extractFielderFromOutdec(outBatsman.outdec);
-
-      event = {
-        type: "WICKET",
+      last = newLast;
+      return {
+        type: "SESSION",
+        session: s.type,
         battingTeam,
-        bowlingTeam,
-        batsman: outBatsman.name,
-        howout: outBatsman.outdec,
-        bowler,
-        fielder,
         runs: currRuns,
         wickets: currWkts,
         overs: currOvers,
@@ -279,20 +160,118 @@ export function detectEvents(data) {
     }
   }
 
-  // ---------- SIX detection (based on batsman stats) ----------
-  if (!event) {
-    const prevMap = prev.batsmanMap || {};
+  // ------------------------------------------------------------------
+  // First init
+  // ------------------------------------------------------------------
+  if (!prev.inningsKey) {
+    Object.assign(newLast, {
+      inningsKey,
+      runs: currRuns,
+      wickets: currWkts,
+      overs: currOvers,
+      ballnbr: currBall,
+      batsmanMap: currMap,
+      partnershipRuns: currPRuns,
+    });
+    last = newLast;
+    return null;
+  }
 
-    // check SIX first (higher impact)
-    for (const b of activeBatsmen) {
-      const prevB = prevMap[b.id];
-      if (prevB && b.sixes > prevB.sixes) {
+  // ------------------------------------------------------------------
+  // INNINGS CHANGE
+  // ------------------------------------------------------------------
+  if (inningsKey !== prev.inningsKey) {
+    Object.assign(newLast, {
+      inningsKey,
+      runs: currRuns,
+      wickets: currWkts,
+      overs: currOvers,
+      ballnbr: currBall,
+      batsmanMap: currMap,
+      partnershipRuns: currPRuns,
+      playerMilestones: {},
+      partnershipMultiple: 0,
+    });
+    last = newLast;
+
+    return {
+      type: "INNINGS_CHANGE",
+      battingTeam,
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // MATCH END
+  // ------------------------------------------------------------------
+  if (data.ismatchcomplete && !newLast.matchComplete) {
+    newLast.matchComplete = true;
+
+    Object.assign(newLast, {
+      inningsKey,
+      runs: currRuns,
+      wickets: currWkts,
+      overs: currOvers,
+      ballnbr: currBall,
+      batsmanMap: currMap,
+      partnershipRuns: currPRuns,
+    });
+
+    let winner = null;
+    const m = (data.status || "").match(/^([^,]+?)\s+won by/i);
+    if (m) winner = m[1].trim();
+
+    last = newLast;
+
+    return {
+      type: "MATCH_END",
+      winner,
+      status: data.status,
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // BALL EVENTS
+  // ------------------------------------------------------------------
+  let event = null;
+
+  // WICKET
+  if (currWkts > prev.wickets) {
+    let outBatsman = null;
+    for (const b of inn.batsman || []) {
+      const was = prev.batsmanMap[b.id];
+      const nowOut = b.outdec && b.outdec !== "batting";
+      const wasBat = !was || was.outdec === "batting" || !was.outdec;
+      if (nowOut && wasBat) {
+        outBatsman = b;
+        break;
+      }
+    }
+
+    if (outBatsman) {
+      event = {
+        type: "WICKET",
+        batsman: outBatsman.name,
+        howout: outBatsman.outdec,
+        bowler: extractBowler(outBatsman.outdec),
+        fielder: extractFielder(outBatsman.outdec),
+        runs: currRuns,
+        wickets: currWkts,
+        overs: currOvers,
+      };
+    }
+  }
+
+  const prevMap = prev.batsmanMap || {};
+
+  if (!event) {
+    // SIX
+    for (const b of active) {
+      const pb = prevMap[b.id];
+      if (pb && b.sixes > pb.sixes) {
         event = {
           type: "SIX",
-          battingTeam,
-          bowlingTeam,
           batsman: b.name,
-          bowler: currentBowler,
+          bowler,
           runs: currRuns,
           wickets: currWkts,
           overs: currOvers,
@@ -300,57 +279,108 @@ export function detectEvents(data) {
         break;
       }
     }
-
-    // if (!event) {
-    //   for (const b of activeBatsmen) {
-    //     const prevB = prevMap[b.id];
-    //     if (prevB && b.fours > prevB.fours) {
-    //       event = {
-    //         type: "FOUR",
-    //         battingTeam,
-    //         bowlingTeam,
-    //         batsman: b.name,
-    //         bowler: currentBowler,
-    //         runs: currRuns,
-    //         wickets: currWkts,
-    //         overs: currOvers,
-    //       };
-    //       break;
-    //     }
-    //   }
-    // }
   }
 
-  // ---------- Batter milestones (50/100/150/200...) ----------
   if (!event) {
-    const prevMap = prev.batsmanMap || {};
+    // FOUR
+    for (const b of active) {
+      const pb = prevMap[b.id];
+      if (pb && b.fours > pb.fours) {
+        event = {
+          type: "FOUR",
+          batsman: b.name,
+          bowler,
+          runs: currRuns,
+          wickets: currWkts,
+          overs: currOvers,
+        };
+        break;
+      }
+    }
+  }
+
+  // -------------------------------------------------
+  // WIDE / NO BALL (Test match parsing)
+  // -------------------------------------------------
+  if (!event) {
+    const diffRuns = currRuns - prev.runs;
+
+    // Wide balls add +1 run but ballnbr DOES NOT increase
+    if (currBall === prev.ballnbr && diffRuns === 1) {
+      event = {
+        type: "WIDE",
+        bowler,
+        runs: currRuns,
+        wickets: currWkts,
+        overs: currOvers,
+      };
+    }
+
+    // No-ball: +1 run but ballnbr DOES NOT increase
+    // In Test cricket free hit does NOT apply
+    if (!event && currBall === prev.ballnbr && diffRuns === 1) {
+      event = {
+        type: "NO_BALL",
+        bowler,
+        runs: currRuns,
+        wickets: currWkts,
+        overs: currOvers,
+      };
+    }
+  }
+
+  // SINGLE / DOUBLE
+  if (!event) {
+    const diff = currRuns - prev.runs;
+
+    if (currWkts === prev.wickets) {
+      if (diff === 1) {
+        event = {
+          type: "SINGLE",
+          batsman: active[0]?.name || null,
+          bowler,
+          runs: currRuns,
+          wickets: currWkts,
+          overs: currOvers,
+        };
+      }
+
+      if (diff === 2) {
+        event = {
+          type: "DOUBLE",
+          batsman: active[0]?.name || null,
+          bowler,
+          runs: currRuns,
+          wickets: currWkts,
+          overs: currOvers,
+        };
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // MILESTONES (50/100/150…)
+  // ------------------------------------------------------------------
+  if (!event) {
     const milestones = [50, 100, 150, 200, 250];
 
-    if (!newLast.playerMilestones)
-      newLast.playerMilestones = { ...last.playerMilestones };
-
-    for (const b of innings.batsman || []) {
-      const prevB = prevMap[b.id] || { runs: 0 };
-      const prevRuns = prevB.runs || 0;
-      const curr = b.runs;
-
-      if (curr > prevRuns) {
+    for (const b of inn.batsman || []) {
+      const pb = prevMap[b.id] || { runs: 0 };
+      if (b.runs > pb.runs) {
         for (const m of milestones) {
-          if (curr >= m && prevRuns < m) {
-            const prevMultiple = newLast.playerMilestones[b.id] || 0;
-            const thisMultiple = m / 50;
-            if (thisMultiple > prevMultiple) {
-              newLast.playerMilestones[b.id] = thisMultiple;
+          if (b.runs >= m && pb.runs < m) {
+            const prevM = newLast.playerMilestones[b.id] || 0;
+            const currM = m / 50;
+
+            if (currM > prevM) {
+              newLast.playerMilestones[b.id] = currM;
               event = {
                 type: "MILESTONE",
-                battingTeam,
-                bowlingTeam,
                 batsman: b.name,
-                runs: curr,
-                wickets: currWkts,
+                runs: b.runs,
                 overs: currOvers,
+                wickets: currWkts,
               };
-              break;
             }
           }
         }
@@ -359,19 +389,18 @@ export function detectEvents(data) {
     }
   }
 
-  // ---------- Partnership milestones (multiples of 50) ----------
-  if (!event && currPartnershipRuns > 0) {
-    const prevPRuns = prev.partnershipRuns || 0;
-    const prevMultiple = Math.floor(prevPRuns / 50);
-    const currMultiple = Math.floor(currPartnershipRuns / 50);
+  // ------------------------------------------------------------------
+  // PARTNERSHIP milestones
+  // ------------------------------------------------------------------
+  if (!event && currPRuns > 0) {
+    const prevMul = Math.floor(prev.partnershipRuns / 50);
+    const currMul = Math.floor(currPRuns / 50);
 
-    if (currMultiple > prevMultiple && currMultiple > 0 && currPartnership) {
-      newLast.partnershipMultiple = currMultiple;
+    if (currMul > prevMul && currMul > 0 && currPartnership) {
+      newLast.partnershipMultiple = currMul;
       event = {
         type: "PARTNERSHIP",
-        battingTeam,
-        bowlingTeam,
-        runs: currPartnershipRuns,
+        runs: currPRuns,
         bat1: currPartnership.bat1name,
         bat2: currPartnership.bat2name,
         wickets: currWkts,
@@ -380,14 +409,18 @@ export function detectEvents(data) {
     }
   }
 
-  // ---------- Update snapshot ----------
-  newLast.inningsKey = inningsKey;
-  newLast.runs = currRuns;
-  newLast.wickets = currWkts;
-  newLast.overs = currOvers;
-  newLast.ballnbr = currBallnbr;
-  newLast.batsmanMap = currBatsmanMap;
-  newLast.partnershipRuns = currPartnershipRuns;
+  // ------------------------------------------------------------------
+  // Update snapshot ALWAYS
+  // ------------------------------------------------------------------
+  Object.assign(newLast, {
+    inningsKey,
+    runs: currRuns,
+    wickets: currWkts,
+    overs: currOvers,
+    ballnbr: currBall,
+    batsmanMap: currMap,
+    partnershipRuns: currPRuns,
+  });
 
   last = newLast;
   return event;

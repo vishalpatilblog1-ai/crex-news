@@ -1,21 +1,27 @@
-// cricbuzz/getLiveMatches.js
 import fetch from "node-fetch";
 
-const MOBILE_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko)",
-  Accept: "application/json",
-  "X-Requested-With": "XMLHttpRequest",
-};
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+const BASE_URL = "https://cricbuzz-cricket.p.rapidapi.com";
 
 export async function getLiveMatches() {
-  const url = "https://m.cricbuzz.com/api/cricket-match/live";
+  return await fetchJson(`${BASE_URL}/matches/v1/live`);
+}
 
+async function fetchJson(url) {
   try {
-    const res = await fetch(url, { headers: MOBILE_HEADERS });
-    const data = await res.json();
-    return data;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
+        "User-Agent": "Mozilla/5.0",
+        Accept: "application/json",
+      },
+    });
+
+    return await res.json();
   } catch (err) {
-    return { error: "LIVE_MATCH_FETCH_FAILED", message: err.message };
+    console.error("❌ Fetch JSON error:", err.message);
+    return null;
   }
 }
