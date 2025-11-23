@@ -1,5 +1,5 @@
-// index.js — Final Combined Version (with dynamic team names)
-//------------------------------------------------------------
+// index.js — Final Combined Version
+//-----------------------------------
 
 import dotenv from "dotenv";
 import postTweet from "./twitter.js";
@@ -8,18 +8,14 @@ import { findBestLiveMatch } from "./findBestLiveMatch.js";
 import generateTweet from "./ai.js";
 
 import { extractDetailsFromCommentary } from "./cricbuzz/commentaryParser.js";
-
-// 🔥 Updated: now events.js is OUTSIDE cricbuzz folder (as per your latest)
+import { detectEvents } from "./cricbuzz/events.js";
 
 import { getCommentary, getMatchScore } from "./cricbuzz/cricbuzzApi.js";
-import { detectEvents, setTeams } from "./cricbuzz/events.js";
 
 dotenv.config();
 
 let CURRENT_MATCH_ID = null;
 let CURRENT_MATCH_NAME = "";
-let TEAM1 = null;
-let TEAM2 = null;
 
 // INTERVALS
 const POLL_INTERVAL = 15000; // every 15 sec
@@ -28,10 +24,10 @@ const SWITCH_INTERVAL = 60000; // every 60 sec
 async function startBot() {
   console.log("🚀 Starting Live Cricket Bot…");
 
-  await pickMatch(true);
+  await pickMatch(true); // pick at startup
 
-  pollLoop();
-  switchLoop();
+  pollLoop(); // fetch events
+  switchLoop(); // change match if needed
 }
 
 async function pickMatch(firstTime = false) {
@@ -47,15 +43,6 @@ async function pickMatch(firstTime = false) {
 
     CURRENT_MATCH_ID = match.id;
     CURRENT_MATCH_NAME = match.name;
-
-    // 🔥 NEW: Dynamic teams
-    TEAM1 = match.team1;
-    TEAM2 = match.team2;
-
-    console.log(`⚔️ Teams: ${TEAM1} vs ${TEAM2}`);
-
-    // 🔥 Pass to events.js so bowlingTeam logic works
-    setTeams(TEAM1, TEAM2);
   }
 }
 
@@ -65,7 +52,7 @@ async function pollLoop() {
   }
 
   try {
-    console.log(`🔄 Polling match: ${CURRENT_MATCH_NAME}`);
+    console.log("🔄 Polling match:", CURRENT_MATCH_NAME);
 
     const score = await getMatchScore(CURRENT_MATCH_ID);
     const comm = await getCommentary(CURRENT_MATCH_ID);
@@ -85,6 +72,7 @@ async function pollLoop() {
 
       console.log("🎯 Final Event Payload:", payload);
 
+      // AI-generated tweet
       const tweetText = await generateTweet(payload);
       await postTweet(tweetText);
 
@@ -104,4 +92,5 @@ async function switchLoop() {
   setTimeout(switchLoop, SWITCH_INTERVAL);
 }
 
+// START SCRIPT
 startBot();
