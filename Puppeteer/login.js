@@ -38,7 +38,11 @@ async function loginX() {
 
   // Save cookies
   const cookies = await page.cookies();
-  fs.writeFileSync("./x-cookies.json", JSON.stringify(cookies, null, 2));
+  // fs.writeFileSync("./x-cookies.json", JSON.stringify(cookies, null, 2));
+  fs.writeFileSync(
+    "./Puppeteer/x-cookies.json",
+    JSON.stringify(cookies, null, 2)
+  );
 
   console.log("✅ Login successful. Cookies saved to x-cookies.json");
 }

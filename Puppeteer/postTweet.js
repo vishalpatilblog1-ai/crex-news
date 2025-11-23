@@ -1,4 +1,4 @@
-// Puppeteer/postTweet.js
+// Puppeteer/postTweet.js (MAC VERSION — uses CMD + ENTER)
 import { startBrowser, getPage } from "./browser.js";
 
 let initialized = false;
@@ -17,73 +17,62 @@ export async function postTweet(text) {
     return;
   }
 
-  // 🔥 Ensure Puppeteer is ready
   await initPuppeteer();
-
   const page = getPage();
-  if (!page) {
-    throw new Error("❌ Puppeteer page not ready.");
-  }
+  if (!page) throw new Error("❌ Puppeteer page not ready.");
 
   console.log("📝 Opening X compose page…");
   await page.goto("https://x.com/compose/post", {
     waitUntil: "networkidle2",
   });
 
+  // ---- STEP 1: FIND TEXTBOX ----
   const textboxSelectors = [
     'div[data-testid="tweetTextarea_0"]',
     'div[data-testid="tweetTextarea_1"]',
     'div[role="textbox"]',
-    "div.public-DraftStyleDefault-block",
-    "div.DraftEditor-editorContainer",
     'div[aria-label="Tweet text"]',
   ];
 
-  let textboxFound = false;
+  let typed = false;
 
   for (const sel of textboxSelectors) {
     try {
-      await page.waitForSelector(sel, { timeout: 8000 });
-      console.log(`🟢 Found textbox: ${sel}`);
+      await page.waitForSelector(sel, { timeout: 6000 });
+      console.log("🟢 Found textbox:", sel);
 
       await page.click(sel);
 
-      // Clear old text
-      const isMac = process.platform === "darwin";
-      await page.keyboard.down(isMac ? "Meta" : "Control");
-      await page.keyboard.press("KeyA");
-      await page.keyboard.up(isMac ? "Meta" : "Control");
+      // Clear existing text
+      await page.keyboard.down("Meta");
+      await page.keyboard.press("A");
+      await page.keyboard.up("Meta");
       await page.keyboard.press("Backspace");
 
-      await page.type(sel, text, { delay: 20 });
+      // Type tweet
+      await page.type(sel, text, { delay: 12 });
+      typed = true;
 
-      textboxFound = true;
       break;
     } catch {}
   }
 
-  if (!textboxFound) {
-    console.log("❌ No textbox found.");
+  if (!typed) {
+    console.log("❌ ERROR: Could not find tweet text box.");
     return;
   }
 
-  const tweetButtonSelectors = [
-    'div[data-testid="tweetButtonInline"]',
-    'button[data-testid="tweetButtonInline"]',
-    'div[data-testid="tweetButton"]',
-    'button[data-testid="tweetButton"]',
-  ];
+  // ---- STEP 2: POST USING CMD + ENTER ----
+  console.log("⌨️  Submitting tweet using CMD + ENTER…");
 
-  for (const btnSel of tweetButtonSelectors) {
-    try {
-      await page.waitForSelector(btnSel, { timeout: 5000 });
-      console.log(`🟢 Clicking tweet button: ${btnSel}`);
-      await page.click(btnSel);
-      console.log("📤 Tweet submitted!");
-      break;
-    } catch {}
-  }
+  await page.keyboard.down("Meta");
+  await page.keyboard.press("Enter");
+  await page.keyboard.up("Meta");
 
-  // await page.waitForTimeout(3000);
-  await new Promise((res) => setTimeout(res, 3000));
+  console.log("📤 Tweet SUBMITTED (keyboard shortcut).");
+
+  // await page.waitForTimeout(1500);
+  await new Promise((res) => setTimeout(res, 1500));
+
+  console.log("🟢 Tweet posted!");
 }

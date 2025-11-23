@@ -16,9 +16,9 @@ export async function startBrowser() {
   console.log("➡ Initializing Puppeteer…");
 
   browser = await puppeteer.launch({
-    headless: false, // MUST be false for X
-    executablePath: CHROME_PATH, // USE REAL CHROME
-    userDataDir: "./Puppeteer/chrome-profile", // persistent login
+    headless: false,
+    executablePath: CHROME_PATH,
+    userDataDir: "./Puppeteer/chrome-profile",
     defaultViewport: null,
     args: [
       "--no-sandbox",
@@ -33,6 +33,14 @@ export async function startBrowser() {
 
   const pages = await browser.pages();
   page = pages.length ? pages[0] : await browser.newPage();
+
+  // 🔥 Attach auto-dialog handler AFTER page exists
+  page.on("dialog", async (dialog) => {
+    console.log("⚠️ Auto-handling dialog:", dialog.message());
+    try {
+      await dialog.accept(); // always accept "Leave site?" popup
+    } catch (_) {}
+  });
 
   // Load cookies
   if (fs.existsSync(COOKIES_PATH)) {

@@ -32,8 +32,6 @@ export async function getLiveMatches() {
 export async function findIndiaMatch() {
   const data = await getLiveMatches();
 
-  console.log("🔵 RAW API RESPONSE puppetter:", JSON.stringify(data, null, 2));
-
   if (!data?.typeMatches) return null;
 
   for (const block of data.typeMatches) {

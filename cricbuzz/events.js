@@ -46,7 +46,12 @@ function getActiveBatsmen(inn) {
 function getCurrentBowler(inn) {
   const arr = inn.bowler || [];
   if (!arr.length) return null;
-  return arr[arr.length - 1].name;
+
+  // Find bowler with “overs > 0” or “maidens >= 0”
+  // Cricbuzz marks current bowler with ballsbowled > 0 OR economy showing
+  const active = arr.find((b) => b.overs && b.overs !== "0.0");
+
+  return active ? active.name : arr[arr.length - 1].name;
 }
 
 function getCurrentPartnership(inn) {

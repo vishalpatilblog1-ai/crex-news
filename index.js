@@ -90,7 +90,7 @@ async function pollLoop() {
 
       console.log("🟢 Tweet posted!");
     } else {
-      console.log("🟡 No new event.");
+      console.log("🟡 No new event123.");
     }
   } catch (err) {
     console.log("❌ Polling Error:", err.message);
