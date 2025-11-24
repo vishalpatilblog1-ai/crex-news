@@ -1,4 +1,5 @@
-// localBot.js — Fully AI-based, no manual detectEvents
+// localBot.js — FINAL AI-Based Local Bot (Puppeteer / Console)
+// Forces a specific match ID (works even if live search fails)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 import dotenv from "dotenv";
@@ -8,37 +9,42 @@ import { getMatchScore, getCommentary } from "./cricbuzz/cricbuzzApi.js";
 import generateTweet from "./ai.js";
 import { postTweet_console, postTweet_web } from "./Puppeteer/postTweet.js";
 
+// ===============================
+// CONFIG
+// ===============================
 const FORCE_MATCH_ID = 117380;
 const FORCE_MATCH_NAME = "South Africa vs India";
+
+// Poll every 15 seconds (good balance)
+const POLL_WAIT_TIME = 10000;
+
+// Use Puppeteer to actually post to X (set false for console-only)
+const USE_WEB_TWEET = false;
+
+globalThis.LAST_BALL = null;
+globalThis.LAST_HASH = null;
+globalThis.LAST_EVENT_BALL = {};
 
 let CURRENT_MATCH_ID = FORCE_MATCH_ID;
 let CURRENT_MATCH_NAME = FORCE_MATCH_NAME;
 
-console.log("🔥 AI-Based Cricket Bot Started (Console Only)");
+console.log("🔥 AI-Based Cricket Bot Started (LOCAL)");
 console.log(`📌 Match: ${CURRENT_MATCH_NAME}`);
 
-const POLL_INTERVAL = 5000; // 5 seconds
-let lastBall = null;
+// Simple sleep
+const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 function extractLatestCommentary(res) {
   if (!res || !Array.isArray(res.comwrapper)) return null;
 
   const list = res.comwrapper.map((item) => item.commentary).filter(Boolean);
-
   if (!list.length) return null;
 
-  // Iterate from newest → oldest
+  // Newest → oldest
   for (const ball of list) {
     if (!ball) continue;
-
     const txt = (ball.commtxt || "").trim();
-
-    // ❌ Skip ONLY pure ghost entries
-    if (txt === "" || txt === "B0$") {
-      continue;
-    }
-
-    // ✔ Accept everything else, even if overnum/ballnbr are 0
+    if (txt === "" || txt === "B0$") continue; // ghost entries
     return ball;
   }
 
@@ -55,14 +61,15 @@ function getCurrentInningsFromScore(scoreRes, miniscore) {
     if (byId) return byId;
   }
 
+  // fallback: last innings
   return scoreRes.scorecard[scoreRes.scorecard.length - 1] || null;
 }
 
 function normalizeOvers(overs) {
+  if (overs == null) return overs;
   const parts = overs.toString().split(".");
   const full = parseInt(parts[0], 10);
   const balls = parseInt(parts[1] || "0", 10);
-
   if (balls === 6) return (full + 1).toFixed(1).replace(".0", "");
   return overs;
 }
@@ -76,7 +83,40 @@ function getMiniScorePlayers(miniscore) {
     strikerRuns: miniscore.batsmanstriker?.runs || "",
     strikerBallsPlayed: miniscore.batsmanstriker?.balls || "",
     nonStrikerRuns: miniscore.batsmannonstriker?.runs || "",
-    nonStrikerBallsPlayed: miniscore.batsmannonstriker?.balls || "",
+    nonStrikerBallsPlayed: miniscore.batsmannonstrister?.balls || "",
+  };
+}
+
+// Extract partnership from full scorecard
+function getCurrentPartnership(scoreRes, currentInnings) {
+  if (!scoreRes?.scorecard) return null;
+
+  const scInnings = scoreRes.scorecard.find(
+    (inn) => inn.inningsid === currentInnings?.inningsid
+  );
+  if (!scInnings?.partnership?.partnership) return null;
+
+  const arr = scInnings.partnership.partnership;
+  const last = arr[arr.length - 1]; // current partnership
+
+  if (!last) return null;
+
+  return {
+    bat1: {
+      id: last.bat1id,
+      name: last.bat1name,
+      runs: last.bat1runs,
+      balls: last.bat1balls,
+    },
+    bat2: {
+      id: last.bat2id,
+      name: last.bat2name,
+      runs: last.bat2runs,
+      balls: last.bat2balls,
+    },
+    totalRuns: last.totalruns,
+    totalBalls: last.totalballs,
+    text: currentInnings?.partnership || "",
   };
 }
 
@@ -87,6 +127,7 @@ function buildMatchContext(scoreRes, commRes, latestBall) {
 
   const format = matchheaders.matchformat || "UNKNOWN";
   const status = matchheaders.status || scoreRes?.status || "";
+
   const team1 =
     matchheaders.team1?.teamname || scoreRes?.scorecard?.[0]?.batteamname || "";
   const team2 =
@@ -114,16 +155,17 @@ function buildMatchContext(scoreRes, commRes, latestBall) {
     crr: miniscore.crr ?? currentInnings?.runrate ?? null,
     rrr: miniscore.rrr ?? 0,
     trailOrLeadText: status || miniscore.custstatus || "",
+    currentPartnership: getCurrentPartnership(scoreRes, miniscore),
   };
 
   const players = getMiniScorePlayers(miniscore);
 
-  const matchContext = {
+  return {
     match: {
       name: `${team1} vs ${team2}`,
       format,
       status,
-      venue: "", // can be extended if needed
+      venue: "",
       team1,
       team2,
     },
@@ -137,16 +179,18 @@ function buildMatchContext(scoreRes, commRes, latestBall) {
     },
     players,
   };
-
-  return matchContext;
 }
-const USE_WEB_TWEET = false;
-async function poll() {
+
+// ===============================
+// MAIN POLL FUNCTION (ONE ITERATION)
+// ===============================
+async function pollOnce() {
   try {
     console.log(`\n🔄 Polling: ${CURRENT_MATCH_NAME}`);
 
     const scoreRes = await getMatchScore(CURRENT_MATCH_ID);
     if (!scoreRes || !scoreRes.scorecard) {
+      console.log("⚠ No score data, skipping this cycle");
       return;
     }
 
@@ -154,18 +198,57 @@ async function poll() {
     const latest = extractLatestCommentary(commentaryRaw);
 
     if (!latest) {
+      console.log("⚠ No commentary found, skipping");
       return;
     }
 
-    if (lastBall && lastBall === latest.ballnbr) {
-      console.log("⏩ Same ball, skipping...");
+    // Over-break events are boring → skip
+    if (latest.eventtype === "over-break") {
+      console.log("⏭ Skipping over-break event…");
       return;
     }
-    lastBall = latest.ballnbr;
+
+    const commHash = (latest.commtxt || "").trim();
+
+    // DEDUPE 1: exact same ball + same text
+    if (
+      latest.ballnbr === globalThis.LAST_BALL &&
+      commHash === globalThis.LAST_HASH
+    ) {
+      console.log("⏩ Exact same commentary — skipping...");
+      return;
+    }
+
+    globalThis.LAST_BALL = latest.ballnbr;
+    globalThis.LAST_HASH = commHash;
+
+    // DEDUPE 2: per-event, per-ball (handles multiple commentary for same wicket/six/four)
+    const EVENT_TYPES_TO_DEDUPE = [
+      "WICKET",
+      "SIX",
+      "FOUR",
+      "FIFTY",
+      "HUNDRED",
+      "TEAM_FIFTY",
+      "TEAM_HUNDRED",
+    ];
+
+    if (EVENT_TYPES_TO_DEDUPE.includes(latest.eventtype)) {
+      const prevBallForEvent = globalThis.LAST_EVENT_BALL[latest.eventtype];
+
+      if (prevBallForEvent === latest.ballnbr) {
+        console.log(
+          `⏩ Duplicate ${latest.eventtype} on same ball (${latest.ballnbr}) — skipping`
+        );
+        return;
+      }
+
+      globalThis.LAST_EVENT_BALL[latest.eventtype] = latest.ballnbr;
+    }
 
     const matchContext = buildMatchContext(scoreRes, commentaryRaw, latest);
-
     const tweetContent = await generateTweet(matchContext);
+
     console.log("content::", {
       text: latest.commtxt,
       eventtype: latest.eventtype,
@@ -185,24 +268,19 @@ async function poll() {
     } else {
       await postTweet_console(tweetContent);
     }
-
-    // const { postTweet } = await import("./Puppeteer/postTweet.js");
-    // await postTweet(tweetContent);
-
-    // console.log("🟢 Tweet posted!");
-
-    // Console tweet
-
-    // if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
-    //   console.log("ℹ AI decided to SKIP this ball");
-    //   return;
-    // }
-
-    // console.log("\n📝 AI TWEET:");
-    // console.log(tweetContent);
   } catch (err) {
-    console.error("❌ ERROR in poll():", err);
+    console.error("❌ ERROR in pollOnce():", err);
   }
 }
 
-setInterval(poll, POLL_INTERVAL);
+// ===============================
+// LOOP
+// ===============================
+async function startLoop() {
+  while (true) {
+    await pollOnce();
+    await wait(POLL_WAIT_TIME);
+  }
+}
+
+startLoop();

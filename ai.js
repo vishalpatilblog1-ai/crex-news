@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import { cleanBallText, shortTeamName } from "./utils/formatter.js";
 
 dotenv.config();
 
@@ -7,164 +8,113 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-function shortTeamName(name = "") {
-  const map = {
-    india: "IND",
-    "south africa": "SA",
-    pakistan: "PAK",
-    australia: "AUS",
-    england: "ENG",
-    "new zealand": "NZ",
-    "sri lanka": "SL",
-    bangladesh: "BAN",
-    "west indies": "WI",
-    afghanistan: "AFG",
-    zimbabwe: "ZIM",
-    ireland: "IRE",
-    nepal: "NEP",
-    netherlands: "NED",
-    uae: "UAE",
-    scotland: "SCO",
-  };
+// ----------------------------------------------
+// AI HEADLINE GENERATOR
+// ----------------------------------------------
+export async function generateHeadline(ballText) {
+  try {
+    const prompt = `
+Rewrite the cricket ball commentary into a clean, human-style headline.
+Keep it short, natural, and cricket-specific.
 
-  const key = name.trim().toLowerCase();
-  return map[key] || name; // fallback: original
+STRICT RULES:
+- Do NOT add scores, strike rates, or stats.
+- Do NOT guess or add new player names.
+- Use ONLY the players already present in the text.
+- If the action described is POSITIVE for India (India batter hits FOUR/SIX, or India bowler gets wicket),
+  then add ONE emoji at the end (for six - 💥, for four - 🔥, for wicket - 📛).
+- If it's NOT positive for India, add NO emoji.
+- Do NOT add analysis.
+
+Ball Text:
+"${ballText}"
+
+Output ONLY the rewritten headline.
+`;
+
+    const res = await client.chat.completions.create({
+      model: "gpt-4.1",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+    });
+
+    return res.choices[0].message.content.trim();
+  } catch (err) {
+    console.error("HEADLINE AI ERROR:", err);
+    return "";
+  }
 }
 
-function cleanBallText(text) {
-  if (!text) return "";
-  return text
-    .replace(/B\d\$/g, "") // remove B0$, B1$
-    .replace(/\s+/g, " ") // normalize spacing
-    .trim();
-}
-
+// ----------------------------------------------
+// MAIN TWEET GENERATOR
+// ----------------------------------------------
 export default async function generateTweet(ctx) {
   try {
-    // Safety
     if (!ctx?.ball?.eventtype) return "SKIP";
 
     const event = ctx.ball.eventtype.toUpperCase();
     const cleanText = cleanBallText(ctx.ball.text);
 
-    // Hard skip normal balls
+    const { innings, players, match } = ctx;
+    const currentPartnership = innings?.currentPartnership;
+
+    // Partnership crossing logic
+    const prevP = globalThis.LAST_PARTNERSHIP_RUNS || 0;
+    const currP = currentPartnership?.totalRuns || 0;
+
+    // Skip "NONE" or "over-break" unless milestone
+    // if (!milestoneCrossed && !batterMilestoneHit) {
     if (event === "NONE") return "SKIP";
-    if (event === "over-break") return "SKIP";
+    if (event === "OVER-BREAK" || event === "over-break") return "SKIP";
+    // }
+
     if (!cleanText || cleanText.length < 5) return "SKIP";
 
-    const { innings, players, match } = ctx;
+    const battingFullName = match.team1
+      .toLowerCase()
+      .includes(innings.battingTeam.toLowerCase())
+      ? match.team1
+      : match.team2;
 
-    const scoreLine = `${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+    // ----------------------------------------------
+    // START BUILDING TWEET PARTS
+    // ----------------------------------------------
+    let parts = [];
 
+    const header = `🚨 ${shortTeamName(match.team1)} vs ${shortTeamName(
+      match.team2
+    )} ${match.format} Updates 🚨`;
+
+    const headline = await generateHeadline(cleanText);
+
+    const scoreLine = `${battingFullName} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
     const strikerLine =
-      players?.striker && players?.strikerRuns && players?.strikerBallsPlayed
-        ? `${players.striker} : ${players.strikerRuns} (${players.strikerBallsPlayed})`
+      players.striker && players.strikerRuns
+        ? `${players.striker}: ${players.strikerRuns} (${players.strikerBallsPlayed})`
         : "";
 
     const nonStrikerLine =
-      players?.nonStriker &&
-      players?.nonStrikerRuns &&
-      players?.nonStrikerBallsPlayed
-        ? `${players.nonStriker} : ${players.nonStrikerRuns} (${players.nonStrikerBallsPlayed})`
+      players.nonStriker && players.nonStrikerRuns
+        ? `${players.nonStriker}: ${players.nonStrikerRuns} (${players.nonStrikerBallsPlayed})`
         : "";
 
-    let headline = "";
+    parts.push(header);
+    parts.push("");
+    parts.push(headline);
+    parts.push("");
+    parts.push(scoreLine);
+    parts.push("");
+    if (strikerLine) parts.push(strikerLine);
+    if (nonStrikerLine) parts.push(nonStrikerLine);
+    parts.push("");
+    if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
 
-    // Determine who is batting
-    const indiaBatting = (innings?.battingTeam || "")
-      .toUpperCase()
-      .includes("IND");
+    // ----------------------------------------------
+    // UPDATE MEMORY
+    // ----------------------------------------------
+    globalThis.LAST_PARTNERSHIP_RUNS = currP;
 
-    // ==========================================
-    // EVENT LOGIC (ONLY EVENT HEADLINE HERE)
-    // ==========================================
-
-    switch (event) {
-      case "SIX":
-        headline = indiaBatting
-          ? `💥 SIX! ${cleanText} 🇮🇳🔥`
-          : `SIX by opponent: ${cleanText} 📈`;
-        break;
-
-      case "FOUR":
-        headline = indiaBatting
-          ? `FOUR! ${cleanText} ✨🇮🇳`
-          : `FOUR for opponent: ${cleanText} 📈`;
-        break;
-
-      case "WICKET":
-        headline = indiaBatting
-          ? `${cleanText}` // India loses wicket → no emoji
-          : `WICKET! ${cleanText} 🔥`; // India takes wicket
-        break;
-
-      case "FIFTY":
-        headline = `FIFTY! ${cleanText} 🙌`;
-        break;
-
-      case "HUNDRED":
-      case "CENTURY":
-        headline = `CENTURY! ${cleanText} 💥`;
-        break;
-
-      case "TEAM_FIFTY":
-        headline = `Team reaches 50! ${cleanText} 📈`;
-        break;
-
-      case "TEAM_HUNDRED":
-        headline = `Team crosses 100! ${cleanText} 💪`;
-        break;
-
-      case "PARTNERSHIP_50":
-        headline = `50-run partnership! 🤝`;
-        break;
-
-      case "PARTNERSHIP_100":
-        headline = `Century stand! 🤝`;
-        break;
-
-      case "DRINKS":
-        headline = `Drinks Break — ${match.status}`;
-        break;
-
-      case "LUNCH":
-        headline = `Lunch Break — ${match.status}`;
-        break;
-
-      case "TEA":
-        headline = `Tea Break — ${match.status}`;
-        break;
-
-      case "STUMPS":
-        headline = `Stumps — ${match.status}`;
-        break;
-
-      case "INNINGS_BREAK":
-        headline = `Innings Break — ${match.status}`;
-        break;
-
-      default:
-        return "SKIP"; // Unknown event
-    }
-
-    // ==========================================
-    // FINAL TWEET FORMAT
-    // ==========================================
-    let tweet = `
-🚨 ${shortTeamName(match.team1)} VS ${shortTeamName(match.team12)} ${
-      match.format
-    } Match Updates 🚨
-
-${headline}
-
-${scoreLine}
-${strikerLine}
-${nonStrikerLine}
-
-${innings.trailOrLeadText}
-    `.trim();
-
-    return tweet;
+    return parts.join("\n").trim();
   } catch (err) {
     console.error("AI ERROR:", err);
     return "SKIP";
