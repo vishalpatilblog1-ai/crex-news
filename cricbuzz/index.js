@@ -7,22 +7,16 @@ import postTweet from "../twitter.js";
 
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 
-// ======================================================
-// GLOBAL STATE (persists across reloads)
-// ======================================================
 globalThis.LAST_BALL = null;
 globalThis.LAST_HASH = null;
 globalThis.LAST_WICKET_BATSMAN = null;
 
 let MATCH_ID = null;
 let MATCH_NAME = "";
-const POLL_WAIT_TIME = 30000;
+const POLL_WAIT_TIME = 15000;
 
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
-/* ---------------------------------------
- * Extract NEWEST Commentary
- * ---------------------------------------*/
 function extractLatestCommentary(res) {
   if (!res?.comwrapper) return null;
 
@@ -37,9 +31,6 @@ function extractLatestCommentary(res) {
   return null;
 }
 
-/* ---------------------------------------
- * Helpers
- * ---------------------------------------*/
 function normalizeOvers(overs) {
   if (!overs) return overs;
   const p = overs.toString().split(".");

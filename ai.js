@@ -7,7 +7,30 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/* CLEAN COMMENTARY TEXT */
+function shortTeamName(name = "") {
+  const map = {
+    india: "IND",
+    "south africa": "SA",
+    pakistan: "PAK",
+    australia: "AUS",
+    england: "ENG",
+    "new zealand": "NZ",
+    "sri lanka": "SL",
+    bangladesh: "BAN",
+    "west indies": "WI",
+    afghanistan: "AFG",
+    zimbabwe: "ZIM",
+    ireland: "IRE",
+    nepal: "NEP",
+    netherlands: "NED",
+    uae: "UAE",
+    scotland: "SCO",
+  };
+
+  const key = name.trim().toLowerCase();
+  return map[key] || name; // fallback: original
+}
+
 function cleanBallText(text) {
   if (!text) return "";
   return text
@@ -128,7 +151,9 @@ export default async function generateTweet(ctx) {
     // FINAL TWEET FORMAT
     // ==========================================
     let tweet = `
-🚨 MATCH ${match.team1} VS ${match.team2} ${match.format} UPDATE 🚨
+🚨 ${shortTeamName(match.team1)} VS ${shortTeamName(match.team12)} ${
+      match.format
+    } Match Updates 🚨
 
 ${headline}
 
