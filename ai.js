@@ -1,6 +1,11 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
-import { cleanBallText, shortTeamName } from "./utils/formatter.js";
+import {
+  cleanBallText,
+  formatPartnership,
+  shortTeamName,
+  smartShortName,
+} from "./utils/formatter.js";
 
 dotenv.config();
 
@@ -71,14 +76,18 @@ export default async function generateTweet(matchContext) {
     const headline = await generateHeadline(cleanText);
 
     const scoreLine = `${battingFullName} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+
+    const strikerName = smartShortName(players.striker, players.nonStriker);
+    const nonStrikerName = smartShortName(players.nonStriker, players.striker);
+
     const strikerLine =
-      players.striker && players.strikerRuns
-        ? `${players.striker}: ${players.strikerRuns} (${players.strikerBallsPlayed})`
+      strikerName && players.strikerRuns && players.strikerBallsPlayed
+        ? `${strikerName}: ${players.strikerRuns} (${players.strikerBallsPlayed})`
         : "";
 
     const nonStrikerLine =
-      players.nonStriker && players.nonStrikerRuns
-        ? `${players.nonStriker}: ${players.nonStrikerRuns} (${players.nonStrikerBallsPlayed})`
+      nonStrikerName && players.nonStrikerRuns && players.nonStrikerBallsPlayed
+        ? `${nonStrikerName}: ${players.nonStrikerRuns} (${players.nonStrikerBallsPlayed})`
         : "";
 
     parts.push(header);
@@ -91,11 +100,22 @@ export default async function generateTweet(matchContext) {
     if (strikerLine) parts.push(strikerLine);
     if (nonStrikerLine) parts.push(nonStrikerLine);
 
-    if (matchContext.ball.partnership) {
-      parts.push(`Partnership: ${matchContext.ball.partnership}`);
-    }
+    const canShowPartnership =
+      players.striker &&
+      players.nonStriker &&
+      players.strikerRuns &&
+      players.nonStrikerRuns &&
+      players.strikerBallsPlayed &&
+      players.nonStrikerBallsPlayed &&
+      matchContext.ball.partnership;
 
-    parts.push("");
+    if (canShowPartnership) {
+      const formattedPartnership = formatPartnership(
+        matchContext.ball.partnership
+      );
+      parts.push(`Partnership: ${formattedPartnership}`);
+      parts.push("");
+    }
 
     if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
 

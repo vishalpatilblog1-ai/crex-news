@@ -33,3 +33,27 @@ export function cleanBallText(text) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+export function smartShortName(fullName, otherFullName = "") {
+  if (!fullName) return "";
+
+  const parts = fullName.trim().split(" ");
+  const last = parts[parts.length - 1];
+  const first = parts[0];
+
+  // If no comparison name given OR last names different → return last name
+  if (!otherFullName) return last;
+
+  const otherParts = otherFullName.trim().split(" ");
+  const otherLast = otherParts[otherParts.length - 1];
+
+  // If last names same → return initial + last
+  if (last.toLowerCase() === otherLast.toLowerCase()) {
+    return `${first[0]}. ${last}`;
+  }
+
+  return last;
+}
+export function formatPartnership(p = "") {
+  return p.replace("(", " (");
+}
