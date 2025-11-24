@@ -2,11 +2,11 @@
   "name": "sports-ai-auto-tweet-bot",
   "version": "1.0.0",
   "description": "Automated sports tweet generator using AI + X(Twitter) API + Node.js",
-  "main": "index.js",
+  "main": "cricbuzz/index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node cricbuzz/index.js",
+    "dev": "nodemon cricbuzz/index.js",
     "test-fake": "node testFakeEvent.js",
     "local": "node localBot.js"
   },
