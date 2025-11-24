@@ -8,9 +8,6 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ----------------------------------------------
-// AI HEADLINE GENERATOR
-// ----------------------------------------------
 export async function generateHeadline(ballText) {
   try {
     const prompt = `
@@ -45,28 +42,17 @@ Output ONLY the rewritten headline.
   }
 }
 
-// ----------------------------------------------
-// MAIN TWEET GENERATOR
-// ----------------------------------------------
-export default async function generateTweet(ctx) {
+export default async function generateTweet(matchContext) {
   try {
-    if (!ctx?.ball?.eventtype) return "SKIP";
+    if (!matchContext?.ball?.eventtype) return "SKIP";
 
-    const event = ctx.ball.eventtype.toUpperCase();
-    const cleanText = cleanBallText(ctx.ball.text);
+    const event = matchContext.ball.eventtype.toUpperCase();
+    const cleanText = cleanBallText(matchContext.ball.text);
 
-    const { innings, players, match } = ctx;
-    const currentPartnership = innings?.currentPartnership;
+    const { innings, players, match } = matchContext;
 
-    // Partnership crossing logic
-    const prevP = globalThis.LAST_PARTNERSHIP_RUNS || 0;
-    const currP = currentPartnership?.totalRuns || 0;
-
-    // Skip "NONE" or "over-break" unless milestone
-    // if (!milestoneCrossed && !batterMilestoneHit) {
     if (event === "NONE") return "SKIP";
     if (event === "OVER-BREAK" || event === "over-break") return "SKIP";
-    // }
 
     if (!cleanText || cleanText.length < 5) return "SKIP";
 
@@ -76,9 +62,6 @@ export default async function generateTweet(ctx) {
       ? match.team1
       : match.team2;
 
-    // ----------------------------------------------
-    // START BUILDING TWEET PARTS
-    // ----------------------------------------------
     let parts = [];
 
     const header = `🚨 ${shortTeamName(match.team1)} vs ${shortTeamName(
@@ -104,15 +87,17 @@ export default async function generateTweet(ctx) {
     parts.push("");
     parts.push(scoreLine);
     parts.push("");
+
     if (strikerLine) parts.push(strikerLine);
     if (nonStrikerLine) parts.push(nonStrikerLine);
-    parts.push("");
-    if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
 
-    // ----------------------------------------------
-    // UPDATE MEMORY
-    // ----------------------------------------------
-    globalThis.LAST_PARTNERSHIP_RUNS = currP;
+    if (matchContext.ball.partnership) {
+      parts.push(`Partnership: ${matchContext.ball.partnership}`);
+    }
+
+    parts.push("");
+
+    if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
 
     return parts.join("\n").trim();
   } catch (err) {

@@ -79,7 +79,6 @@ function buildMatchContext(scoreRes, commRes, ball) {
   const mini = commRes?.miniscore || {};
   const headers = commRes?.matchheaders || {};
   const innings = getCurrentInnings(scoreRes, mini);
-  const partnership = commRes?.miniscore?.partnership;
 
   const active =
     mini.inningsscores?.inningsscore?.find(
@@ -119,7 +118,6 @@ function buildMatchContext(scoreRes, commRes, ball) {
       eventtype: ball.eventtype,
       overnum: ball.overnum,
       ballnbr: ball.ballnbr,
-      partnership,
     },
 
     players: getMiniPlayers(mini),
@@ -219,11 +217,9 @@ async function pollingLoop() {
     }
 
     // Build AI context
-    const matchContext = buildMatchContext(score, comm, latest);
+    const ctx = buildMatchContext(score, comm, latest);
 
-    console.log("crickbuzz matchContext::", matchContext);
-
-    const tweet = await generateTweet(matchContext);
+    const tweet = await generateTweet(ctx);
 
     if (!tweet || tweet.trim().toUpperCase() === "SKIP") {
       console.log("ℹ AI skipped this ball");

@@ -1,5 +1,5 @@
 // localBot.js — FINAL AI-Based Local Bot (Puppeteer / Console)
-// Forces a specific match ID (works even if live search fails)
+
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 import dotenv from "dotenv";
@@ -9,16 +9,11 @@ import { getMatchScore, getCommentary } from "./cricbuzz/cricbuzzApi.js";
 import generateTweet from "./ai.js";
 import { postTweet_console, postTweet_web } from "./Puppeteer/postTweet.js";
 
-// ===============================
-// CONFIG
-// ===============================
 const FORCE_MATCH_ID = 117380;
 const FORCE_MATCH_NAME = "South Africa vs India";
 
-// Poll every 15 seconds (good balance)
 const POLL_WAIT_TIME = 10000;
 
-// Use Puppeteer to actually post to X (set false for console-only)
 const USE_WEB_TWEET = false;
 
 globalThis.LAST_BALL = null;
@@ -28,7 +23,6 @@ globalThis.LAST_EVENT_BALL = {};
 let CURRENT_MATCH_ID = FORCE_MATCH_ID;
 let CURRENT_MATCH_NAME = FORCE_MATCH_NAME;
 
-console.log("🔥 AI-Based Cricket Bot Started (LOCAL)");
 console.log(`📌 Match: ${CURRENT_MATCH_NAME}`);
 
 // Simple sleep
@@ -61,7 +55,6 @@ function getCurrentInningsFromScore(scoreRes, miniscore) {
     if (byId) return byId;
   }
 
-  // fallback: last innings
   return scoreRes.scorecard[scoreRes.scorecard.length - 1] || null;
 }
 
@@ -87,40 +80,9 @@ function getMiniScorePlayers(miniscore) {
   };
 }
 
-// Extract partnership from full scorecard
-function getCurrentPartnership(scoreRes, currentInnings) {
-  if (!scoreRes?.scorecard) return null;
-
-  const scInnings = scoreRes.scorecard.find(
-    (inn) => inn.inningsid === currentInnings?.inningsid
-  );
-  if (!scInnings?.partnership?.partnership) return null;
-
-  const arr = scInnings.partnership.partnership;
-  const last = arr[arr.length - 1]; // current partnership
-
-  if (!last) return null;
-
-  return {
-    bat1: {
-      id: last.bat1id,
-      name: last.bat1name,
-      runs: last.bat1runs,
-      balls: last.bat1balls,
-    },
-    bat2: {
-      id: last.bat2id,
-      name: last.bat2name,
-      runs: last.bat2runs,
-      balls: last.bat2balls,
-    },
-    totalRuns: last.totalruns,
-    totalBalls: last.totalballs,
-    text: currentInnings?.partnership || "",
-  };
-}
-
 function buildMatchContext(scoreRes, commRes, latestBall) {
+  const partnership = commRes?.miniscore?.partnership;
+
   const miniscore = commRes?.miniscore || {};
   const matchheaders = commRes?.matchheaders || {};
   const currentInnings = getCurrentInningsFromScore(scoreRes, miniscore);
@@ -155,7 +117,7 @@ function buildMatchContext(scoreRes, commRes, latestBall) {
     crr: miniscore.crr ?? currentInnings?.runrate ?? null,
     rrr: miniscore.rrr ?? 0,
     trailOrLeadText: status || miniscore.custstatus || "",
-    currentPartnership: getCurrentPartnership(scoreRes, miniscore),
+    // currentPartnership: getCurrentPartnership(scoreRes, miniscore),
   };
 
   const players = getMiniScorePlayers(miniscore);
@@ -176,6 +138,7 @@ function buildMatchContext(scoreRes, commRes, latestBall) {
       overnum: latestBall.overnum,
       inningsid: latestBall.inningsid,
       ballnbr: latestBall.ballnbr,
+      partnership,
     },
     players,
   };
@@ -190,7 +153,6 @@ async function pollOnce() {
 
     const scoreRes = await getMatchScore(CURRENT_MATCH_ID);
     if (!scoreRes || !scoreRes.scorecard) {
-      console.log("⚠ No score data, skipping this cycle");
       return;
     }
 
@@ -198,13 +160,11 @@ async function pollOnce() {
     const latest = extractLatestCommentary(commentaryRaw);
 
     if (!latest) {
-      console.log("⚠ No commentary found, skipping");
       return;
     }
 
     // Over-break events are boring → skip
     if (latest.eventtype === "over-break") {
-      console.log("⏭ Skipping over-break event…");
       return;
     }
 
@@ -247,15 +207,9 @@ async function pollOnce() {
     }
 
     const matchContext = buildMatchContext(scoreRes, commentaryRaw, latest);
+
     const tweetContent = await generateTweet(matchContext);
 
-    console.log("content::", {
-      text: latest.commtxt,
-      eventtype: latest.eventtype,
-      overnum: latest.overnum,
-      inningsid: latest.inningsid,
-      ballnbr: latest.ballnbr,
-    });
     console.log("tweetContent::", tweetContent);
 
     if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {

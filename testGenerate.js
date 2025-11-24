@@ -28,6 +28,7 @@ const matchContext5 = {
     overnum: 25.4,
     inningsid: 2,
     ballnbr: 154,
+    partnership: "45(48)",
   },
   players: {
     striker: "Yashasvi Jaiswal",
