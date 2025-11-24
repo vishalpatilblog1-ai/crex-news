@@ -1,4 +1,3 @@
-// ai.js
 import OpenAI from "openai";
 import dotenv from "dotenv";
 
@@ -8,109 +7,161 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Detect India for emotional tone
-function isIndia(name) {
-  return name?.toLowerCase().includes("india");
-}
+export default async function generateTweet(matchContext) {
+  if (
+    !matchContext?.ball?.eventtype ||
+    matchContext.ball.eventtype === "NONE"
+  ) {
+    return "SKIP";
+  }
+  try {
+    const prompt = `
+You will get a single object called matchContext (NOT a string literal).
+Use ONLY matchContext fields. DO NOT hallucinate player runs or missing stats.
 
-// Remove banned flags
-export function cleanTweet(text) {
-  const bannedFlags = ["🇵🇰", "🇱🇰"];
-  bannedFlags.forEach((flag) => (text = text.replaceAll(flag, "")));
-  return text.trim();
-}
+Here is the object:
+${JSON.stringify(matchContext, null, 2)}
 
-export default async function generateTweet(event) {
-  const indiaBatting = isIndia(event.battingTeam);
-  const indiaBowling = isIndia(event.bowlingTeam);
+=====================
+STRICT TWEET RULES
+=====================
 
-  // NEW Strong, Clean, Production-Safe PROMPT
-  const prompt = `
-You are a cricket Twitter bot.
+1. Use matchContext.ball.eventtype to decide which tweet to generate.
+2. Use matchContext.ball.text to describe the event description - refer OUTPUT FORMAT TEMPLATES 
+   rule for it - event description means I am refering the line <Main headline line> in that OUTPUT FORMAT
+3. If the events are for lunch break, drinks break, innings break, stumps, tea breaks 
+   then refer matchContext.match.status for event description - - refer OUTPUT FORMAT TEMPLATES 
+   rule for it - event description means I am refering the line <Main headline line> in that OUTPUT FORMAT
+4. for total runs refer - matchContext.innings.runs
+5. for total wickets refer - matchContext.innings.wickets
+6. for total overs refer - matchContext.innings.overs
+7. for match title refer - matchContext.match.name
+8. for format refer - matchContext.match.format
+9. for team1 - refer  matchContext.match.team1
+10. for team1 - refer  matchContext.match.team2
 
-Write ONE short tweet based on this event JSON:
 
-${JSON.stringify(event)}
 
-🔵 GENERAL RULES
-- Very simple cricket English.
-- Max 150 characters.
-- Do NOT start with hashtags.
-- Mention Batter, Bowler, and Fielder (only if catch/runout).
-- Use "<Team> <runs>/<wkts> (<overs>)" format when score exists.
-- Output ONLY the tweet text, nothing else.
+EVENT TYPES EXAMPLES:
+SIX
+FOUR
+WICKET
+FIFTY
+HUNDRED
+TEAM_FIFTY
+TEAM_HUNDRED
+PARTNERSHIP_50
+PARTNERSHIP_100
+DRINKS
+LUNCH
+TEA
+STUMPS
+INNINGS_BREAK
+NONE → respond “SKIP”
 
-🔵 EVENT TYPE SAFETY (VERY IMPORTANT)
-You MUST trust event.type EXACTLY:
-- Only if event.type is "WICKET" or "RUN_OUT" you may use words like:
-  "out", "wicket", "dismissed", "lbw", "bowled", "caught".
-- If event.type is "WIDE", "NO_BALL", "LB", or "BYE":
-  Describe it as wide/no-ball/leg-bye/bye.
-  NEVER mention out, wicket, lbw, caught, bowled.
-- If event.type is "SINGLE" or "DOUBLE":
-  Only describe the runs. NEVER mention a wicket.
-- NEVER invent or assume a wicket that is not present in event.type.
+=====================
+EMOJI RULES
+=====================
+- India positive: 🇮🇳🔥🙌💥✨
+- Opponent positive: 🙂📈
+- India loses wicket: NO EMOJI
+- India takes wicket: 🔥
 
-🔵 STYLE LOGIC
-If India does a positive event (FOUR, SIX, India takes WICKET, India makes RUN_OUT):
-  - Emotional style allowed: smashes, rockets, blasts, launches, magic.
-  - ONE emoji allowed (choose from 🔥💥🚀🇮🇳).
+=====================
+OUTPUT FORMAT
+=====================
 
-If opponent does a positive event:
-  - STRICT neutral tone.
-  - No hype, no big words.
-  - ONE neutral emoji allowed (🙂🤝).
+Always print EXACTLY like this:
 
-If India loses a wicket:
-  - Strict neutral tone.
-  - NO emojis.
-  - Just factual.
+🚨 MATCH <TEAM1> VS <TEAM2> <FORMAT> UPDATE 🚨
 
-🔵 EVENT RULES
-FOUR:
-- "<BATTER> hits a FOUR off <BOWLER>."
-- India = emotional. Opponent = neutral.
+<Main headline line>
 
-SIX:
-- "<BATTER> hits a SIX off <BOWLER>."
-- India = explosive. Opponent = calm neutral.
+<RUNS>/<WICKETS> (<matchContext.innings.overs> Overs)
+<Striker> : <matchContext.players.strikerRuns> (matchContext.players.strikerBallsPlayed)
+<Non-striker> : <matchContext.players.nonStrikerRuns> (matchContext.players.nonStrikerBallsPlayed)
 
-WICKET:
-- Mention batsman, bowler, and fielder if available.
-- India taking wicket = emotional.
-- India losing wicket = neutral.
+<Trail/Lead text>
 
-RUN_OUT:
-- Mention batter and fielder.
-- India making runout = emotional.
-- India losing runout = neutral.
+=====================
+HOW TO DETERMINE INDIA POSITIVE?
+=====================
+matchContext.innings.battingTeam:
+- If “IND” → India batting
+- If “RSA” and event is SIX → opponent positive etc.
 
-MILESTONE:
-- Mention player and milestone (50/100).
+=====================
+EVENT TEMPLATES
+=====================
 
-PARTNERSHIP:
-- Mention both batters + partnership runs.
+1️⃣ SIX (India positive)
+"SIX event type description based on <matchContext.ball.text>. 🇮🇳🔥"
 
-TOSS:
-- "<Team> won the toss and chose to bat/bowl."
+2️⃣ SIX (opponent positive)
+"SIX event type description based on <matchContext.ball.text>. 🙂"
 
-MATCH_END:
-- If India wins: short + max one 🇮🇳🔥.
-- If India loses: neutral, no emoji.
+3️⃣ FOUR (India positive)
+"FOUR event type description based on <matchContext.ball.text>. ✨"
 
-🔵 HASHTAGS (MANDATORY AT END)
-- ALWAYS use the FULL player names without spaces.
-  Example: "Ruturaj Gaikwad" → "#RuturajGaikwad"
-- Add exactly 3 tags:
-  #<FullBatterName> #<FullBowlerName> #<MatchTag>
+4️⃣ FOUR (opponent positive)
+"FOUR event type description based on <matchContext.ball.text>. 📈"
 
-Output ONLY the tweet text.
-`;
+5️⃣ WICKET – India loses wicket
+"WICKET event type description based on <matchContext.ball.text>."
 
-  const res = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-  });
+6️⃣ WICKET – India takes wicket
+"WICKET event type description based on <matchContext.ball.text>. 🔥"
 
-  return cleanTweet(res.choices[0].message.content.trim());
+7️⃣ BATTER FIFTY
+"FIFTY event type description based on <matchContext.ball.text>. 🙌"
+
+8️⃣ BATTER HUNDRED
+"CENTURY event type description based on <matchContext.ball.text>. 💥"
+
+9️⃣ TEAM FIFTY
+"<team> event type description based on <matchContext.ball.text>. 📈"
+
+10️⃣ TEAM HUNDRED
+"<team> event type description based on <matchContext.ball.text>. 💪"
+
+11️⃣ PARTNERSHIP 50
+"Fifty-run stand between <striker> & <nonStriker>. 🤝"
+
+12️⃣ PARTNERSHIP 100
+"Century stand! <striker> & <nonStriker> solid. 🤝"
+
+13️⃣ DRINKS
+"Drinks Break: <matchContext.match.status>"
+
+14️⃣ LUNCH
+"Lunch Break: <matchContext.match.status>"
+
+15️⃣ TEA
+"Tea Break: <matchContext.match.status>"
+
+16️⃣ STUMPS
+"Stumps: <matchContext.match.status>"
+
+17️⃣ INNINGS BREAK
+"Innings Break: <matchContext.match.status>"
+
+
+
+Now generate the tweet.
+Make it clean and EXACTLY in the above structure.
+Never guess scores or player runs.
+If data is missing → omit that line.
+    `;
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4.1",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+    });
+
+    return response.choices[0].message.content.trim();
+  } catch (err) {
+    console.error("AI ERROR:", err);
+    return "SKIP";
+  }
 }

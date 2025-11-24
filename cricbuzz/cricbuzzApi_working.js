@@ -65,11 +65,47 @@ export async function findIndiaMatch() {
   return null;
 }
 
+export async function findPakistanVsSriLankaMatch() {
+  const data = await getLiveMatches();
+  if (!data?.typeMatches) return null;
+
+  for (const block of data.typeMatches) {
+    for (const series of block.seriesMatches || []) {
+      const matches = series.seriesAdWrapper?.matches || [];
+
+      for (const match of matches) {
+        const info = match.matchInfo;
+        if (!info) continue;
+
+        const t1 = info.team1?.teamName?.toLowerCase() || "";
+        const t2 = info.team2?.teamName?.toLowerCase() || "";
+
+        const isPakVsSL =
+          (t1.includes("pakistan") && t2.includes("sri")) ||
+          (t1.includes("sri") && t2.includes("pakistan"));
+
+        if (isPakVsSL) {
+          return {
+            id: info.matchId,
+            name: info.seriesName,
+            teams: `${info.team1.teamName} vs ${info.team2.teamName}`,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/** 3️⃣ SCORECARD (CORRECT ENDPOINT) */
 export async function getMatchScore(matchId) {
   const data = await await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
+  console.log(data);
   return data;
 }
 
+/** 4️⃣ COMMENTARY (optional) */
 export async function getCommentary(matchId) {
   return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/comm`);
 }
