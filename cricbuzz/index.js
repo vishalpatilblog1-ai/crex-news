@@ -1,4 +1,4 @@
-// cricbuzz/index.js — Pure AI Based & Duplicate-Safe Version
+// cricbuzz/index.js — FINAL MERGED VERSION (DUPLICATE SAFE)
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -7,24 +7,29 @@ import postTweet from "../twitter.js";
 
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 
+// ======================================================
+// GLOBAL STATE (persists across reloads)
+// ======================================================
+globalThis.LAST_BALL = null;
+globalThis.LAST_HASH = null;
+globalThis.LAST_WICKET_BATSMAN = null;
+
 let MATCH_ID = null;
 let MATCH_NAME = "";
-
-let lastBall = null;
-let lastContentHash = null;
+const POLL_WAIT_TIME = 30000;
 
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 /* ---------------------------------------
- *  EXTRACT NEWEST NON-GHOST COMMENTARY
+ * Extract NEWEST Commentary
  * ---------------------------------------*/
 function extractLatestCommentary(res) {
-  if (!res || !Array.isArray(res.comwrapper)) return null;
+  if (!res?.comwrapper) return null;
 
-  const list = res.comwrapper.map((x) => x.commentary).filter(Boolean);
+  const all = res.comwrapper.map((x) => x.commentary).filter(Boolean);
 
-  for (const ball of list) {
-    const txt = (ball?.commtxt || "").trim();
+  for (const ball of all) {
+    const txt = (ball.commtxt || "").trim();
     if (txt === "" || txt === "B0$") continue;
     return ball;
   }
@@ -33,26 +38,14 @@ function extractLatestCommentary(res) {
 }
 
 /* ---------------------------------------
- *  INNINGS DATA HELPERS
+ * Helpers
  * ---------------------------------------*/
-function getCurrentInnings(scoreRes, mini) {
-  if (!scoreRes?.scorecard) return null;
-
-  if (mini?.inningsid) {
-    const found = scoreRes.scorecard.find(
-      (i) => i.inningsid === mini.inningsid
-    );
-    if (found) return found;
-  }
-  return scoreRes.scorecard[scoreRes.scorecard.length - 1];
-}
-
 function normalizeOvers(overs) {
   if (!overs) return overs;
-  const parts = overs.toString().split(".");
-  const full = parseInt(parts[0]);
-  const balls = parseInt(parts[1] || "0");
-  return balls === 6 ? (full + 1).toFixed(1).replace(".0", "") : overs;
+  const p = overs.toString().split(".");
+  const o = parseInt(p[0]);
+  const b = parseInt(p[1] || "0");
+  return b === 6 ? (o + 1).toFixed(1).replace(".0", "") : overs;
 }
 
 function getMiniPlayers(mini) {
@@ -67,21 +60,41 @@ function getMiniPlayers(mini) {
   };
 }
 
+function getCurrentInnings(scoreRes, mini) {
+  if (!scoreRes.scorecard) return null;
+  if (mini.inningsid) {
+    const found = scoreRes.scorecard.find(
+      (i) => i.inningsid === mini.inningsid
+    );
+    if (found) return found;
+  }
+  return scoreRes.scorecard[scoreRes.scorecard.length - 1];
+}
+
 /* ---------------------------------------
- *  BUILD AI MATCH CONTEXT
+ * Extract batsman from commentary
+ * ---------------------------------------*/
+function getDismissedBatsman(text) {
+  if (!text) return null;
+  const parts = text.split(" to ");
+  if (parts.length < 2) return null;
+  return parts[1].split(",")[0].trim();
+}
+
+/* ---------------------------------------
+ * Build AI Context
  * ---------------------------------------*/
 function buildMatchContext(scoreRes, commRes, ball) {
   const mini = commRes?.miniscore || {};
   const headers = commRes?.matchheaders || {};
   const innings = getCurrentInnings(scoreRes, mini);
 
-  const inningList = mini.inningsscores?.inningsscore || [];
   const active =
-    inningList.find((i) => i.inningsid === mini.inningsid) ||
-    inningList[0] ||
+    mini.inningsscores?.inningsscore?.find(
+      (i) => i.inningsid === mini.inningsid
+    ) ||
+    mini.inningsscores?.inningsscore?.[0] ||
     {};
-
-  const players = getMiniPlayers(mini);
 
   return {
     match: {
@@ -116,12 +129,12 @@ function buildMatchContext(scoreRes, commRes, ball) {
       ballnbr: ball.ballnbr,
     },
 
-    players,
+    players: getMiniPlayers(mini),
   };
 }
 
 /* ---------------------------------------
- *  STEP 1 — AUTO FIND INDIA MATCH
+ * Start Bot
  * ---------------------------------------*/
 async function startBot() {
   console.log("🔎 Searching for LIVE India match...");
@@ -132,11 +145,11 @@ async function startBot() {
     if (match) {
       MATCH_ID = match.id;
       MATCH_NAME = match.name;
-      console.log(`✅ Found match: ${MATCH_NAME}`);
+      console.log(`✅ Found LIVE match: ${MATCH_NAME}`);
       break;
     }
 
-    console.log("⏳ No match yet… retry in 30s.");
+    console.log("⏳ No India match yet… retrying in 30s");
     await wait(30000);
   }
 
@@ -144,7 +157,7 @@ async function startBot() {
 }
 
 /* ---------------------------------------
- *  STEP 2 — MAIN POLLING LOOP
+ * MAIN POLLING LOOP
  * ---------------------------------------*/
 async function pollingLoop() {
   try {
@@ -154,29 +167,33 @@ async function pollingLoop() {
     const comm = await getCommentary(MATCH_ID);
 
     if (!score || !comm) {
-      console.log("⚠ No data received, retrying...");
-      await wait(5000);
+      console.log("⚠ No data (API failed), retrying…");
+      await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
 
     const latest = extractLatestCommentary(comm);
     if (!latest) {
-      await wait(5000);
+      await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
 
     const commHash = latest.commtxt.trim();
 
-    // 🔒 BLOCK PERFECT DUPLICATES (same ball + same text)
-    if (latest.ballnbr === lastBall && commHash === lastContentHash) {
+    // ============================
+    // DEDUPE 1: SAME COMMENTARY
+    // ============================
+    if (
+      latest.ballnbr === globalThis.LAST_BALL &&
+      commHash === globalThis.LAST_HASH
+    ) {
       console.log("⏩ Exact same commentary — skipping...");
-      await wait(5000);
+      await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
 
-    // update trackers
-    lastBall = latest.ballnbr;
-    lastContentHash = commHash;
+    globalThis.LAST_BALL = latest.ballnbr;
+    globalThis.LAST_HASH = commHash;
 
     console.log("📌 Latest ball:", {
       text: latest.commtxt,
@@ -184,36 +201,53 @@ async function pollingLoop() {
       over: latest.overnum,
     });
 
-    const ctx = buildMatchContext(score, comm, latest);
-
+    // Skip over-break events
     if (latest.eventtype === "over-break") {
-      console.log("⏭ Skipping over-break event...");
-      await wait(5000);
+      console.log("⏭ Skipping over-break event…");
+      await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
-    const tweet = await generateTweet(ctx);
 
-    console.log("✍️ AI Tweet:", tweet);
+    // ============================
+    // DEDUPE 2: WICKET by batsman name
+    // ============================
+    if (latest.eventtype === "WICKET") {
+      const outBatter = getDismissedBatsman(latest.commtxt);
+
+      if (globalThis.LAST_WICKET_BATSMAN === outBatter) {
+        console.log(
+          `⏩ Duplicate wicket event for same batsman (${outBatter}) — skipping`
+        );
+        await wait(POLL_WAIT_TIME);
+        return pollingLoop();
+      }
+
+      globalThis.LAST_WICKET_BATSMAN = outBatter;
+    }
+
+    // Build AI context
+    const ctx = buildMatchContext(score, comm, latest);
+
+    const tweet = await generateTweet(ctx);
 
     if (!tweet || tweet.trim().toUpperCase() === "SKIP") {
       console.log("ℹ AI skipped this ball");
-      await wait(5000);
+      await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
 
-    // POST THROUGH TWITTER API
-    const response = await postTweet(tweet);
+    const resp = await postTweet(tweet);
 
-    if (response?.id) {
-      console.log("🟢 Tweet posted via Twitter API!");
+    if (resp?.id) {
+      console.log("🟢 Tweet posted successfully!");
     } else {
-      console.log("⚠ Tweet NOT posted (duplicate or error)");
+      console.log("⚠ Tweet NOT posted (duplicate or API error)");
     }
   } catch (err) {
-    console.error("❌ Loop Error:", err);
+    console.error("❌ PollingLoop ERROR:", err);
   }
 
-  await wait(5000);
+  await wait(POLL_WAIT_TIME);
   return pollingLoop();
 }
 

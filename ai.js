@@ -7,159 +7,139 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export default async function generateTweet(matchContext) {
-  if (
-    !matchContext?.ball?.eventtype ||
-    matchContext.ball.eventtype === "NONE"
-  ) {
-    return "SKIP";
-  }
+/* CLEAN COMMENTARY TEXT */
+function cleanBallText(text) {
+  if (!text) return "";
+  return text
+    .replace(/B\d\$/g, "") // remove B0$, B1$
+    .replace(/\s+/g, " ") // normalize spacing
+    .trim();
+}
+
+export default async function generateTweet(ctx) {
   try {
-    const prompt = `
-You will get a single object called matchContext (NOT a string literal).
-Use ONLY matchContext fields. DO NOT hallucinate player runs or missing stats.
+    // Safety
+    if (!ctx?.ball?.eventtype) return "SKIP";
 
-Here is the object:
-${JSON.stringify(matchContext, null, 2)}
+    const event = ctx.ball.eventtype.toUpperCase();
+    const cleanText = cleanBallText(ctx.ball.text);
 
-=====================
-STRICT TWEET RULES
-=====================
+    // Hard skip normal balls
+    if (event === "NONE") return "SKIP";
+    if (event === "over-break") return "SKIP";
+    if (!cleanText || cleanText.length < 5) return "SKIP";
 
-1. Use matchContext.ball.eventtype to decide which tweet to generate.
-2. Use matchContext.ball.text to describe the event description - refer OUTPUT FORMAT TEMPLATES 
-   rule for it - event description means I am refering the line <Main headline line> in that OUTPUT FORMAT
-3. If the events are for lunch break, drinks break, innings break, stumps, tea breaks 
-   then refer matchContext.match.status for event description - - refer OUTPUT FORMAT TEMPLATES 
-   rule for it - event description means I am refering the line <Main headline line> in that OUTPUT FORMAT
-4. for total runs refer - matchContext.innings.runs
-5. for total wickets refer - matchContext.innings.wickets
-6. for total overs refer - matchContext.innings.overs
-7. for match title refer - matchContext.match.name
-8. for format refer - matchContext.match.format
-9. for team1 - refer  matchContext.match.team1
-10. for team1 - refer  matchContext.match.team2
+    const { innings, players, match } = ctx;
 
+    const scoreLine = `${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
 
+    const strikerLine =
+      players?.striker && players?.strikerRuns && players?.strikerBallsPlayed
+        ? `${players.striker} : ${players.strikerRuns} (${players.strikerBallsPlayed})`
+        : "";
 
-EVENT TYPES EXAMPLES:
-SIX
-FOUR
-WICKET
-FIFTY
-HUNDRED
-TEAM_FIFTY
-TEAM_HUNDRED
-PARTNERSHIP_50
-PARTNERSHIP_100
-DRINKS
-LUNCH
-TEA
-STUMPS
-INNINGS_BREAK
-NONE → respond “SKIP”
+    const nonStrikerLine =
+      players?.nonStriker &&
+      players?.nonStrikerRuns &&
+      players?.nonStrikerBallsPlayed
+        ? `${players.nonStriker} : ${players.nonStrikerRuns} (${players.nonStrikerBallsPlayed})`
+        : "";
 
-=====================
-EMOJI RULES
-=====================
-- India positive: 🇮🇳🔥🙌💥✨
-- Opponent positive: 🙂📈
-- India loses wicket: NO EMOJI
-- India takes wicket: 🔥
+    let headline = "";
 
-=====================
-OUTPUT FORMAT
-=====================
+    // Determine who is batting
+    const indiaBatting = (innings?.battingTeam || "")
+      .toUpperCase()
+      .includes("IND");
 
-Always print EXACTLY like this:
+    // ==========================================
+    // EVENT LOGIC (ONLY EVENT HEADLINE HERE)
+    // ==========================================
 
-🚨 MATCH <TEAM1> VS <TEAM2> <FORMAT> UPDATE 🚨
+    switch (event) {
+      case "SIX":
+        headline = indiaBatting
+          ? `💥 SIX! ${cleanText} 🇮🇳🔥`
+          : `SIX by opponent: ${cleanText} 📈`;
+        break;
 
-<Main headline line>
+      case "FOUR":
+        headline = indiaBatting
+          ? `FOUR! ${cleanText} ✨🇮🇳`
+          : `FOUR for opponent: ${cleanText} 📈`;
+        break;
 
-<RUNS>/<WICKETS> (<matchContext.innings.overs> Overs)
-<Striker> : <matchContext.players.strikerRuns> (matchContext.players.strikerBallsPlayed)
-<Non-striker> : <matchContext.players.nonStrikerRuns> (matchContext.players.nonStrikerBallsPlayed)
+      case "WICKET":
+        headline = indiaBatting
+          ? `${cleanText}` // India loses wicket → no emoji
+          : `WICKET! ${cleanText} 🔥`; // India takes wicket
+        break;
 
-<Trail/Lead text>
+      case "FIFTY":
+        headline = `FIFTY! ${cleanText} 🙌`;
+        break;
 
-=====================
-HOW TO DETERMINE INDIA POSITIVE?
-=====================
-matchContext.innings.battingTeam:
-- If “IND” → India batting
-- If “RSA” and event is SIX → opponent positive etc.
+      case "HUNDRED":
+      case "CENTURY":
+        headline = `CENTURY! ${cleanText} 💥`;
+        break;
 
-=====================
-EVENT TEMPLATES
-=====================
+      case "TEAM_FIFTY":
+        headline = `Team reaches 50! ${cleanText} 📈`;
+        break;
 
-1️⃣ SIX (India positive)
-"SIX event type description based on <matchContext.ball.text>. 🇮🇳🔥"
+      case "TEAM_HUNDRED":
+        headline = `Team crosses 100! ${cleanText} 💪`;
+        break;
 
-2️⃣ SIX (opponent positive)
-"SIX event type description based on <matchContext.ball.text>. 🙂"
+      case "PARTNERSHIP_50":
+        headline = `50-run partnership! 🤝`;
+        break;
 
-3️⃣ FOUR (India positive)
-"FOUR event type description based on <matchContext.ball.text>. ✨"
+      case "PARTNERSHIP_100":
+        headline = `Century stand! 🤝`;
+        break;
 
-4️⃣ FOUR (opponent positive)
-"FOUR event type description based on <matchContext.ball.text>. 📈"
+      case "DRINKS":
+        headline = `Drinks Break — ${match.status}`;
+        break;
 
-5️⃣ WICKET – India loses wicket
-"WICKET event type description based on <matchContext.ball.text>."
+      case "LUNCH":
+        headline = `Lunch Break — ${match.status}`;
+        break;
 
-6️⃣ WICKET – India takes wicket
-"WICKET event type description based on <matchContext.ball.text>. 🔥"
+      case "TEA":
+        headline = `Tea Break — ${match.status}`;
+        break;
 
-7️⃣ BATTER FIFTY
-"FIFTY event type description based on <matchContext.ball.text>. 🙌"
+      case "STUMPS":
+        headline = `Stumps — ${match.status}`;
+        break;
 
-8️⃣ BATTER HUNDRED
-"CENTURY event type description based on <matchContext.ball.text>. 💥"
+      case "INNINGS_BREAK":
+        headline = `Innings Break — ${match.status}`;
+        break;
 
-9️⃣ TEAM FIFTY
-"<team> event type description based on <matchContext.ball.text>. 📈"
+      default:
+        return "SKIP"; // Unknown event
+    }
 
-10️⃣ TEAM HUNDRED
-"<team> event type description based on <matchContext.ball.text>. 💪"
+    // ==========================================
+    // FINAL TWEET FORMAT
+    // ==========================================
+    let tweet = `
+🚨 MATCH ${match.team1} VS ${match.team2} ${match.format} UPDATE 🚨
 
-11️⃣ PARTNERSHIP 50
-"Fifty-run stand between <striker> & <nonStriker>. 🤝"
+${headline}
 
-12️⃣ PARTNERSHIP 100
-"Century stand! <striker> & <nonStriker> solid. 🤝"
+${scoreLine}
+${strikerLine}
+${nonStrikerLine}
 
-13️⃣ DRINKS
-"Drinks Break: <matchContext.match.status>"
+${innings.trailOrLeadText}
+    `.trim();
 
-14️⃣ LUNCH
-"Lunch Break: <matchContext.match.status>"
-
-15️⃣ TEA
-"Tea Break: <matchContext.match.status>"
-
-16️⃣ STUMPS
-"Stumps: <matchContext.match.status>"
-
-17️⃣ INNINGS BREAK
-"Innings Break: <matchContext.match.status>"
-
-
-
-Now generate the tweet.
-Make it clean and EXACTLY in the above structure.
-Never guess scores or player runs.
-If data is missing → omit that line.
-    `;
-
-    const response = await client.chat.completions.create({
-      model: "gpt-4.1",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-
-    return response.choices[0].message.content.trim();
+    return tweet;
   } catch (err) {
     console.error("AI ERROR:", err);
     return "SKIP";
