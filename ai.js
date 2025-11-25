@@ -129,8 +129,13 @@ export default async function generateTweet(matchContext) {
     parts.push(scoreLine);
     parts.push("");
 
-    if (strikerLine) parts.push(strikerLine);
-    if (nonStrikerLine) parts.push(nonStrikerLine);
+    if (event !== "WICKET") {
+      if (strikerLine) parts.push(strikerLine);
+      if (nonStrikerLine) parts.push(nonStrikerLine);
+    }
+
+    // if (strikerLine) parts.push(strikerLine);
+    // if (nonStrikerLine) parts.push(nonStrikerLine);
 
     const canShowPartnership =
       players.striker &&
