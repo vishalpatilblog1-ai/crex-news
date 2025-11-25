@@ -14,6 +14,9 @@ globalThis.LAST_WICKET_BATSMAN = null;
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
+console.log("USE_WEB_TWEET =", process.env.USE_WEB_TWEET);
+console.log("USE_WEB_TWEET (bool) =", process.env.USE_WEB_TWEET === "true");
+
 let MATCH_ID = null;
 let MATCH_NAME = "";
 const POLL_WAIT_TIME = 15000;
