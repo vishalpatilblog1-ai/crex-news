@@ -67,9 +67,6 @@ function getCurrentInnings(scoreRes, mini) {
   return scoreRes.scorecard[scoreRes.scorecard.length - 1];
 }
 
-/* ---------------------------------------
- * Extract batsman from commentary
- * ---------------------------------------*/
 function getDismissedBatsman(text) {
   if (!text) return null;
   const parts = text.split(" to ");
@@ -77,9 +74,6 @@ function getDismissedBatsman(text) {
   return parts[1].split(",")[0].trim();
 }
 
-/* ---------------------------------------
- * Build AI Context
- * ---------------------------------------*/
 function buildMatchContext(scoreRes, commRes, ball) {
   const mini = commRes?.miniscore || {};
   const headers = commRes?.matchheaders || {};
@@ -181,10 +175,8 @@ async function pollingLoop() {
     // ============================
     // DEDUPE 1: SAME COMMENTARY
     // ============================
-    if (
-      latest.ballnbr === globalThis.LAST_BALL &&
-      commHash === globalThis.LAST_HASH
-    ) {
+
+    if (latest.ballnbr === globalThis.LAST_BALL) {
       log("⏩ Exact same commentary — skipping...");
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
@@ -215,6 +207,8 @@ async function pollingLoop() {
 
     const matchContext = buildMatchContext(score, comm, latest);
 
+    log("matchContext::");
+    log(matchContext);
     const tweetContent = await generateTweet(matchContext);
 
     log("tweetContent::");
@@ -226,7 +220,6 @@ async function pollingLoop() {
       return pollingLoop();
     }
 
-    // const resp = await postTweet(tweetContent);
     let resp;
     if (USE_WEB_TWEET) {
       resp = await postTweet_web(tweetContent);

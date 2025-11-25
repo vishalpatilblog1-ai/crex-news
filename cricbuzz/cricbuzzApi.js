@@ -106,42 +106,6 @@ export async function findIndiaMatch() {
   return null;
 }
 
-// export async function findIndiaMatch() {
-//   const data = await getLiveMatches();
-
-//   if (!data?.typeMatches) return null;
-
-//   for (const block of data.typeMatches) {
-//     for (const series of block.seriesMatches || []) {
-//       const matches = series.seriesAdWrapper?.matches || [];
-
-//       for (const match of matches) {
-//         const info = match.matchInfo;
-//         if (!info) continue;
-
-//         const t1 = info.team1?.teamName?.toLowerCase() || "";
-//         const t2 = info.team2?.teamName?.toLowerCase() || "";
-
-//         const india = t1.includes("india") || t2.includes("india");
-//         const sa =
-//           t1.includes("south africa") ||
-//           t2.includes("south africa") ||
-//           t1.includes("rsa") ||
-//           t2.includes("rsa");
-
-//         if (india && sa) {
-//           return {
-//             id: info.matchId,
-//             name: info.seriesName,
-//           };
-//         }
-//       }
-//     }
-//   }
-
-//   return null;
-// }
-
 export async function getMatchScore(matchId) {
   const data = await await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
   return data;

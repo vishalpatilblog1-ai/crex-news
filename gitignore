@@ -65,12 +65,4 @@ Icon?
 test.json
 test*.js
 
-# -------------------------
-# Project-specific
-# -------------------------
-cricketdata/test.js
-cricketdata/testSingleMatch.js
-cricbuzz/testCricbuzz.js
-espn/testEspn.js
-dummyData.js
-theme-app/
+

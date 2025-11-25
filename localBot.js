@@ -161,14 +161,12 @@ async function pollOnce() {
       return;
     }
 
-    // Over-break events are boring → skip
     if (latest.eventtype === "over-break") {
       return;
     }
 
     const commHash = (latest.commtxt || "").trim();
 
-    // DEDUPE 1: exact same ball + same text
     if (
       latest.ballnbr === globalThis.LAST_BALL &&
       commHash === globalThis.LAST_HASH

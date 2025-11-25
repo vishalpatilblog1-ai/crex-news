@@ -37,7 +37,8 @@ export function createLogger(type = "local") {
       ? path.resolve("logs/prod.log")
       : path.resolve("logs/local.log");
 
-  fs.mkdirSync("logs", { recursive: true });
+  // fs.mkdirSync("logs", { recursive: true });
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
   return function log(msg, ts = false) {
     if (typeof msg === "object") {
