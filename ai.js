@@ -24,7 +24,7 @@ function generateHashtag(match) {
   return `#${t1}vs${t2}`;
 }
 
-export async function generateHeadline(ballText) {
+export async function generateHeadline(ballText, matchContext) {
   const styleMode = Math.floor(Math.random() * 12);
   try {
     const prompt = `
@@ -55,7 +55,8 @@ STRICT RULES:
     • India bowler takes a wicket → add 🟢  
 - If the action is NEGATIVE for India:
     • India loses a wicket → add 🔴
-- If NOT related to India, add NO emoji.
+- If NOT related to India, do NOT add any emoji.
+- If opponent hits FOUR/SIX, keep headline neutral and DO NOT add emoji.
 - Do NOT add analysis.
 - Keep it short and clean.
 
@@ -71,8 +72,28 @@ Output ONLY the headline.
       temperature: 0.6,
     });
 
-    // return res.choices[0].message.content.trim();
-    return res.choices[0].message.content.trim().toUpperCase();
+    let headline = res.choices[0].message.content.trim();
+
+    const event = matchContext?.ball?.eventtype?.toUpperCase();
+    const batting = matchContext?.innings?.battingTeam;
+    const bowling = matchContext?.innings?.bowlingTeam;
+
+    const opponentShot =
+      (event === "FOUR" || event === "SIX") && batting !== "IND";
+
+    if (opponentShot) {
+      return headline;
+    }
+
+    const indiaPositive =
+      (batting === "IND" && (event === "FOUR" || event === "SIX")) ||
+      (event === "WICKET" && bowling === "IND");
+
+    if (indiaPositive) {
+      headline = headline.toUpperCase();
+    }
+
+    return headline;
   } catch (err) {
     console.error("HEADLINE AI ERROR:", err);
     return "";
@@ -133,9 +154,6 @@ export default async function generateTweet(matchContext) {
       if (strikerLine) parts.push(strikerLine);
       if (nonStrikerLine) parts.push(nonStrikerLine);
     }
-
-    // if (strikerLine) parts.push(strikerLine);
-    // if (nonStrikerLine) parts.push(nonStrikerLine);
 
     const canShowPartnership =
       players.striker &&
