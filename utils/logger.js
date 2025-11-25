@@ -1,0 +1,55 @@
+import fs from "fs";
+import path from "path";
+
+const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
+
+const MAX_BACKUPS = 5;
+
+function rotateLogs(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return;
+
+    const stats = fs.statSync(filePath);
+    if (stats.size < MAX_LOG_SIZE) return;
+
+    const oldest = filePath + `.${MAX_BACKUPS}`;
+    if (fs.existsSync(oldest)) {
+      fs.unlinkSync(oldest);
+    }
+
+    for (let i = MAX_BACKUPS - 1; i >= 1; i--) {
+      const src = filePath + `.${i}`;
+      const dest = filePath + `.${i + 1}`;
+      if (fs.existsSync(src)) {
+        fs.renameSync(src, dest);
+      }
+    }
+
+    fs.renameSync(filePath, filePath + ".1");
+
+    fs.writeFileSync(filePath, "");
+  } catch (err) {}
+}
+
+export function createLogger(type = "local") {
+  const filePath =
+    type === "prod"
+      ? path.resolve("logs/prod.log")
+      : path.resolve("logs/local.log");
+
+  fs.mkdirSync("logs", { recursive: true });
+
+  return function log(msg, ts = false) {
+    if (typeof msg === "object") {
+      msg = JSON.stringify(msg, null, 2);
+    }
+
+    console.log(msg);
+
+    rotateLogs(filePath);
+
+    const line = ts ? `[${new Date().toISOString()}] ${msg}` : msg;
+
+    fs.appendFileSync(filePath, line + "\n");
+  };
+}

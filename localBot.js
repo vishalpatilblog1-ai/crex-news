@@ -8,6 +8,9 @@ dotenv.config();
 import { getMatchScore, getCommentary } from "./cricbuzz/cricbuzzApi.js";
 import generateTweet from "./ai.js";
 import { postTweet_console, postTweet_web } from "./Puppeteer/postTweet.js";
+import { createLogger } from "./utils/logger.js";
+
+const log = createLogger("local");
 
 const FORCE_MATCH_ID = 117380;
 const FORCE_MATCH_NAME = "South Africa vs India";
@@ -23,9 +26,8 @@ globalThis.LAST_EVENT_BALL = {};
 let CURRENT_MATCH_ID = FORCE_MATCH_ID;
 let CURRENT_MATCH_NAME = FORCE_MATCH_NAME;
 
-console.log(`📌 Match: ${CURRENT_MATCH_NAME}`);
+log(`📌 Match: ${CURRENT_MATCH_NAME}`);
 
-// Simple sleep
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 function extractLatestCommentary(res) {
@@ -34,7 +36,6 @@ function extractLatestCommentary(res) {
   const list = res.comwrapper.map((item) => item.commentary).filter(Boolean);
   if (!list.length) return null;
 
-  // Newest → oldest
   for (const ball of list) {
     if (!ball) continue;
     const txt = (ball.commtxt || "").trim();
@@ -144,12 +145,9 @@ function buildMatchContext(scoreRes, commRes, latestBall) {
   };
 }
 
-// ===============================
-// MAIN POLL FUNCTION (ONE ITERATION)
-// ===============================
 async function pollOnce() {
   try {
-    console.log(`\n🔄 Polling: ${CURRENT_MATCH_NAME}`);
+    log(`🔄 Polling: ${CURRENT_MATCH_NAME}`, true);
 
     const scoreRes = await getMatchScore(CURRENT_MATCH_ID);
     if (!scoreRes || !scoreRes.scorecard) {
@@ -175,7 +173,7 @@ async function pollOnce() {
       latest.ballnbr === globalThis.LAST_BALL &&
       commHash === globalThis.LAST_HASH
     ) {
-      console.log("⏩ Exact same commentary — skipping...");
+      log("⏩ Exact same commentary — skipping...");
       return;
     }
 
@@ -197,7 +195,7 @@ async function pollOnce() {
       const prevBallForEvent = globalThis.LAST_EVENT_BALL[latest.eventtype];
 
       if (prevBallForEvent === latest.ballnbr) {
-        console.log(
+        log(
           `⏩ Duplicate ${latest.eventtype} on same ball (${latest.ballnbr}) — skipping`
         );
         return;
@@ -210,10 +208,11 @@ async function pollOnce() {
 
     const tweetContent = await generateTweet(matchContext);
 
-    console.log("tweetContent::", tweetContent);
+    log("tweetContent::");
+    log(tweetContent);
 
     if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
-      console.log("ℹ AI decided to SKIP this ball");
+      log("ℹ AI decided to SKIP this ball");
       return;
     }
 

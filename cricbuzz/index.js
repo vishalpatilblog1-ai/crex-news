@@ -3,17 +3,22 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import generateTweet from "../ai.js";
-import postTweet from "../twitter.js";
+import { postTweet_console, postTweet_web } from "../twitter.js";
 
+import { createLogger } from "../utils/logger.js";
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 
 globalThis.LAST_BALL = null;
 globalThis.LAST_HASH = null;
 globalThis.LAST_WICKET_BATSMAN = null;
 
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
+
 let MATCH_ID = null;
 let MATCH_NAME = "";
 const POLL_WAIT_TIME = 15000;
+
+const log = createLogger("prod");
 
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -130,7 +135,7 @@ function buildMatchContext(scoreRes, commRes, ball) {
  * Start Bot
  * ---------------------------------------*/
 async function startBot() {
-  console.log("🔎 Searching for LIVE India match...");
+  log("🔎 Searching for LIVE India match...");
 
   while (!MATCH_ID) {
     const match = await findIndiaMatch();
@@ -138,11 +143,11 @@ async function startBot() {
     if (match) {
       MATCH_ID = match.id;
       MATCH_NAME = match.name;
-      console.log(`✅ Found LIVE match: ${MATCH_NAME}`);
+      log(`✅ Found LIVE match: ${MATCH_NAME}`);
       break;
     }
 
-    console.log("⏳ No India match yet… retrying in 30s");
+    log("⏳ No India match yet… retrying in 30s");
     await wait(30000);
   }
 
@@ -154,13 +159,13 @@ async function startBot() {
  * ---------------------------------------*/
 async function pollingLoop() {
   try {
-    console.log(`\n🔄 Polling: ${MATCH_NAME}`);
+    log(`\n🔄 Polling: ${MATCH_NAME}`);
 
     const score = await getMatchScore(MATCH_ID);
     const comm = await getCommentary(MATCH_ID);
 
     if (!score || !comm) {
-      console.log("⚠ No data (API failed), retrying…");
+      log("⚠ No data (API failed), retrying…");
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
@@ -180,7 +185,7 @@ async function pollingLoop() {
       latest.ballnbr === globalThis.LAST_BALL &&
       commHash === globalThis.LAST_HASH
     ) {
-      console.log("⏩ Exact same commentary — skipping...");
+      log("⏩ Exact same commentary — skipping...");
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
@@ -189,7 +194,7 @@ async function pollingLoop() {
     globalThis.LAST_HASH = commHash;
 
     if (latest.eventtype === "over-break") {
-      console.log("⏭ Skipping over-break event…");
+      log("⏭ Skipping over-break event…");
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
@@ -198,7 +203,7 @@ async function pollingLoop() {
       const outBatter = getDismissedBatsman(latest.commtxt);
 
       if (globalThis.LAST_WICKET_BATSMAN === outBatter) {
-        console.log(
+        log(
           `⏩ Duplicate wicket event for same batsman (${outBatter}) — skipping`
         );
         await wait(POLL_WAIT_TIME);
@@ -210,22 +215,29 @@ async function pollingLoop() {
 
     const matchContext = buildMatchContext(score, comm, latest);
 
-    console.log("crickbuzz matchContext::", matchContext);
+    const tweetContent = await generateTweet(matchContext);
 
-    const tweet = await generateTweet(matchContext);
+    log("tweetContent::");
+    log(tweetContent);
 
-    if (!tweet || tweet.trim().toUpperCase() === "SKIP") {
-      console.log("ℹ AI skipped this ball");
+    if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
+      log("ℹ AI skipped this ball");
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
 
-    const resp = await postTweet(tweet);
+    // const resp = await postTweet(tweetContent);
+    let resp;
+    if (USE_WEB_TWEET) {
+      resp = await postTweet_web(tweetContent);
+    } else {
+      resp = await postTweet_console(tweetContent);
+    }
 
     if (resp?.id) {
-      console.log("🟢 Tweet posted successfully!");
+      log("🟢 Tweet posted successfully!");
     } else {
-      console.log("⚠ Tweet NOT posted (duplicate or API error)");
+      log("⚠ Tweet NOT posted (duplicate or API error)");
     }
   } catch (err) {
     console.error("❌ PollingLoop ERROR:", err);

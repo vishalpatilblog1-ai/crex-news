@@ -23,6 +23,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Ignore all logs
+logs/*.log
+logs/*.log.*
+logs/*.old
+*.log
+*.old
+
+
 # Build outputs (optional)
 dist/
 build/
+
