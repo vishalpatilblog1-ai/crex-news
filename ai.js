@@ -21,11 +21,11 @@ function generateHashtag(match) {
     return `#INDvs${other}`;
   }
 
-  return `#${t1}vs${t2}`;
+  return `#${t1}v${t2}`;
 }
 
 export async function generateHeadline(ballText, matchContext) {
-  const styleMode = Math.floor(Math.random() * 12);
+  const styleMode = Math.floor(Math.random() * 8);
   try {
     const prompt = `
 Rewrite the cricket ball commentary into a headline. 
@@ -33,17 +33,13 @@ Use the style based on this number: ${styleMode}
 
 HEADLINE STYLE MODES:
 0 – Simple, neutral headline  
-1 – Aggressive short punchline 🔥  
+1 – Short aggressive punchline  
 2 – Calm & journalistic  
-3 – Fan-style 🇮🇳 tone  
+3 – Fan-style (India-positive tone)  
 4 – Ultra-short minimal (3–6 words)  
-5 – Hinglish flavour (cricket-fan style)  
-6 – Emoji-heavy style (max 2 emojis)  
-7 – Commentary-style exclamation (“What a shot!”)  
-8 – Tamil mass-tone (Vera Level, Semma, Mass da)  
-9 – Punjabi hype-tone (Vaddeya Shot, Gabru Shot)  
-10 – Kannada energy-tone (Bharjari, Boss Shot, Masth)  
-11 – Telugu mass-tone (Adiripoyadu, Mass Ga Maaradu, Thaggedhe Le)
+5 – Light Hinglish cricket slang  
+6 – Emoji-light (max 2 emojis)  
+7 – Commentary-style exclamation (“What a shot!”)
 
 STRICT RULES:
 - Do NOT add scores, strike rates, or stats.
