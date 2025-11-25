@@ -188,22 +188,12 @@ async function pollingLoop() {
     globalThis.LAST_BALL = latest.ballnbr;
     globalThis.LAST_HASH = commHash;
 
-    console.log("📌 Latest ball:", {
-      text: latest.commtxt,
-      event: latest.eventtype,
-      over: latest.overnum,
-    });
-
-    // Skip over-break events
     if (latest.eventtype === "over-break") {
       console.log("⏭ Skipping over-break event…");
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
 
-    // ============================
-    // DEDUPE 2: WICKET by batsman name
-    // ============================
     if (latest.eventtype === "WICKET") {
       const outBatter = getDismissedBatsman(latest.commtxt);
 
@@ -218,7 +208,6 @@ async function pollingLoop() {
       globalThis.LAST_WICKET_BATSMAN = outBatter;
     }
 
-    // Build AI context
     const matchContext = buildMatchContext(score, comm, latest);
 
     console.log("crickbuzz matchContext::", matchContext);

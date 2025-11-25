@@ -12,35 +12,67 @@ dotenv.config();
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+function generateHashtag(match) {
+  const t1 = shortTeamName(match.team1);
+  const t2 = shortTeamName(match.team2);
+
+  if (t1 === "IND" || t2 === "IND") {
+    const other = t1 === "IND" ? t2 : t1;
+    return `#INDvs${other}`;
+  }
+
+  return `#${t1}vs${t2}`;
+}
 
 export async function generateHeadline(ballText) {
+  const styleMode = Math.floor(Math.random() * 12);
   try {
     const prompt = `
-Rewrite the cricket ball commentary into a clean, human-style headline.
-Keep it short, natural, and cricket-specific.
+Rewrite the cricket ball commentary into a headline. 
+Use the style based on this number: ${styleMode}
+
+HEADLINE STYLE MODES:
+0 – Simple, neutral headline  
+1 – Aggressive short punchline 🔥  
+2 – Calm & journalistic  
+3 – Fan-style 🇮🇳 tone  
+4 – Ultra-short minimal (3–6 words)  
+5 – Hinglish flavour (cricket-fan style)  
+6 – Emoji-heavy style (max 2 emojis)  
+7 – Commentary-style exclamation (“What a shot!”)  
+8 – Tamil mass-tone (Vera Level, Semma, Mass da)  
+9 – Punjabi hype-tone (Vaddeya Shot, Gabru Shot)  
+10 – Kannada energy-tone (Bharjari, Boss Shot, Masth)  
+11 – Telugu mass-tone (Adiripoyadu, Mass Ga Maaradu, Thaggedhe Le)
 
 STRICT RULES:
 - Do NOT add scores, strike rates, or stats.
 - Do NOT guess or add new player names.
 - Use ONLY the players already present in the text.
-- If the action described is POSITIVE for India (India batter hits FOUR/SIX, or India bowler gets wicket),
-  then add ONE emoji at the end (for six - 💥, for four - 🔥, for wicket - 📛).
-- If it's NOT positive for India, add NO emoji.
+- If the action is POSITIVE for India:
+    • India batter hits FOUR → add 🔥  
+    • India batter hits SIX → add 💥  
+    • India bowler takes a wicket → add 🟢  
+- If the action is NEGATIVE for India:
+    • India loses a wicket → add 🔴
+- If NOT related to India, add NO emoji.
 - Do NOT add analysis.
+- Keep it short and clean.
 
 Ball Text:
 "${ballText}"
 
-Output ONLY the rewritten headline.
+Output ONLY the headline.
 `;
 
     const res = await client.chat.completions.create({
       model: "gpt-4.1",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
+      temperature: 0.6,
     });
 
-    return res.choices[0].message.content.trim();
+    // return res.choices[0].message.content.trim();
+    return res.choices[0].message.content.trim().toUpperCase();
   } catch (err) {
     console.error("HEADLINE AI ERROR:", err);
     return "";
@@ -117,7 +149,15 @@ export default async function generateTweet(matchContext) {
       parts.push("");
     }
 
-    if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
+    // below line is commented temporary
+    // if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
+
+    while (parts.length > 0 && parts[parts.length - 1].trim() === "") {
+      parts.pop();
+    }
+
+    parts.push("");
+    parts.push(generateHashtag(match));
 
     return parts.join("\n").trim();
   } catch (err) {
