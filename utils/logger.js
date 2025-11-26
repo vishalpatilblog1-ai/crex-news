@@ -5,6 +5,18 @@ const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const MAX_BACKUPS = 5;
 
+function formatTS() {
+  const now = new Date();
+  return now.toLocaleString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 function rotateLogs(filePath) {
   try {
     if (!fs.existsSync(filePath)) return;
@@ -49,7 +61,7 @@ export function createLogger(type = "local") {
 
     rotateLogs(filePath);
 
-    const line = ts ? `[${new Date().toISOString()}] ${msg}` : msg;
+    const line = ts ? `[${formatTS()}] ${msg}` : msg;
 
     fs.appendFileSync(filePath, line + "\n");
   };

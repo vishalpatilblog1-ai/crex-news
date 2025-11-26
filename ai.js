@@ -18,46 +18,56 @@ function generateHashtag(match) {
 
   if (t1 === "IND" || t2 === "IND") {
     const other = t1 === "IND" ? t2 : t1;
-    return `#INDvs${other}`;
+    return `#INDvs${other} #INDv${other}`;
   }
 
-  return `#${t1}v${t2}`;
+  return `#${t1}vs${t2} #${t1}v${t2}`;
 }
 
 export async function generateHeadline(ballText, matchContext) {
+  const event = matchContext?.ball?.eventtype || "";
+  const striker = matchContext?.players?.striker || "";
+  const bowler = matchContext?.players?.bowler || "";
   const styleMode = Math.floor(Math.random() * 8);
   try {
     const prompt = `
-Rewrite the cricket ball commentary into a headline. 
+Rewrite the cricket ball commentary into a headline.
 Use the style based on this number: ${styleMode}
 
 HEADLINE STYLE MODES:
 0 – Simple, neutral headline  
 1 – Short aggressive punchline  
 2 – Calm & journalistic  
-3 – Fan-style (India-positive tone)  
-4 – Ultra-short minimal (3–6 words)  
-5 – Light Hinglish cricket slang  
+3 – Fan-style (India-positive)  
+4 – Ultra-short minimal  
+5 – Light Hinglish  
 6 – Emoji-light (max 2 emojis)  
-7 – Commentary-style exclamation (“What a shot!”)
+7 – Commentary-style exclamation  
 
-STRICT RULES:
-- Do NOT add scores, strike rates, or stats.
-- Do NOT guess or add new player names.
-- Use ONLY the players already present in the text.
-- If the action is POSITIVE for India:
-    • India batter hits FOUR → add 🔥  
-    • India batter hits SIX → add 💥  
-    • India bowler takes a wicket → add 🟢  
-- If the action is NEGATIVE for India:
-    • India loses a wicket → add 🔴
-- If NOT related to India, do NOT add any emoji.
-- If opponent hits FOUR/SIX, keep headline neutral and DO NOT add emoji.
-- Do NOT add analysis.
-- Keep it short and clean.
+STRICT EVENT RULES:
+- If eventtype = "SIX", ALWAYS say the batter hits a SIX.
+- If eventtype = "FOUR", ALWAYS say the batter hits a FOUR.
+- If eventtype = "WICKET", ALWAYS say the batter is OUT and mention the bowler.
+- These rules override the ballText (even if ballText doesn't mention SIX/FOUR/WICKET).
+
+EMOJI RULES:
+- If India batter hits FOUR → add 🔥  
+- If India batter hits SIX → add 💥  
+- If India bowler gets wicket → add 🟢  
+- If India loses wicket → add 🔴  
+- If NOT involving India, DO NOT add emoji.
+
+OTHER RULES:
+- Do NOT add scores or stats.
+- Do NOT invent players.
+- Use only names already in matchContext.
+- Keep headline short and clean.
 
 Ball Text:
 "${ballText}"
+
+Event Type: "${event}"
+Bowler: "${bowler}"
 
 Output ONLY the headline.
 `;
@@ -122,7 +132,7 @@ export default async function generateTweet(matchContext) {
       match.team2
     )} ${match.format} Updates 🚨`;
 
-    const headline = await generateHeadline(cleanText);
+    const headline = await generateHeadline(cleanText, matchContext);
 
     const scoreLine = `${battingFullName} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
 

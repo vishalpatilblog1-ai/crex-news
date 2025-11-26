@@ -148,12 +148,9 @@ async function startBot() {
   pollingLoop();
 }
 
-/* ---------------------------------------
- * MAIN POLLING LOOP
- * ---------------------------------------*/
 async function pollingLoop() {
   try {
-    log(`\n🔄 Polling: ${MATCH_NAME}`);
+    log(`\n🔄 Polling: ${MATCH_NAME}`, true);
 
     const score = await getMatchScore(MATCH_ID);
     const comm = await getCommentary(MATCH_ID);
@@ -171,10 +168,6 @@ async function pollingLoop() {
     }
 
     const commHash = latest.commtxt.trim();
-
-    // ============================
-    // DEDUPE 1: SAME COMMENTARY
-    // ============================
 
     if (latest.ballnbr === globalThis.LAST_BALL) {
       log("⏩ Exact same commentary — skipping...");
