@@ -1,5 +1,9 @@
 //templateEngine
-import { TEMPLATES, getEmojiPack } from "./templates.js";
+import {
+  TEMPLATES,
+  buildMatchResultTemplate,
+  getEmojiPack,
+} from "./templates.js";
 
 // ==========================================================
 // AUTO HASHTAG GENERATOR
@@ -29,6 +33,9 @@ function buildHashtags(match, team1Short, team2Short) {
 }
 
 export function buildTemplateTweet({ match, innings, event }) {
+  if (event.type === "MATCH_RESULT") {
+    return buildMatchResultTemplate(match, event.resultText);
+  }
   if (!event?.type) return null;
 
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;

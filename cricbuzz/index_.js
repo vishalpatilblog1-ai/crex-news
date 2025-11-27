@@ -20,7 +20,6 @@ import {
   getPartnershipContributions,
 } from "./inningsDetector.js";
 import { matchContextdata } from "../matchContextData.js";
-import { buildTemplateTweet } from "./templateEngine.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
@@ -28,7 +27,6 @@ globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
 
-globalThis.RESULT_TWEETED = {};
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
 const FORCE_MATCH_ID = 134452;
@@ -63,123 +61,10 @@ function normalizeOvers(overs) {
   return b === 6 ? (o + 1).toFixed(1).replace(".0", "") : overs;
 }
 
-// function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
-//   const mini = comm?.miniscore || {};
-//   const headers = comm?.matchheaders || {};
-
-//   const active = getActiveBattersFromInnings(currInnings);
-//   const partnership = getPartnershipContributions(currInnings);
-
-//   const players = {
-//     striker: active.bat1,
-//     nonStriker: active.bat2,
-//     strikerRuns: "",
-//     strikerBallsPlayed: "",
-//     nonStrikerRuns: "",
-//     nonStrikerBallsPlayed: "",
-//     bowler: mini?.bowlerstriker?.name || "",
-//   };
-
-//   if (event?.type === "WICKET" && event?.batterName) {
-//     players.striker = event.batterName;
-//   }
-
-//   const match = {
-//     name:
-//       headers?.matchdescription ||
-//       `${headers?.team1?.teamname || ""} vs ${
-//         headers?.team2?.teamname || ""
-//       }`.trim(),
-//     team1: headers?.team1?.teamname || "",
-//     team2: headers?.team2?.teamname || "",
-//     team1Short:
-//       headers?.team1?.teamsname ||
-//       shortTeamName(headers?.team1?.teamname || ""),
-//     team2Short:
-//       headers?.team2?.teamsname ||
-//       shortTeamName(headers?.team2?.teamname || ""),
-
-//     format: headers?.matchformat || "",
-//     status: headers?.status || "",
-//     venue: headers?.venue || "",
-//     isMatchComplete,
-//   };
-
-//   const innings = {
-//     inningsid: currInnings.inningsid,
-//     runs: currInnings.score,
-//     wickets: currInnings.wickets,
-//     overs: normalizeOvers(currInnings.overs),
-//     batteamname: currInnings.batteamname,
-//     batteamsname: currInnings.batteamsname,
-//     partnership: currInnings.partnership,
-//     batsman: currInnings.batsman,
-//     bowler: currInnings.bowler,
-//     partnership,
-//   };
-
-//   const displayMatchObject = {
-//     event,
-//     team1: headers?.team1?.teamname || "",
-//     team2: headers?.team2?.teamname || "",
-//     team1Short:
-//       headers?.team1?.teamsname ||
-//       shortTeamName(headers?.team1?.teamname || ""),
-//     team2Short:
-//       headers?.team2?.teamsname ||
-//       shortTeamName(headers?.team2?.teamname || ""),
-
-//     format: headers?.matchformat || "",
-//     status: headers?.status || "",
-//     players,
-//   };
-
-//   return {
-//     match,
-//     innings,
-//     event,
-//     players,
-//     displayMatchObject,
-//   };
-// }
-
 function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
   const mini = comm?.miniscore || {};
   const headers = comm?.matchheaders || {};
 
-  if (event?.type === "MATCH_RESULT") {
-    const match = {
-      name:
-        headers?.matchdescription ||
-        `${headers?.team1?.teamname || ""} vs ${
-          headers?.team2?.teamname || ""
-        }`.trim(),
-
-      team1: headers?.team1?.teamname || "",
-      team2: headers?.team2?.teamname || "",
-      team1Short:
-        headers?.team1?.teamsname ||
-        shortTeamName(headers?.team1?.teamname || ""),
-      team2Short:
-        headers?.team2?.teamsname ||
-        shortTeamName(headers?.team2?.teamname || ""),
-
-      format: headers?.matchformat || "",
-      status: event?.resultText || headers?.status || "",
-      venue: headers?.venue || "",
-      isMatchComplete: true,
-    };
-
-    return {
-      match,
-      innings: null,
-      event,
-      players: {},
-      displayMatchObject: {},
-    };
-  }
-
-  // 🟢 CASE 2: NORMAL BALL EVENTS
   const active = getActiveBattersFromInnings(currInnings);
   const partnership = getPartnershipContributions(currInnings);
 
@@ -211,6 +96,7 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
     team2Short:
       headers?.team2?.teamsname ||
       shortTeamName(headers?.team2?.teamname || ""),
+
     format: headers?.matchformat || "",
     status: headers?.status || "",
     venue: headers?.venue || "",
@@ -240,6 +126,7 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
     team2Short:
       headers?.team2?.teamsname ||
       shortTeamName(headers?.team2?.teamname || ""),
+
     format: headers?.matchformat || "",
     status: headers?.status || "",
     players,
@@ -290,71 +177,12 @@ async function pollingLoop() {
 
     const score = await getMatchScore(MATCH_ID);
 
-    // if (score?.ismatchcomplete && score?.status) {
-    //   if (!globalThis.RESULT_TWEETED[MATCH_ID]) {
-    //     globalThis.RESULT_TWEETED[MATCH_ID] = true;
-
-    //     const syntheticEvent = {
-    //       type: "MATCH_RESULT",
-    //       resultText: score.status,
-    //     };
-
-    //     const matchContext = buildMatchContext({
-    //       comm: null,
-    //       currInnings: null,
-    //       event: syntheticEvent,
-    //       isMatchComplete: true,
-    //     });
-
-    //     const tweet = buildTemplateTweet(matchContext); // 👈 use YOUR template builder
-    //     if (tweet) {
-    //       await postTweet_console(tweet);
-    //       if (USE_WEB_TWEET) await postTweet_web(tweet);
-    //     }
-
-    //     console.log("🏆 Match result tweet sent!");
-    //   }
-
-    //   return;
-    // }
-
     const isMatchComplete = score?.ismatchcomplete;
     let comm = null;
     try {
       comm = await getCommentary(MATCH_ID);
     } catch (e) {
       log("⚠ Commentary API failed, continuing with scorecard only");
-    }
-
-    // console.log("score::", score);
-    // console.log(JSON.stringify(score, null, 2));
-
-    if (score?.ismatchcomplete && score?.status) {
-      if (!globalThis.RESULT_TWEETED[MATCH_ID]) {
-        globalThis.RESULT_TWEETED[MATCH_ID] = true;
-
-        const syntheticEvent = {
-          type: "MATCH_RESULT",
-          resultText: score.status,
-        };
-
-        const matchContext = buildMatchContext({
-          comm,
-          currInnings: null,
-          event: syntheticEvent,
-          isMatchComplete: true,
-        });
-
-        const tweet = buildTemplateTweet(matchContext); // 👈 use YOUR template builder
-        if (tweet) {
-          await postTweet_console(tweet);
-          if (USE_WEB_TWEET) await postTweet_web(tweet);
-        }
-
-        console.log("🏆 Match result tweet sent!");
-      }
-
-      return;
     }
 
     if (!score) {
@@ -404,6 +232,8 @@ async function pollingLoop() {
 
     log("current running over::");
     log(globalThis.LAST_OVER);
+
+    // ==== OLD BALL CHECKS (KEPT EXACTLY SAME) ====
 
     if (currBall < globalThis.LAST_BALL && currOver === prevOver) {
       await wait(POLL_WAIT_TIME);
