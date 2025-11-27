@@ -476,11 +476,14 @@ export const matchContextdata = {
     ],
   },
   event: {
-    type: "SIX",
+    type: "four",
     batterId: 8426,
     batterName: "Harmeet Singh",
     runs: 7,
     balls: 3,
+    bowlerName: "appa",
+    wickets: 8,
+    overs: 10,
   },
   players: {
     striker: "Binod Bhandari",

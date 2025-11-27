@@ -20,14 +20,12 @@ import {
   getPartnershipContributions,
 } from "./inningsDetector.js";
 import { buildTemplateTweet } from "./templateEngine.js";
-import { matchContextdata } from "../matchContextData.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
 globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
-const TEST_MODE = process.env.TEST_MODE === "true";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
@@ -232,13 +230,6 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
 }
 let STATE = loadState();
 async function startBot() {
-  if (TEST_MODE) {
-    console.log("🧪 TEST MODE ENABLED — generating local test tweet");
-
-    const tweetContent = await generateTweet(matchContextdata);
-    console.log("Generated tweet:\n", tweetContent);
-    return; // STOP FULL BOT
-  }
   if (MATCH_ID) {
     log(`🎯 Using forced MATCH_ID: ${MATCH_ID}`);
     pollingLoop();

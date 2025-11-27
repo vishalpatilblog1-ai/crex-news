@@ -134,6 +134,10 @@ const BODIES = {
     "Team moves to {RUNS}! Positive batting {EMOJI}",
     "{RUNS} comes up! Momentum on {EMOJI}",
   ],
+  BOWLER_MILESTONE: [
+    `{BOWLER} finishes with {WICKETS}/{RUNS} in {OVERS} overs {EMOJI}`,
+    `What a spell! {BOWLER} grabs {WICKETS}-for {RUNS} in {OVERS} overs {EMOJI}`,
+  ],
 };
 
 // -----------------------------------------------

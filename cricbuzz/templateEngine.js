@@ -124,6 +124,10 @@ export function buildTemplateTweet({ match, innings, event }) {
         "{RUNS}",
         innings.runs
       );
+    } else if (event.type === "BOWLER_MILESTONE") {
+      text = `{BOWLER} completes a {WICKETS}! ${PAK_EMOJI}`
+        .replace("{BOWLER}", event.bowlerName)
+        .replace("{WICKETS}", event.wickets);
     }
 
     const scoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
@@ -165,6 +169,13 @@ export function buildTemplateTweet({ match, innings, event }) {
       .replace("{EMOJI}", EMOJI);
   } else if (event.type === "TEAM_MILESTONE") {
     text = body.replace("{RUNS}", innings.runs).replace("{EMOJI}", EMOJI);
+  } else if (event.type === "BOWLER_MILESTONE") {
+    text = body
+      .replace("{BOWLER}", event.bowlerName)
+      .replace("{WICKETS}", event.wickets)
+      .replace("{RUNS}", event.runs)
+      .replace("{OVERS}", event.overs)
+      .replace("{EMOJI}", EMOJI);
   }
 
   // ==========================================================

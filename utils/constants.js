@@ -9,6 +9,6 @@ export const EVENT_TYPES = {
 
 export const BATSMAN_MILESTONE_RUNS = 50;
 export const PARTNERSHIP_MILESTONE_RUNS = 50;
-export const BOWLER_MILESTONE_WICKETS = 5;
+export const BOWLER_MILESTONE_WICKETS = 50000;
 
 export const ALLOWED_EVENTS = Object.values(EVENT_TYPES);
