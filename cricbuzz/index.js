@@ -210,6 +210,19 @@ async function pollingLoop() {
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
+    if (prevInnings.inningsid !== currInnings.inningsid) {
+      log("🔁 New innings detected — resetting all trackers");
+
+      globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+      globalThis.LAST_OVER = parseFloat(currInnings.overs) || 0;
+      globalThis.LAST_BALL = currInnings.ballnbr ?? 0;
+
+      globalThis.LAST_EVENT_BALL = {}; // reset event dedupe map
+      globalThis.LAST_PARTNERSHIP_MILESTONE = 0; // reset milestone tracking
+
+      await wait(POLL_WAIT_TIME);
+      return pollingLoop();
+    }
 
     const oversNow = parseFloat(currInnings.overs);
     const currBall = currInnings.ballnbr ?? null;

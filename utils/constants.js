@@ -7,8 +7,8 @@ export const EVENT_TYPES = {
   BOWLER_MILESTONE: "BOWLER_MILESTONE",
 };
 
-export const BATSMAN_MILESTONE_RUNS = 5;
-export const PARTNERSHIP_MILESTONE_RUNS = 5;
+export const BATSMAN_MILESTONE_RUNS = 50;
+export const PARTNERSHIP_MILESTONE_RUNS = 50;
 export const BOWLER_MILESTONE_WICKETS = 5;
 
 export const ALLOWED_EVENTS = Object.values(EVENT_TYPES);
