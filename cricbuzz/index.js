@@ -25,6 +25,7 @@ globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
 globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
+globalThis.LAST_EVENT_BALL = {};
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
@@ -289,6 +290,16 @@ async function pollingLoop() {
     }
 
     for (const singleEvent of events) {
+      const eventType = singleEvent.type;
+      const ballNbr = singleEvent.ballnbr || currInnings.ballnbr;
+
+      if (eventType && ballNbr) {
+        if (globalThis.LAST_EVENT_BALL[eventType] === ballNbr) {
+          log(`⏩ Duplicate ${eventType} on ball ${ballNbr} — skipping`);
+          continue;
+        }
+        globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
+      }
       const matchContext = buildMatchContext({
         comm,
         currInnings,
@@ -303,9 +314,14 @@ async function pollingLoop() {
         continue;
       }
 
-      const resp = USE_WEB_TWEET
-        ? await postTweet_web(tweetContent)
-        : await postTweet_console(tweetContent);
+      // const resp = USE_WEB_TWEET
+      //   ? await postTweet_web(tweetContent)
+      //   : await postTweet_console(tweetContent);
+      await postTweet_console(tweetContent);
+      let resp = null;
+      if (USE_WEB_TWEET) {
+        resp = await postTweet_web(tweetContent);
+      }
 
       if (resp?.id) log(`🟢 Tweet posted for event: ${singleEvent.type}!`);
       else log(`⚠ Tweet NOT posted for event: ${singleEvent.type}`);
