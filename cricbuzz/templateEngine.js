@@ -11,7 +11,7 @@ function buildHashtags(match, team1Short, team2Short) {
   const h1 = `#${team1Short}vs${team2Short}`;
   const h2 = `#${team1Short}v${team2Short}`;
 
-  // Format tag (safe only)
+  // Match format
   let fmt = "";
   const format = (match?.format || "").toUpperCase();
 
@@ -19,28 +19,20 @@ function buildHashtags(match, team1Short, team2Short) {
   else if (format.includes("ODI")) fmt = "#ODI";
   else if (format.includes("TEST")) fmt = "#Test";
 
-  // ❌ Blacklist any league-related tags
-  const blacklist = [
-    "PSL", // Pakistan Super League
-    "BPL", // Bangladesh Premier League
-    "LPL", // Lanka Premier League
-    "KPL", // Kashmir Premier League
-    "NCL", // Pakistan domestic
-  ];
+  const blacklist = ["PSL", "BPL", "LPL", "KPL", "NCL"];
 
   const safeTags = [h1, h2, fmt].filter(Boolean);
 
-  // Final filter to make 200% sure
   return safeTags
     .filter((tag) => !blacklist.some((x) => tag.toUpperCase().includes(x)))
     .join(" ");
 }
 
-// ==========================================================
-// TEMPLATE BUILDER FOR EVENTS
-// ==========================================================
 export function buildTemplateTweet({ match, innings, event }) {
   if (!event?.type) return null;
+
+  globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
+  const SHOULD_ADD_HEADER = globalThis.TWEET_COUNTER % 5 === 0;
 
   const team = innings?.batteamname || "";
   const opponent =
@@ -48,9 +40,13 @@ export function buildTemplateTweet({ match, innings, event }) {
       ? match.team2
       : match.team1;
 
+  const isPakInvolved =
+    team.toLowerCase().includes("pakistan") ||
+    opponent.toLowerCase().includes("pakistan");
+
   const emojiPack = getEmojiPack(team, opponent);
 
-  const header = TEMPLATES.HEADERS[
+  const universalHeader = TEMPLATES.HEADERS[
     Math.floor(Math.random() * TEMPLATES.HEADERS.length)
   ].replace("{MATCH}", `${match.team1Short} vs ${match.team2Short}`);
 
@@ -72,9 +68,57 @@ export function buildTemplateTweet({ match, innings, event }) {
 
   let text = "";
 
-  // ==========================================================
-  // RENDER TEMPLATE BASED ON EVENT TYPE
-  // ==========================================================
+  if (isPakInvolved) {
+    const safeNeutralEmoji = ["🔹", "⚡", "📛", "🎯", "💠"];
+    const PAK_EMOJI =
+      safeNeutralEmoji[Math.floor(Math.random() * safeNeutralEmoji.length)];
+
+    const pakHeaders = [
+      "🚨 {MATCH} Live 🚨",
+      "📢 {MATCH} Update 📢",
+      "🔥 {MATCH} Moment 🔥",
+    ];
+
+    const pakHeader = pakHeaders[
+      Math.floor(Math.random() * pakHeaders.length)
+    ].replace("{MATCH}", `${match.team1Short} vs ${match.team2Short}`);
+
+    if (event.type === "SIX" || event.type === "FOUR") {
+      text = `{BATTER} hits a ${event.type} ${PAK_EMOJI}`.replace(
+        "{BATTER}",
+        event.batterName || innings?.batsman?.[0]?.name || "Batter"
+      );
+    } else if (event.type === "WICKET") {
+      text = `{BATTER} is out. ${PAK_EMOJI}`.replace(
+        "{BATTER}",
+        event.batterName || "Batter"
+      );
+    } else if (event.type === "BATSMAN_MILESTONE") {
+      text = `{BATTER} reaches {RUNS}* ({BALLS}). ${PAK_EMOJI}`
+        .replace("{BATTER}", event.batterName)
+        .replace("{RUNS}", event.runs)
+        .replace("{BALLS}", event.balls);
+    } else if (event.type === "PARTNERSHIP_MILESTONE") {
+      text = `Partnership reaches {RUNS}. ${PAK_EMOJI}`.replace(
+        "{RUNS}",
+        event.totalRuns
+      );
+    } else if (event.type === "TEAM_MILESTONE") {
+      text = `Team total reaches {RUNS}. ${PAK_EMOJI}`.replace(
+        "{RUNS}",
+        innings.runs
+      );
+    }
+
+    const scoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+    const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
+
+    let out = "";
+    if (SHOULD_ADD_HEADER) out += `${pakHeader}\n\n`;
+
+    out += `${text}\n\n${scoreLine}\n\n${match.status}\n\n${hashtags}`;
+    return out.trim();
+  }
 
   if (event.type === "SIX" || event.type === "FOUR") {
     text = body
@@ -108,25 +152,15 @@ export function buildTemplateTweet({ match, innings, event }) {
   }
 
   // ==========================================================
-  // SCORELINE
+  // SCORELINE & FINAL OUTPUT
   // ==========================================================
   const scoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
-
   const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
 
-  // ==========================================================
-  // FINAL TWEET
-  // ==========================================================
-  return `
-${header}
+  let finalOut = "";
+  if (SHOULD_ADD_HEADER) finalOut += `${universalHeader}\n\n`;
 
-${eventHeader}
-${text}
+  finalOut += `${eventHeader}\n${text}\n\n${scoreLine}\n\n${match.status}\n\n${hashtags}`;
 
-${scoreLine}
-
-${match.status}
-
-${hashtags}
-  `.trim();
+  return finalOut.trim();
 }

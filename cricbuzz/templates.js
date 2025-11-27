@@ -34,10 +34,8 @@ export function getEmojiPack(team, opponent) {
 // -----------------------------------------------
 const HEADERS = [
   "🚨 {MATCH} Updates 🚨",
-  "⚡ {MATCH} Live ⚡",
   "🔥 {MATCH} Action 🔥",
   "📢 {MATCH} Moment 📢",
-  "🏏 {MATCH} Highlight 🏏",
 ];
 
 // -----------------------------------------------
