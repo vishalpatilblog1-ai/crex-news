@@ -12,7 +12,6 @@ export function getEmojiPack(team, opponent) {
     };
   }
 
-  // Pakistan → never use flags or emotional support
   if (t.includes("pakistan") || o.includes("pakistan")) {
     return {
       hit: ["⚡", "📛", "💠"],
@@ -21,7 +20,6 @@ export function getEmojiPack(team, opponent) {
     };
   }
 
-  // Any other team → neutral
   return {
     hit: ["⚡", "📛", "💥", "🎯"],
     wicket: ["⚡", "📛", "🎯"],
@@ -29,18 +27,12 @@ export function getEmojiPack(team, opponent) {
   };
 }
 
-// -----------------------------------------------
-// UNIVERSAL HEADERS (5)
-// -----------------------------------------------
 const HEADERS = [
   "🚨 {MATCH} Updates 🚨",
   "🔥 {MATCH} Action 🔥",
   "📢 {MATCH} Moment 📢",
 ];
 
-// -----------------------------------------------
-// EVENT-SPECIFIC HEADERS
-// -----------------------------------------------
 const EVENT_HEADERS = {
   SIX: [
     "💥 BIG HIT ALERT!",
