@@ -1,0 +1,196 @@
+import OpenAI from "openai";
+import dotenv from "dotenv";
+import {
+  cleanBallText,
+  formatPartnership,
+  shortTeamName,
+  smartShortName,
+} from "./utils/formatter.js";
+
+dotenv.config();
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+function generateHashtag(match) {
+  const t1 = shortTeamName(match.team1);
+  const t2 = shortTeamName(match.team2);
+
+  if (t1 === "IND" || t2 === "IND") {
+    const other = t1 === "IND" ? t2 : t1;
+    return `#INDvs${other} #INDv${other}`;
+  }
+
+  return `#${t1}vs${t2} #${t1}v${t2}`;
+}
+
+export async function generateHeadline(ballText, matchContext) {
+  const event = matchContext?.ball?.eventtype || "";
+  const striker = matchContext?.players?.striker || "";
+  const bowler = matchContext?.players?.bowler || "";
+  const styleMode = Math.floor(Math.random() * 8);
+  try {
+    const prompt = `
+Rewrite the cricket ball commentary into a headline.
+Use the style based on this number: ${styleMode}
+
+HEADLINE STYLE MODES:
+0 – Simple, neutral headline  
+1 – Short aggressive punchline  
+2 – Calm & journalistic  
+3 – Fan-style (India-positive)  
+4 – Ultra-short minimal  
+5 – Light Hinglish  
+6 – Emoji-light (max 2 emojis)  
+7 – Commentary-style exclamation  
+
+STRICT EVENT RULES:
+- If eventtype = "SIX", ALWAYS say the batter hits a SIX.
+- If eventtype = "FOUR", ALWAYS say the batter hits a FOUR.
+- If eventtype = "WICKET", ALWAYS say the batter is OUT and mention the bowler.
+- These rules override the ballText (even if ballText doesn't mention SIX/FOUR/WICKET).
+
+EMOJI RULES:
+- If India batter hits FOUR → add 🔥  
+- If India batter hits SIX → add 💥  
+- If India bowler gets wicket → add 🟢  
+- If India loses wicket → add 🔴  
+- If NOT involving India, DO NOT add emoji.
+
+OTHER RULES:
+- Do NOT add scores or stats.
+- Do NOT invent players.
+- Use only names already in matchContext.
+- Keep headline short and clean.
+
+Ball Text:
+"${ballText}"
+
+Event Type: "${event}"
+Bowler: "${bowler}"
+
+Output ONLY the headline.
+`;
+
+    const res = await client.chat.completions.create({
+      model: "gpt-4.1",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6,
+    });
+
+    let headline = res.choices[0].message.content.trim();
+
+    const event = matchContext?.ball?.eventtype?.toUpperCase();
+    const batting = matchContext?.innings?.battingTeam;
+    const bowling = matchContext?.innings?.bowlingTeam;
+
+    const opponentShot =
+      (event === "FOUR" || event === "SIX") && batting !== "IND";
+
+    if (opponentShot) {
+      return headline;
+    }
+
+    const indiaPositive =
+      (batting === "IND" && (event === "FOUR" || event === "SIX")) ||
+      (event === "WICKET" && bowling === "IND");
+
+    if (indiaPositive) {
+      headline = headline.toUpperCase();
+    }
+
+    return headline;
+  } catch (err) {
+    console.error("HEADLINE AI ERROR:", err);
+    return "";
+  }
+}
+
+export default async function generateTweet(matchContext) {
+  try {
+    if (!matchContext?.ball?.eventtype) return "SKIP";
+
+    const event = matchContext.ball.eventtype.toUpperCase();
+    const cleanText = cleanBallText(matchContext.ball.text);
+
+    const { innings, players, match } = matchContext;
+
+    if (event === "NONE") return "SKIP";
+    if (event === "OVER-BREAK" || event === "over-break") return "SKIP";
+
+    if (!cleanText || cleanText.length < 5) return "SKIP";
+
+    const battingFullName = match.team1
+      .toLowerCase()
+      .includes(innings.battingTeam.toLowerCase())
+      ? match.team1
+      : match.team2;
+
+    let parts = [];
+
+    const header = `🚨 ${shortTeamName(match.team1)} vs ${shortTeamName(
+      match.team2
+    )} ${match.format} Updates 🚨`;
+
+    const headline = await generateHeadline(cleanText, matchContext);
+
+    const scoreLine = `${battingFullName} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+
+    const strikerName = smartShortName(players.striker, players.nonStriker);
+    const nonStrikerName = smartShortName(players.nonStriker, players.striker);
+
+    const strikerLine =
+      strikerName && players.strikerRuns && players.strikerBallsPlayed
+        ? `${strikerName}: ${players.strikerRuns} (${players.strikerBallsPlayed})`
+        : "";
+
+    const nonStrikerLine =
+      nonStrikerName && players.nonStrikerRuns && players.nonStrikerBallsPlayed
+        ? `${nonStrikerName}: ${players.nonStrikerRuns} (${players.nonStrikerBallsPlayed})`
+        : "";
+
+    parts.push(header);
+    parts.push("");
+    parts.push(headline);
+    parts.push("");
+    parts.push(scoreLine);
+    parts.push("");
+
+    if (event !== "WICKET") {
+      if (strikerLine) parts.push(strikerLine);
+      if (nonStrikerLine) parts.push(nonStrikerLine);
+    }
+
+    const canShowPartnership =
+      players.striker &&
+      players.nonStriker &&
+      players.strikerRuns &&
+      players.nonStrikerRuns &&
+      players.strikerBallsPlayed &&
+      players.nonStrikerBallsPlayed &&
+      matchContext.ball.partnership;
+
+    if (canShowPartnership) {
+      const formattedPartnership = formatPartnership(
+        matchContext.ball.partnership
+      );
+      parts.push(`Partnership: ${formattedPartnership}`);
+      parts.push("");
+    }
+
+    // below line is commented temporary
+    // if (innings.trailOrLeadText) parts.push(innings.trailOrLeadText);
+
+    while (parts.length > 0 && parts[parts.length - 1].trim() === "") {
+      parts.pop();
+    }
+
+    parts.push("");
+    parts.push(generateHashtag(match));
+
+    return parts.join("\n").trim();
+  } catch (err) {
+    console.error("AI ERROR:", err);
+    return "SKIP";
+  }
+}

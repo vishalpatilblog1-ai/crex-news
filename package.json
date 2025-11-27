@@ -5,7 +5,7 @@
   "main": "cricbuzz/index.js",
   "type": "module",
   "scripts": {
-    "start": "node fetchEspnNews.js",
+    "start": "node cricbuzz/index.js",
     "dev": "nodemon cricbuzz/index.js",
     "test-fake": "node testFakeEvent.js",
     "local": "node localBot.js"
