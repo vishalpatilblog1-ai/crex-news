@@ -148,8 +148,6 @@ export const TEMPLATES = {
 export function buildMatchResultTemplate(match, resultText) {
   const { team1Short, team2Short, format } = match;
 
-  console.log("match::", match);
-
   // random headline styles
   const headlines = [
     "🏆 Match Result",

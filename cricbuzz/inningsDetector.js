@@ -193,27 +193,79 @@ export function detectBatsmanMilestone(prev, curr) {
 
   return null;
 }
+// export function detectBowlerMilestone(prev, curr) {
+//   if (!prev || !curr) return null;
+
+//   const prevMap = {};
+//   prev.bowler?.forEach((b) => (prevMap[b.id] = b.wickets));
+
+//   for (const bow of curr.bowler || []) {
+//     const before = prevMap[bow.id] ?? bow.wickets;
+
+//     if (
+//       bow.wickets === BOWLER_MILESTONE_WICKETS &&
+//       before < BOWLER_MILESTONE_WICKETS
+//     ) {
+//       return {
+//         type: "BOWLER_MILESTONE",
+//         bowlerId: bow.id,
+//         bowlerName: bow.name,
+//         wickets: bow.wickets,
+//         overs: bow.overs,
+//         runs: bow.runs,
+//       };
+//     }
+//   }
+
+//   return null;
+// }
+
 export function detectBowlerMilestone(prev, curr) {
   if (!prev || !curr) return null;
 
   const prevMap = {};
-  prev.bowler?.forEach((b) => (prevMap[b.id] = b.wickets));
+  prev.bowler?.forEach((b) => (prevMap[b.id] = Number(b.wickets)));
 
   for (const bow of curr.bowler || []) {
-    const before = prevMap[bow.id] ?? bow.wickets;
+    const oldWkts = prevMap[bow.id] ?? Number(bow.wickets);
+    const newWkts = Number(bow.wickets);
 
-    if (
-      bow.wickets === BOWLER_MILESTONE_WICKETS &&
-      before < BOWLER_MILESTONE_WICKETS
-    ) {
-      return {
-        type: "BOWLER_MILESTONE",
-        bowlerId: bow.id,
-        bowlerName: bow.name,
-        wickets: bow.wickets,
-        overs: bow.overs,
-        runs: bow.runs,
-      };
+    // Only proceed if wicket increased
+    if (newWkts > oldWkts) {
+      // Detect milestones
+      if (newWkts === 3) {
+        return {
+          type: "BOWLER_MILESTONE",
+          bowlerId: bow.id,
+          bowlerName: bow.name,
+          milestone: "3-fer",
+          wickets: newWkts,
+          overs: bow.overs,
+          runs: bow.runs,
+        };
+      }
+      if (newWkts === 4) {
+        return {
+          type: "BOWLER_MILESTONE",
+          bowlerId: bow.id,
+          bowlerName: bow.name,
+          milestone: "4-fer",
+          wickets: newWkts,
+          overs: bow.overs,
+          runs: bow.runs,
+        };
+      }
+      if (newWkts === 5) {
+        return {
+          type: "BOWLER_MILESTONE",
+          bowlerId: bow.id,
+          bowlerName: bow.name,
+          milestone: "five-wicket haul",
+          wickets: newWkts,
+          overs: bow.overs,
+          runs: bow.runs,
+        };
+      }
     }
   }
 

@@ -5,9 +5,9 @@ dotenv.config();
 import generateTweet from "../ai.js";
 import { postTweet_console, postTweet_web } from "../twitter.js";
 
-import { EVENT_TYPES, PARTNERSHIP_MILESTONE_RUNS } from "../utils/constants.js";
 import { shortTeamName } from "../utils/formatter.js";
 import { createLogger } from "../utils/logger.js";
+import { loadState, saveState } from "../utils/stateStore.js";
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 import {
   detectBatsmanMilestone,
@@ -19,15 +19,15 @@ import {
   getActiveBattersFromInnings,
   getPartnershipContributions,
 } from "./inningsDetector.js";
-import { matchContextdata } from "../matchContextData.js";
 import { buildTemplateTweet } from "./templateEngine.js";
-import { loadState, saveState } from "../utils/stateStore.js";
+import { matchContextdata } from "../matchContextData.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
 globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
+const TEST_MODE = process.env.TEST_MODE === "true";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
@@ -232,6 +232,13 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
 }
 let STATE = loadState();
 async function startBot() {
+  if (TEST_MODE) {
+    console.log("🧪 TEST MODE ENABLED — generating local test tweet");
+
+    const tweetContent = await generateTweet(matchContextdata);
+    console.log("Generated tweet:\n", tweetContent);
+    return; // STOP FULL BOT
+  }
   if (MATCH_ID) {
     log(`🎯 Using forced MATCH_ID: ${MATCH_ID}`);
     pollingLoop();
@@ -436,11 +443,11 @@ async function pollingLoop() {
     let evBowlerMilestone = null;
 
     if (isSingleBallAdvance) {
+      evBowlerMilestone = detectBowlerMilestone(prevInnings, currInnings);
       evWicket = detectWicket(prevInnings, currInnings);
       evBatsmanMilestone = detectBatsmanMilestone(prevInnings, currInnings);
       evSix = detectSix(prevInnings, currInnings);
       evFour = detectFour(prevInnings, currInnings);
-      evBowlerMilestone = detectBowlerMilestone(prevInnings, currInnings);
 
       if (evWicket) events.push(evWicket);
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
@@ -486,9 +493,6 @@ async function pollingLoop() {
         continue;
       }
 
-      // const resp = USE_WEB_TWEET
-      //   ? await postTweet_web(tweetContent)
-      //   : await postTweet_console(tweetContent);
       await postTweet_console(tweetContent);
       let resp = null;
       if (USE_WEB_TWEET) {
