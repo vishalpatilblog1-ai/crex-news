@@ -293,34 +293,6 @@ async function pollingLoop() {
 
     const score = await getMatchScore(MATCH_ID);
 
-    // if (score?.ismatchcomplete && score?.status) {
-    //   if (!globalThis.RESULT_TWEETED[MATCH_ID]) {
-    //     globalThis.RESULT_TWEETED[MATCH_ID] = true;
-
-    //     const syntheticEvent = {
-    //       type: "MATCH_RESULT",
-    //       resultText: score.status,
-    //     };
-
-    //     const matchContext = buildMatchContext({
-    //       comm: null,
-    //       currInnings: null,
-    //       event: syntheticEvent,
-    //       isMatchComplete: true,
-    //     });
-
-    //     const tweet = buildTemplateTweet(matchContext); // 👈 use YOUR template builder
-    //     if (tweet) {
-    //       await postTweet_console(tweet);
-    //       if (USE_WEB_TWEET) await postTweet_web(tweet);
-    //     }
-
-    //     console.log("🏆 Match result tweet sent!");
-    //   }
-
-    //   return;
-    // }
-
     const isMatchComplete = score?.ismatchcomplete;
     let comm = null;
     try {
@@ -328,6 +300,9 @@ async function pollingLoop() {
     } catch (e) {
       log("⚠ Commentary API failed, continuing with scorecard only");
     }
+
+    const playingTeam1 = comm?.matchheaders?.team1.teamname || "";
+    const playingTeam2 = comm?.matchheaders?.team2.teamname || "";
 
     // console.log("score::", score);
     // console.log(JSON.stringify(score, null, 2));
@@ -382,6 +357,8 @@ async function pollingLoop() {
       globalThis.LAST_OVER = parseFloat(currInnings.overs) || 0;
       globalThis.LAST_BALL = currInnings.ballnbr ?? null;
       console.log("📌 Initial innings snapshot saved");
+      console.log(`💥 ${playingTeam1} Vs ${playingTeam2} 💥`);
+
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
