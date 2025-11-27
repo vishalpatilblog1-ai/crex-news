@@ -1,45 +1,36 @@
-// fetchEspnNews.js
 import fetch from "node-fetch";
 
-async function getEspnNews() {
-  const url =
-    "https://site.web.api.espncricinfo.com/apis/v2/pages/news?lang=en";
+const urls = [
+  "https://hs-consumer-api.espncricinfo.com/v1/pages/news",
+  "https://site.api.espncricinfo.com/feed/cricket/news",
+  "https://site.web.api.espncricinfo.com/apis/v2/pages/news?lang=en",
+];
 
-  try {
-    console.log("🔎 Fetching ESPN Cricinfo News...");
+async function testUrls() {
+  for (const url of urls) {
+    console.log(`\n🌐 Trying: ${url}`);
 
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "Mozilla/5.0",
-      },
-    });
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "user-agent": "Mozilla/5.0",
+          accept: "application/json",
+        },
+      });
 
-    if (!response.ok) {
-      console.error("❌ Failed:", response.status, response.statusText);
-      return;
+      console.log("Status:", res.status);
+
+      if (!res.ok) {
+        console.log("❌ Failed:", res.statusText);
+        continue;
+      }
+
+      const text = await res.text();
+      console.log("📄 First 500 chars:\n", text.slice(0, 500));
+    } catch (e) {
+      console.log("❌ ERROR:", e.message);
     }
-
-    const data = await response.json();
-
-    console.log("📰 Top Headlines:");
-    console.log("-------------------------");
-
-    const articles = data?.content?.news?.items || [];
-
-    if (!articles.length) {
-      console.log("⚠️ No articles found.");
-      return;
-    }
-
-    articles.slice(0, 10).forEach((item, index) => {
-      console.log(`${index + 1}. ${item.headline}`);
-    });
-
-    console.log("\n✅ Fetch complete.");
-  } catch (err) {
-    console.error("❌ ERROR:", err.message);
   }
 }
 
-getEspnNews();
+testUrls();
