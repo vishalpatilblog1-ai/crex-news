@@ -11,28 +11,37 @@ import {
 function buildHashtags(match, team1Short, team2Short) {
   if (!team1Short || !team2Short) return "";
 
-  // Team-vs-team tags
   const h1 = `#${team1Short}vs${team2Short}`;
   const h2 = `#${team1Short}v${team2Short}`;
 
-  // Match format
   let fmt = "";
   const format = (match?.format || "").toUpperCase();
 
   if (format.includes("T20")) fmt = "#T20I";
-  else if (format.includes("ODI")) fmt = "#ODI";
+  else if (format.includes("ODI") || format.includes("ONE")) fmt = "#ODI";
   else if (format.includes("TEST")) fmt = "#Test";
 
   const blacklist = ["PSL", "BPL", "LPL", "KPL", "NCL"];
 
-  const safeTags = [h1, h2, fmt].filter(Boolean);
-
-  return safeTags
+  return [h1, h2, fmt]
+    .filter(Boolean)
     .filter((tag) => !blacklist.some((x) => tag.toUpperCase().includes(x)))
     .join(" ");
 }
 
 export function buildTemplateTweet({ match, innings, event }) {
+  if (event.type === "TOSS") {
+    const { tossText } = event;
+
+    const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
+
+    return `🪙 Toss Update
+  
+  ${tossText}
+  
+  ${hashtags}`;
+  }
+
   if (event.type === "MATCH_RESULT") {
     return buildMatchResultTemplate(match, event.resultText);
   }

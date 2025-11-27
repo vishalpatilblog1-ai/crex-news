@@ -21,6 +21,7 @@ import {
 } from "./inningsDetector.js";
 import { matchContextdata } from "../matchContextData.js";
 import { buildTemplateTweet } from "./templateEngine.js";
+import { loadState, saveState } from "../utils/stateStore.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
@@ -28,7 +29,6 @@ globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
 
-globalThis.RESULT_TWEETED = {};
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
 // const FORCE_MATCH_ID = 134452;
@@ -43,6 +43,19 @@ const POLL_WAIT_TIME = 5000;
 const log = createLogger("prod");
 
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+
+function extractTossInfo(comm) {
+  const t = comm?.matchheaders?.tossresults;
+  if (!t) return null;
+
+  return {
+    tossWinner: t.tosswinnername || "",
+    tossDecision: (t.decision || "").toLowerCase(), // batting / bowling
+    tossText: `${
+      t.tosswinnername
+    } won the toss and chose to ${t.decision.toLowerCase()}`,
+  };
+}
 
 function getCorrectInnings(scoreRes, mini) {
   const card = scoreRes?.scorecard;
@@ -65,86 +78,6 @@ function normalizeOvers(overs) {
   const b = parseInt(p[1] || "0");
   return b === 6 ? (o + 1).toFixed(1).replace(".0", "") : overs;
 }
-
-// function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
-//   const mini = comm?.miniscore || {};
-//   const headers = comm?.matchheaders || {};
-
-//   const active = getActiveBattersFromInnings(currInnings);
-//   const partnership = getPartnershipContributions(currInnings);
-
-//   const players = {
-//     striker: active.bat1,
-//     nonStriker: active.bat2,
-//     strikerRuns: "",
-//     strikerBallsPlayed: "",
-//     nonStrikerRuns: "",
-//     nonStrikerBallsPlayed: "",
-//     bowler: mini?.bowlerstriker?.name || "",
-//   };
-
-//   if (event?.type === "WICKET" && event?.batterName) {
-//     players.striker = event.batterName;
-//   }
-
-//   const match = {
-//     name:
-//       headers?.matchdescription ||
-//       `${headers?.team1?.teamname || ""} vs ${
-//         headers?.team2?.teamname || ""
-//       }`.trim(),
-//     team1: headers?.team1?.teamname || "",
-//     team2: headers?.team2?.teamname || "",
-//     team1Short:
-//       headers?.team1?.teamsname ||
-//       shortTeamName(headers?.team1?.teamname || ""),
-//     team2Short:
-//       headers?.team2?.teamsname ||
-//       shortTeamName(headers?.team2?.teamname || ""),
-
-//     format: headers?.matchformat || "",
-//     status: headers?.status || "",
-//     venue: headers?.venue || "",
-//     isMatchComplete,
-//   };
-
-//   const innings = {
-//     inningsid: currInnings.inningsid,
-//     runs: currInnings.score,
-//     wickets: currInnings.wickets,
-//     overs: normalizeOvers(currInnings.overs),
-//     batteamname: currInnings.batteamname,
-//     batteamsname: currInnings.batteamsname,
-//     partnership: currInnings.partnership,
-//     batsman: currInnings.batsman,
-//     bowler: currInnings.bowler,
-//     partnership,
-//   };
-
-//   const displayMatchObject = {
-//     event,
-//     team1: headers?.team1?.teamname || "",
-//     team2: headers?.team2?.teamname || "",
-//     team1Short:
-//       headers?.team1?.teamsname ||
-//       shortTeamName(headers?.team1?.teamname || ""),
-//     team2Short:
-//       headers?.team2?.teamsname ||
-//       shortTeamName(headers?.team2?.teamname || ""),
-
-//     format: headers?.matchformat || "",
-//     status: headers?.status || "",
-//     players,
-//   };
-
-//   return {
-//     match,
-//     innings,
-//     event,
-//     players,
-//     displayMatchObject,
-//   };
-// }
 
 function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
   const mini = comm?.miniscore || {};
@@ -182,7 +115,48 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
     };
   }
 
-  // 🟢 CASE 2: NORMAL BALL EVENTS
+  if (event?.type === "TOSS") {
+    const match = {
+      name:
+        headers?.matchdescription ||
+        `${headers?.team1?.teamname || ""} vs ${
+          headers?.team2?.teamname || ""
+        }`.trim(),
+
+      team1: headers?.team1?.teamname || "",
+      team2: headers?.team2?.teamname || "",
+      team1Short:
+        headers?.team1?.teamsname ||
+        shortTeamName(headers?.team1?.teamname || ""),
+      team2Short:
+        headers?.team2?.teamsname ||
+        shortTeamName(headers?.team2?.teamname || ""),
+
+      format: headers?.matchformat || "",
+      status: headers?.status || "",
+      venue: headers?.venue || "",
+      isMatchComplete: false,
+    };
+
+    const displayMatchObject = {
+      event, // has tossWinner, tossDecision, tossText
+      team1: match.team1,
+      team2: match.team2,
+      team1Short: match.team1Short,
+      team2Short: match.team2Short,
+      format: match.format,
+      status: match.status,
+      players: {},
+    };
+
+    return {
+      match,
+      innings: null,
+      event,
+      players: {},
+      displayMatchObject,
+    };
+  }
   const active = getActiveBattersFromInnings(currInnings);
   const partnership = getPartnershipContributions(currInnings);
 
@@ -256,7 +230,7 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
     displayMatchObject,
   };
 }
-
+let STATE = loadState();
 async function startBot() {
   if (MATCH_ID) {
     log(`🎯 Using forced MATCH_ID: ${MATCH_ID}`);
@@ -297,6 +271,40 @@ async function pollingLoop() {
     let comm = null;
     try {
       comm = await getCommentary(MATCH_ID);
+      // --------------------------------------
+      // 🔥 TOSS Detection
+      // --------------------------------------
+      try {
+        const toss = extractTossInfo(comm);
+
+        if (toss && !STATE[`toss_${MATCH_ID}`]) {
+          STATE[`toss_${MATCH_ID}`] = true;
+          saveState(STATE);
+
+          const syntheticEvent = {
+            type: "TOSS",
+            ...toss,
+          };
+
+          const matchContext = buildMatchContext({
+            comm,
+            currInnings: null,
+            event: syntheticEvent,
+            isMatchComplete: false,
+          });
+
+          const tweet = buildTemplateTweet(matchContext);
+
+          if (tweet) {
+            await postTweet_console(tweet);
+            if (USE_WEB_TWEET) await postTweet_web(tweet);
+          }
+
+          log(`🪙 Toss tweet sent! -> ${toss.tossText}`);
+        }
+      } catch (e) {
+        log("⚠ Toss detection error", e);
+      }
     } catch (e) {
       log("⚠ Commentary API failed, continuing with scorecard only");
     }
@@ -308,8 +316,9 @@ async function pollingLoop() {
     // console.log(JSON.stringify(score, null, 2));
 
     if (score?.ismatchcomplete && score?.status) {
-      if (!globalThis.RESULT_TWEETED[MATCH_ID]) {
-        globalThis.RESULT_TWEETED[MATCH_ID] = true;
+      if (!STATE[`result_${MATCH_ID}`]) {
+        STATE[`result_${MATCH_ID}`] = true;
+        saveState(STATE);
 
         const syntheticEvent = {
           type: "MATCH_RESULT",
