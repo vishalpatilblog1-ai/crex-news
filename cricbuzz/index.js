@@ -24,7 +24,7 @@ globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
 
-const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
 const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
