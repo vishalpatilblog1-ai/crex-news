@@ -518,12 +518,22 @@ async function pollingLoop() {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
         continue;
       }
-
-      await postTweet_console(tweetContent);
       let resp = null;
+
       if (USE_WEB_TWEET) {
         resp = await postTweet_web(tweetContent);
+        console.log("🌐 WEB Tweet Response:", resp);
+      } else {
+        await postTweet_console(tweetContent);
+        console.log("💻 Console mode active");
       }
+
+      if (resp?.id) log(`🟢 WEB Tweet posted for event: ${singleEvent.type}!`);
+      // await postTweet_console(tweetContent);
+      // let resp = null;
+      // if (USE_WEB_TWEET) {
+      //   resp = await postTweet_web(tweetContent);
+      // }
 
       if (resp?.id) log(`🟢 Tweet posted for event: ${singleEvent.type}!`);
       else log(`⚠ Tweet NOT posted for event: ${singleEvent.type}`);
