@@ -26,10 +26,9 @@ globalThis.LAST_EVENT_BALL = {};
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
 
-const FORCE_MATCH_ID = 138006;
-// const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
-//   ? Number(process.env.FORCE_MATCH_ID)
-//   : null;
+const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
+  ? Number(process.env.FORCE_MATCH_ID)
+  : null;
 
 let MATCH_ID = FORCE_MATCH_ID || 0;
 let MATCH_NAME = FORCE_MATCH_ID ? `Forced Match #${FORCE_MATCH_ID}` : "";
