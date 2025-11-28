@@ -515,14 +515,14 @@ async function pollingLoop() {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
         continue;
       }
-      let resp = null;
-      resp = await postTweet_web(tweetContent);
-
-      // await postTweet_console(tweetContent);
       // let resp = null;
-      // if (USE_WEB_TWEET) {
-      //   resp = await postTweet_web(tweetContent);
-      // }
+      // resp = await postTweet_web(tweetContent);
+
+      await postTweet_console(tweetContent);
+      let resp = null;
+      if (USE_WEB_TWEET) {
+        resp = await postTweet_web(tweetContent);
+      }
 
       if (resp?.id) log(`🟢 Tweet posted for event: ${singleEvent.type}!`);
       else log(`⚠ Tweet NOT posted for event: ${singleEvent.type}`);
