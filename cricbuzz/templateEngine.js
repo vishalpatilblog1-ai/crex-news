@@ -178,6 +178,20 @@ export async function buildTemplateTweet({ match, innings, event }) {
     `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
   ];
 
+  // const variations = [
+  //   `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+
+  //   `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
+
+  //   `${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
+
+  //   `${text}\n\n${match.status}\n\n${hashtags}`,
+
+  //   `${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+
+  //   `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+  // ];
+
   const finalOut = variations[Math.floor(Math.random() * variations.length)];
   return finalOut.trim();
 }

@@ -29,6 +29,9 @@ globalThis.LAST_EVENT_BALL = {};
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
+console.log("USE_WEB_TWEET value on railway:", process.env.USE_WEB_TWEET);
+console.log("USE_WEB_TWEET flag:", USE_WEB_TWEET);
+
 const FORCE_MATCH_ID = 126884;
 // const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
 //   ? Number(process.env.FORCE_MATCH_ID)
@@ -515,8 +518,6 @@ async function pollingLoop() {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
         continue;
       }
-      // let resp = null;
-      // resp = await postTweet_web(tweetContent);
 
       await postTweet_console(tweetContent);
       let resp = null;
