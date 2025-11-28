@@ -29,7 +29,9 @@ function buildHashtags(match, team1Short, team2Short) {
     .join(" ");
 }
 
-export async function buildTemplateTweet({ match, innings, event }) {
+export function buildTemplateTweet({ match, innings, event, players }) {
+  if (!match || !event) return null;
+
   if (event.type === "TOSS") {
     const { tossText } = event;
 
@@ -43,13 +45,18 @@ export async function buildTemplateTweet({ match, innings, event }) {
   }
 
   if (event.type === "MATCH_RESULT") {
-    return buildMatchResultTemplate(match, event.resultText);
+    const output = buildMatchResultTemplate(match, event.resultText);
+
+    if (!output || typeof output !== "string") {
+      return `🏆 Match Result\n\n${event.resultText}\n\n#${match.team1Short}vs${match.team2Short}`;
+    }
+
+    return output;
+    // return buildMatchResultTemplate(match, event.resultText);
   }
   if (!event?.type) return null;
 
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
-  // const SHOULD_ADD_HEADER = globalThis.TWEET_COUNTER % 5 === 0;
-  const SHOULD_ADD_HEADER = true;
 
   const team = innings?.batteamname || "";
   const opponent =
@@ -57,11 +64,6 @@ export async function buildTemplateTweet({ match, innings, event }) {
       ? match.team2
       : match.team1;
 
-  const isPakInvolved =
-    team.toLowerCase().includes("pakistan") ||
-    opponent.toLowerCase().includes("pakistan");
-
-  // const isOpponentBatting = !team.toLowerCase().includes("india");
   const isIndiaBatting = team.toLowerCase().includes("india");
 
   const emojiPack = getEmojiPack(team, opponent);
@@ -100,8 +102,6 @@ export async function buildTemplateTweet({ match, innings, event }) {
       ? emojiPack.hit[Math.floor(Math.random() * emojiPack.hit.length)]
       : emojiPack.hit[Math.floor(Math.random() * emojiPack.hit.length)];
 
-  // const EMOJI = "";
-
   let text = "";
 
   if (event.type === "SIX" || event.type === "FOUR") {
@@ -135,15 +135,6 @@ export async function buildTemplateTweet({ match, innings, event }) {
     text = body.replace("{RUNS}", innings.runs).replace("{EMOJI}", EMOJI);
   }
 
-  // else if (event.type === "BOWLER_MILESTONE") {
-  //   text = body
-  //     .replace("{BOWLER}", event.bowlerName)
-  //     .replace("{WICKETS}", event.wickets)
-  //     .replace("{RUNS}", event.runs)
-  //     .replace("{OVERS}", event.overs)
-  //     .replace("{EMOJI}", EMOJI);
-  // }
-
   const baseScoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
 
   const targetLine = innings.targetInning?.battingTeamName
@@ -166,31 +157,12 @@ export async function buildTemplateTweet({ match, innings, event }) {
 
   const variations = [
     `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
-
-    `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
-
-    `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
-
-    `${universalHeader}\n\n${text}\n\n${match.status}\n\n${hashtags}`,
-
+    `${universalHeader}\n\n${text}\n\n${scoreLine}${match.status}\n\n${hashtags}`,
     `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
-
-    `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+    `${universalHeader}\n\n${text}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+    `${text}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+    `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}\n\n${hashtags}`,
   ];
-
-  // const variations = [
-  //   `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
-
-  //   `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
-
-  //   `${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
-
-  //   `${text}\n\n${match.status}\n\n${hashtags}`,
-
-  //   `${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
-
-  //   `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
-  // ];
 
   const finalOut = variations[Math.floor(Math.random() * variations.length)];
   return finalOut.trim();

@@ -5,19 +5,16 @@ dotenv.config();
 import generateTweet from "../ai.js";
 import { postTweet_console, postTweet_web } from "../twitter.js";
 
-import { shortTeamName } from "../utils/formatter.js";
 import { createLogger } from "../utils/logger.js";
 import { loadState, saveState } from "../utils/stateStore.js";
+import { buildMatchContext } from "./buildMatchContext.js";
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 import {
   detectBatsmanMilestone,
-  detectBowlerMilestone,
   detectFour,
   detectPartnership,
   detectSix,
   detectWicket,
-  getActiveBattersFromInnings,
-  getPartnershipContributions,
 } from "./inningsDetector.js";
 import { buildTemplateTweet } from "./templateEngine.js";
 
@@ -27,12 +24,9 @@ globalThis.LAST_BALL = null;
 globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
 
-const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
 
-console.log("USE_WEB_TWEET value on railway:", process.env.USE_WEB_TWEET);
-console.log("USE_WEB_TWEET flag:", USE_WEB_TWEET);
-
-const FORCE_MATCH_ID = 126884;
+const FORCE_MATCH_ID = 138006;
 // const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
 //   ? Number(process.env.FORCE_MATCH_ID)
 //   : null;
@@ -58,19 +52,28 @@ function extractTossInfo(comm) {
   };
 }
 
-function getCorrectInnings(scoreRes, mini) {
+function getCorrectInnings(scoreRes) {
   const card = scoreRes?.scorecard;
   if (!card || card.length === 0) return null;
 
-  if (mini?.inningsid) {
-    const byMini = card.find((i) => i.inningsid === mini.inningsid);
-    if (byMini) return byMini;
+  const first = card[0];
+  const second = card[1];
+
+  // 1️⃣ If 2nd innings exists and has ANY activity → choose it
+  if (second) {
+    const hasStarted =
+      Number(second.overs) > 0 ||
+      Number(second.runs) > 0 ||
+      Number(second.wickets) > 0 ||
+      Number(second.ballnbr) > 0;
+
+    if (hasStarted) return second;
   }
 
-  const live = card.reduce((a, b) => (a.ballnbr > b.ballnbr ? a : b));
-
-  return live || card[card.length - 1];
+  // 2️⃣ Else pick the innings with highest ballnbr
+  return card.reduce((a, b) => (a.ballnbr > b.ballnbr ? a : b));
 }
+
 function getFirstInnings(scoreRes, mini) {
   const firstInning = scoreRes?.scorecard[0];
   return {
@@ -82,171 +85,6 @@ function getFirstInnings(scoreRes, mini) {
   };
 }
 
-function normalizeOvers(overs) {
-  if (!overs) return overs;
-  const p = overs.toString().split(".");
-  const o = parseInt(p[0]);
-  const b = parseInt(p[1] || "0");
-  return b === 6 ? (o + 1).toFixed(1).replace(".0", "") : overs;
-}
-
-function buildMatchContext({
-  comm,
-  currInnings,
-  event,
-  isMatchComplete,
-  firstInnings,
-}) {
-  const mini = comm?.miniscore || {};
-  const headers = comm?.matchheaders || {};
-
-  if (event?.type === "MATCH_RESULT") {
-    const match = {
-      name:
-        headers?.matchdescription ||
-        `${headers?.team1?.teamname || ""} vs ${
-          headers?.team2?.teamname || ""
-        }`.trim(),
-
-      team1: headers?.team1?.teamname || "",
-      team2: headers?.team2?.teamname || "",
-      team1Short:
-        headers?.team1?.teamsname ||
-        shortTeamName(headers?.team1?.teamname || ""),
-      team2Short:
-        headers?.team2?.teamsname ||
-        shortTeamName(headers?.team2?.teamname || ""),
-
-      format: headers?.matchformat || "",
-      status: event?.resultText || headers?.status || "",
-      venue: headers?.venue || "",
-      isMatchComplete: true,
-    };
-
-    return {
-      match,
-      innings: null,
-      event,
-      players: {},
-    };
-  }
-
-  if (event?.type === "TOSS") {
-    const match = {
-      name:
-        headers?.matchdescription ||
-        `${headers?.team1?.teamname || ""} vs ${
-          headers?.team2?.teamname || ""
-        }`.trim(),
-
-      team1: headers?.team1?.teamname || "",
-      team2: headers?.team2?.teamname || "",
-      team1Short:
-        headers?.team1?.teamsname ||
-        shortTeamName(headers?.team1?.teamname || ""),
-      team2Short:
-        headers?.team2?.teamsname ||
-        shortTeamName(headers?.team2?.teamname || ""),
-
-      format: headers?.matchformat || "",
-      status: headers?.status || "",
-      venue: headers?.venue || "",
-      isMatchComplete: false,
-    };
-
-    const displayMatchObject = {
-      event, // has tossWinner, tossDecision, tossText
-      team1: match.team1,
-      team2: match.team2,
-      team1Short: match.team1Short,
-      team2Short: match.team2Short,
-      format: match.format,
-      status: match.status,
-      players: {},
-    };
-
-    return {
-      match,
-      innings: null,
-      event,
-      players: {},
-      displayMatchObject,
-    };
-  }
-  const active = getActiveBattersFromInnings(currInnings);
-  const partnership = getPartnershipContributions(currInnings);
-
-  const players = {
-    striker: active.bat1,
-    nonStriker: active.bat2,
-    strikerRuns: "",
-    strikerBallsPlayed: "",
-    nonStrikerRuns: "",
-    nonStrikerBallsPlayed: "",
-    bowler: mini?.bowlerstriker?.name || "",
-  };
-
-  if (event?.type === "WICKET" && event?.batterName) {
-    players.striker = event.batterName;
-  }
-
-  const match = {
-    name:
-      headers?.matchdescription ||
-      `${headers?.team1?.teamname || ""} vs ${
-        headers?.team2?.teamname || ""
-      }`.trim(),
-    team1: headers?.team1?.teamname || "",
-    team2: headers?.team2?.teamname || "",
-    team1Short:
-      headers?.team1?.teamsname ||
-      shortTeamName(headers?.team1?.teamname || ""),
-    team2Short:
-      headers?.team2?.teamsname ||
-      shortTeamName(headers?.team2?.teamname || ""),
-    format: headers?.matchformat || "",
-    status: headers?.status || "",
-    venue: headers?.venue || "",
-    isMatchComplete,
-  };
-
-  const innings = {
-    inningsid: currInnings.inningsid,
-    runs: currInnings.score,
-    wickets: currInnings.wickets,
-    overs: normalizeOvers(currInnings.overs),
-    batteamname: currInnings.batteamname,
-    batteamsname: currInnings.batteamsname,
-    partnership: currInnings.partnership,
-    batsman: currInnings.batsman,
-    bowler: currInnings.bowler,
-    partnership,
-    targetInning: firstInnings,
-  };
-
-  const displayMatchObject = {
-    event,
-    team1: headers?.team1?.teamname || "",
-    team2: headers?.team2?.teamname || "",
-    team1Short:
-      headers?.team1?.teamsname ||
-      shortTeamName(headers?.team1?.teamname || ""),
-    team2Short:
-      headers?.team2?.teamsname ||
-      shortTeamName(headers?.team2?.teamname || ""),
-    format: headers?.matchformat || "",
-    status: headers?.status || "",
-    players,
-  };
-
-  return {
-    match,
-    innings,
-    event,
-    players,
-    displayMatchObject,
-  };
-}
 let STATE = loadState();
 async function startBot() {
   if (MATCH_ID) {
@@ -285,19 +123,23 @@ async function pollingLoop() {
 
     const score = await getMatchScore(MATCH_ID);
 
-    // console.log(JSON.stringify(score, null, 2));
-
-    const isMatchComplete = score?.ismatchcomplete;
     let comm = null;
+    const mini = comm?.miniscore || {};
+    const firstInnings = getFirstInnings(score, mini);
+    const isMatchComplete = score?.ismatchcomplete;
     try {
       comm = await getCommentary(MATCH_ID);
-      // --------------------------------------
-      // 🔥 TOSS Detection
-      // --------------------------------------
+
       try {
         const toss = extractTossInfo(comm);
+        const ballNbrFromMini = comm?.miniscore?.ballnbr ?? null;
+        const inningsFromScore = score?.scorecard?.[0]?.ballnbr ?? null;
 
-        if (toss && !STATE[`toss_${MATCH_ID}`]) {
+        const matchStarted =
+          (ballNbrFromMini !== null && ballNbrFromMini > 0) ||
+          (inningsFromScore !== null && inningsFromScore > 0);
+
+        if (toss && !STATE[`toss_${MATCH_ID}`] && !matchStarted) {
           STATE[`toss_${MATCH_ID}`] = true;
           saveState(STATE);
 
@@ -311,7 +153,7 @@ async function pollingLoop() {
             currInnings: null,
             event: syntheticEvent,
             isMatchComplete: false,
-            firstInnings: null,
+            firstInnings: null, //vishal
           });
 
           const tweet = buildTemplateTweet(matchContext);
@@ -332,9 +174,6 @@ async function pollingLoop() {
 
     const playingTeam1 = comm?.matchheaders?.team1.teamname || "";
     const playingTeam2 = comm?.matchheaders?.team2.teamname || "";
-
-    // console.log("score::", score);
-    // console.log(JSON.stringify(score, null, 2));
 
     if (score?.ismatchcomplete && score?.status) {
       if (!STATE[`result_${MATCH_ID}`]) {
@@ -372,9 +211,36 @@ async function pollingLoop() {
       return pollingLoop();
     }
 
-    const mini = comm?.miniscore || {};
-    const currInnings = getCorrectInnings(score, mini);
-    const firstInnings = getFirstInnings(score, mini);
+    const currInnings = getCorrectInnings(score);
+    const newInningsId = currInnings?.inningsid;
+    const newTeam = currInnings?.batteamname;
+
+    if (!globalThis.PREV_INNINGS_ID) {
+      globalThis.PREV_INNINGS_ID = newInningsId;
+      globalThis.PREV_BATTEAM = newTeam;
+    }
+
+    const changed =
+      globalThis.PREV_INNINGS_ID !== newInningsId ||
+      globalThis.PREV_BATTEAM !== newTeam;
+
+    if (changed) {
+      console.log("🆕 New innings detected — resetting state");
+
+      globalThis.LAST_HASH = null;
+      globalThis.LAST_BALL = null;
+      globalThis.LAST_EVENT_BALL = {};
+      globalThis.PREV_SNAPSHOT = null;
+
+      globalThis.PREV_INNINGS_ID = newInningsId;
+      globalThis.PREV_BATTEAM = newTeam;
+
+      return;
+    }
+
+    if (!globalThis.PREV_INNINGS_ID) {
+      globalThis.PREV_INNINGS_ID = currInnings.inningsid;
+    }
 
     if (!currInnings) {
       log("⚠ No innings found in scorecard");
@@ -390,19 +256,6 @@ async function pollingLoop() {
       globalThis.LAST_BALL = currInnings.ballnbr ?? null;
       console.log("📌 Initial innings snapshot saved");
       console.log(`💥 ${playingTeam1} Vs ${playingTeam2} 💥`);
-
-      await wait(POLL_WAIT_TIME);
-      return pollingLoop();
-    }
-    if (prevInnings.inningsid !== currInnings.inningsid) {
-      log("🔁 New innings detected — resetting all trackers");
-
-      globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
-      globalThis.LAST_OVER = parseFloat(currInnings.overs) || 0;
-      globalThis.LAST_BALL = currInnings.ballnbr ?? 0;
-
-      globalThis.LAST_EVENT_BALL = {}; // reset event dedupe map
-      globalThis.LAST_PARTNERSHIP_MILESTONE = 0; // reset milestone tracking
 
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
@@ -474,7 +327,10 @@ async function pollingLoop() {
     }
 
     const evPartnership = detectPartnership(prevInnings, currInnings);
-    if (evPartnership) events.push(evPartnership);
+
+    if (evPartnership && evPartnership.type !== "PARTNERSHIP_UPDATED") {
+      events.push(evPartnership);
+    }
 
     globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
     globalThis.LAST_OVER = oversNow;
@@ -496,6 +352,7 @@ async function pollingLoop() {
         }
         globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
       }
+      console.log("singleEvent::", singleEvent);
       const matchContext = buildMatchContext({
         comm,
         currInnings,
@@ -507,12 +364,8 @@ async function pollingLoop() {
       log("matchContext:::");
       log(matchContext);
 
-      // console.log("matchContext:::", JSON.stringify(matchContext, null, 2));
-
-      console.log("Evenet type::", matchContext.event);
-
       const tweetContent = await generateTweet(matchContext);
-      console.log("tweetContent:::", tweetContent);
+      //   console.log("tweetContent:::", tweetContent);
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
@@ -529,11 +382,6 @@ async function pollingLoop() {
       }
 
       if (resp?.id) log(`🟢 WEB Tweet posted for event: ${singleEvent.type}!`);
-      // await postTweet_console(tweetContent);
-      // let resp = null;
-      // if (USE_WEB_TWEET) {
-      //   resp = await postTweet_web(tweetContent);
-      // }
 
       if (resp?.id) log(`🟢 Tweet posted for event: ${singleEvent.type}!`);
       else log(`⚠ Tweet NOT posted for event: ${singleEvent.type}`);

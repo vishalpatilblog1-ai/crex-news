@@ -14,15 +14,16 @@ const twitterClient = new TwitterApi({
 });
 
 export async function postTweet_console(text) {
-  if (!text?.trim()) {
-    log("⚠ Empty tweet skipped (console mode)");
+  if (typeof text !== "string") {
+    log("❌ Invalid tweet (not a string)");
+    console.log("INVALID TWEET:", text);
     return;
   }
 
-  log("=============================");
-  log("🟦 AI PROD TWEET (CONSOLE MODE):");
-  log(text);
-  log("=============================");
+  if (!text.trim()) {
+    log("⚠ Empty tweet skipped (console mode)");
+    return;
+  }
 
   console.log("=============================");
   console.log("🟦 AI PROD TWEET (CONSOLE MODE):");
@@ -34,8 +35,14 @@ export async function postTweet_console(text) {
 
 export async function postTweet_web(text) {
   try {
-    if (!text?.trim()) {
-      log("⚠ Empty tweet skipped (web mode)");
+    if (typeof text !== "string") {
+      log("❌ Invalid tweet (not a string)");
+      console.log("INVALID TWEET:", text);
+      return;
+    }
+
+    if (!text.trim()) {
+      log("⚠ Empty tweet skipped (console mode)");
       return;
     }
 
@@ -52,13 +59,3 @@ export async function postTweet_web(text) {
     log(err);
   }
 }
-
-// export default async function postTweet(text) {
-//   try {
-//     const res = await twitterClient.v2.tweet(text);
-//     console.log("Tweet Response:", res);
-//     return res.data;
-//   } catch (err) {
-//     console.error("❌ Error posting tweet:", err);
-//   }
-// }

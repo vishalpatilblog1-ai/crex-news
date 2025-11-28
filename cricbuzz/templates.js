@@ -84,27 +84,26 @@ const EVENT_HEADERS = {
 // -----------------------------------------------
 const BODIES = {
   SIX: [
-    "{BATTER} smashes a SIX 6️⃣  {EMOJI} ",
-    "{BATTER} sends it soaring for SIX! 6️⃣  {EMOJI}",
-    "Massive SIX by {BATTER}! 6️⃣  {EMOJI}",
-    "What a hit! {BATTER} goes downtown! 6️⃣  {EMOJI}",
-    "Clean strike — SIX by {BATTER}! 6️⃣  {EMOJI}",
+    "{BATTER} smashes a SIX! 6️⃣ {EMOJI}",
+    "{BATTER} sends it soaring for SIX! 6️⃣ {EMOJI}",
+    "Massive hit! {BATTER} goes all the way for SIX! 6️⃣ {EMOJI}",
+    "What a strike! {BATTER} sends it downtown — SIX! 6️⃣ {EMOJI}",
+    "Clean connection from {BATTER} — SIX! 6️⃣ {EMOJI}",
   ],
 
   FOUR: [
-    "{BATTER} finds the boundary — FOUR! 4️⃣  {EMOJI}",
-    "Sweet timing! FOUR by {BATTER} 4️⃣  {EMOJI}",
-    "Classy shot — FOUR! 4️⃣  {EMOJI}",
-    "Lovely placement from {BATTER} — FOUR! 4️⃣  {EMOJI}",
-    "FOUR! {BATTER} keeps the scoreboard ticking 4️⃣  {EMOJI}",
+    "{BATTER} finds the gap — FOUR! 4️⃣ {EMOJI}",
+    "Sweet timing from {BATTER} — FOUR! 4️⃣ {EMOJI}",
+    "Classy shot by {BATTER} — FOUR! 4️⃣ {EMOJI}",
+    "{BATTER} places it beautifully — FOUR! 4️⃣ {EMOJI}",
+    "FOUR! {BATTER} keeps the scoreboard moving 4️⃣ {EMOJI}",
   ],
-
   WICKET: [
-    "WICKET! {BATTER} is gone! {EMOJI}",
-    "{BOWLER} strikes — {BATTER} departs! {EMOJI}",
-    "{BATTER} dismissed! Big moment! {EMOJI}",
-    "Breakthrough! {BATTER} is out! {EMOJI}",
-    "{BOWLER} removes {BATTER}! {EMOJI}",
+    "WICKET! {BOWLER} gets {BATTER} {EMOJI}",
+    "{BOWLER} gets the wicket — {BATTER} departs {EMOJI}",
+    "{BATTER} is dismissed — courtesy of {BOWLER} {EMOJI}",
+    "Break in play — {BOWLER} sends back {BATTER} {EMOJI}",
+    "{BOWLER} removes {BATTER} {EMOJI}",
   ],
 
   BATSMAN_MILESTONE: [
@@ -130,35 +129,29 @@ const BODIES = {
     "Team moves to {RUNS}! Positive batting {EMOJI}",
     "{RUNS} comes up! Momentum on {EMOJI}",
   ],
-
-  // BOWLER_MILESTONE: [
-  //   `{BOWLER} finishes with {WICKETS}/{RUNS} in {OVERS} overs {EMOJI}`,
-  //   `What a spell! {BOWLER} grabs {WICKETS}-for {RUNS} in {OVERS} overs {EMOJI}`,
-  // ],
 };
 const BODIES_OPPONENT = {
   SIX: [
-    "{BATTER} smashes a SIX! 6️⃣",
-    "{BATTER} sends it soaring for SIX! 6️⃣",
-    "SIX by {BATTER}! 6️⃣",
-    "{BATTER} goes downtown! 6️⃣",
-    "strike — SIX by {BATTER}! 6️⃣",
+    "{BATTER} hits a SIX 6️⃣",
+    "SIX for {BATTER} 6️⃣",
+    "{BATTER} sends it over for SIX 6️⃣",
+    "SIX from {BATTER} 6️⃣",
+    "{BATTER} goes for a clean SIX 6️⃣",
   ],
 
   FOUR: [
     "{BATTER} finds the boundary — FOUR! 4️⃣",
-    "FOUR by {BATTER} 4️⃣",
-    "FOUR! 4️⃣",
-    "{BATTER} — FOUR! 4️⃣",
-    "FOUR! {BATTER} keeps the scoreboard ticking 4️⃣",
+    "FOUR for {BATTER} 4️⃣",
+    "{BATTER} sends it for FOUR 4️⃣",
+    "{BATTER} guides it away — FOUR 4️⃣",
+    "FOUR! {BATTER} keeps the scoreboard moving 4️⃣",
   ],
-
   WICKET: [
-    "WICKET! {BATTER} is gone! {EMOJI}",
-    "{BOWLER} strikes — {BATTER} departs! {EMOJI}",
-    "{BATTER} dismissed! Big moment! {EMOJI}",
-    "Breakthrough! {BATTER} is out! {EMOJI}",
-    "{BOWLER} removes {BATTER}! {EMOJI}",
+    "WICKET! {BOWLER} gets {BATTER} {EMOJI}",
+    "{BOWLER} dismisses {BATTER} {EMOJI}",
+    "{BATTER} is out — {BOWLER} with the wicket {EMOJI}",
+    "{BOWLER} sends back {BATTER} {EMOJI}",
+    "Break in play — {BOWLER} removes {BATTER} {EMOJI}",
   ],
 
   BATSMAN_MILESTONE: [

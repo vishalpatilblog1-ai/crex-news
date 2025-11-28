@@ -8,6 +8,7 @@ import {
 } from "../utils/constants.js";
 
 export function detectFour(prev, curr) {
+  // console.log("detectFour curr:::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
@@ -29,6 +30,7 @@ export function detectFour(prev, curr) {
 }
 
 export function detectSix(prev, curr) {
+  // console.log("detectSix curr:::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
@@ -64,6 +66,7 @@ export function detectPartnership(prev, curr) {
     prevActive.bat1id !== currActive.bat1id ||
     prevActive.bat2id !== currActive.bat2id;
 
+  // 🔁 New partnership
   if (isNewPair) {
     return {
       type: "NEW_PARTNERSHIP",
@@ -74,12 +77,28 @@ export function detectPartnership(prev, curr) {
     };
   }
 
+  // 📈 Partnership increment
   if (currActive.totalruns > prevActive.totalruns) {
+    const runs = currActive.totalruns;
+
+    // 🔥 MILESTONES ONLY (50/100/150/200...)
+    if (runs % 50 === 0) {
+      return {
+        type: "PARTNERSHIP_MILESTONE",
+        milestone: runs, // 50 / 100 / 150
+        bat1: currActive.bat1name,
+        bat2: currActive.bat2name,
+        runs,
+        balls: currActive.totalballs,
+      };
+    }
+
+    // ❌ Normal update — NO TWEET
     return {
-      type: EVENT_TYPES.PARTNERSHIP_UPDATED,
+      type: "PARTNERSHIP_UPDATED",
       bat1: currActive.bat1name,
       bat2: currActive.bat2name,
-      runs: currActive.totalruns,
+      runs,
       balls: currActive.totalballs,
     };
   }
@@ -88,6 +107,7 @@ export function detectPartnership(prev, curr) {
 }
 
 export function detectWicket(prev, curr) {
+  // console.log("detectWicket curr:::", curr);
   if (!prev || !curr) return null;
   if (!curr.fow || !curr.fow.fow) return null;
 

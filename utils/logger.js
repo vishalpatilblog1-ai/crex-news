@@ -57,6 +57,8 @@ export function createLogger(type = "local") {
       msg = JSON.stringify(msg, null, 2);
     }
 
+    // console.log(msg);
+
     rotateLogs(filePath);
 
     const line = ts ? `[${formatTS()}] ${msg}` : msg;
