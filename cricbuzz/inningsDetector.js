@@ -194,7 +194,6 @@ export function detectBatsmanMilestone(prev, curr) {
   return null;
 }
 export function detectBowlerMilestone(prev, curr) {
-  console.log("detectBowlerMilestone::", detectBowlerMilestone);
   if (!prev || !curr) return null;
 
   const prevMap = {};

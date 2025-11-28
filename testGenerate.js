@@ -1,27 +1,14 @@
-// import generateTweet from "./ai.js";
-
 import generateTweet from "./ai.js";
-import { matchContextdata } from "./matchContextData.js";
-import {
-  matchContextT20Array,
-  matchContextTestMatchArray,
-} from "./public/dummyData.js";
+import { matchContextData_india_batting } from "./matchContextData_india_batting.js";
+import { matchContextData_india_bowling } from "./matchContextData_india_bowling.js";
+import { matchContextdata_other } from "./matchContextData_other.js";
 
 async function test() {
-  // matchContextTestMatchArray.map(async (item) => {
-  const tweet = await generateTweet(matchContextdata);
-
-  console.log("\n=======================");
-  console.log("FINAL GENERATED TWEET:");
-  console.log("=======================\n");
-  console.log(tweet);
-  // });
-  //   const tweet = await generateTweet(matchContext3);
-
-  //   console.log("\n=======================");
-  //   console.log("FINAL GENERATED TWEET:");
-  //   console.log("=======================\n");
-  //   console.log(tweet);
+  for (let index = 0; index < 10; index++) {
+    const tweet = await generateTweet(matchContextData_india_batting);
+    console.log("\n=======================\n");
+    console.log(tweet);
+  }
 }
 
 test();

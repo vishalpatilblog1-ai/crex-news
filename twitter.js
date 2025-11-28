@@ -24,6 +24,11 @@ export async function postTweet_console(text) {
   log(text);
   log("=============================");
 
+  console.log("=============================");
+  console.log("🟦 AI PROD TWEET (CONSOLE MODE):");
+  console.log(text);
+  console.log("=============================");
+
   return { status: "console_ok", text };
 }
 
@@ -37,6 +42,9 @@ export async function postTweet_web(text) {
     const res = await twitterClient.v2.tweet(text);
     log("📤 Tweet POSTED via API:");
     log(JSON.stringify(res.data, null, 2));
+
+    console.log("📤 Tweet POSTED via API:");
+    console.log(JSON.stringify(res.data, null, 2));
 
     return res.data;
   } catch (err) {

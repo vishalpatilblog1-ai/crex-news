@@ -1,13 +1,13 @@
-//templateEngine
+//templateEngine.js
+
+import { generatePrediction } from "./ai/aiPrediction.js";
+import { generateStatusTone } from "./ai/aiStatusTone.js";
 import {
   TEMPLATES,
   buildMatchResultTemplate,
   getEmojiPack,
 } from "./templates.js";
 
-// ==========================================================
-// AUTO HASHTAG GENERATOR
-// ==========================================================
 function buildHashtags(match, team1Short, team2Short) {
   if (!team1Short || !team2Short) return "";
 
@@ -29,7 +29,7 @@ function buildHashtags(match, team1Short, team2Short) {
     .join(" ");
 }
 
-export function buildTemplateTweet({ match, innings, event }) {
+export async function buildTemplateTweet({ match, innings, event }) {
   if (event.type === "TOSS") {
     const { tossText } = event;
 
@@ -48,7 +48,8 @@ export function buildTemplateTweet({ match, innings, event }) {
   if (!event?.type) return null;
 
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
-  const SHOULD_ADD_HEADER = globalThis.TWEET_COUNTER % 5 === 0;
+  // const SHOULD_ADD_HEADER = globalThis.TWEET_COUNTER % 5 === 0;
+  const SHOULD_ADD_HEADER = true;
 
   const team = innings?.batteamname || "";
   const opponent =
@@ -60,6 +61,9 @@ export function buildTemplateTweet({ match, innings, event }) {
     team.toLowerCase().includes("pakistan") ||
     opponent.toLowerCase().includes("pakistan");
 
+  // const isOpponentBatting = !team.toLowerCase().includes("india");
+  const isIndiaBatting = team.toLowerCase().includes("india");
+
   const emojiPack = getEmojiPack(team, opponent);
 
   const universalHeader = TEMPLATES.HEADERS[
@@ -70,8 +74,22 @@ export function buildTemplateTweet({ match, innings, event }) {
   const eventHeader =
     eventHeaders[Math.floor(Math.random() * eventHeaders.length)];
 
-  const bodies = TEMPLATES.BODIES[event.type];
-  if (!bodies) return null;
+  const bodies = !isIndiaBatting
+    ? TEMPLATES.BODIES_OPPONENT[event.type]
+    : TEMPLATES.BODIES[event.type];
+
+  if (!bodies) {
+    const scoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+    const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
+
+    const fallbackOptions = [
+      `${scoreLine}\n\n${match.status}\n\n${hashtags}`,
+      `Score Update:\n${scoreLine}\n\n${match.status}\n\n${hashtags}`,
+      `${scoreLine}\n\n${hashtags}`,
+    ];
+
+    return fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
+  }
 
   const body = bodies[Math.floor(Math.random() * bodies.length)];
 
@@ -80,65 +98,11 @@ export function buildTemplateTweet({ match, innings, event }) {
       ? emojiPack.wicket[Math.floor(Math.random() * emojiPack.wicket.length)]
       : event.type === "SIX" || event.type === "FOUR"
       ? emojiPack.hit[Math.floor(Math.random() * emojiPack.hit.length)]
-      : emojiPack.neutral[Math.floor(Math.random() * emojiPack.neutral.length)];
+      : emojiPack.hit[Math.floor(Math.random() * emojiPack.hit.length)];
+
+  // const EMOJI = "";
 
   let text = "";
-
-  if (isPakInvolved) {
-    const safeNeutralEmoji = ["🔹", "⚡", "📛", "🎯", "💠"];
-    const PAK_EMOJI =
-      safeNeutralEmoji[Math.floor(Math.random() * safeNeutralEmoji.length)];
-
-    const pakHeaders = [
-      "🚨 {MATCH} Live 🚨",
-      "📢 {MATCH} Update 📢",
-      "🔥 {MATCH} Moment 🔥",
-    ];
-
-    const pakHeader = pakHeaders[
-      Math.floor(Math.random() * pakHeaders.length)
-    ].replace("{MATCH}", `${match.team1Short} vs ${match.team2Short}`);
-
-    if (event.type === "SIX" || event.type === "FOUR") {
-      text = `{BATTER} hits a ${event.type} ${PAK_EMOJI}`.replace(
-        "{BATTER}",
-        event.batterName || innings?.batsman?.[0]?.name || "Batter"
-      );
-    } else if (event.type === "WICKET") {
-      text = `{BATTER} is out. ${PAK_EMOJI}`.replace(
-        "{BATTER}",
-        event.batterName || "Batter"
-      );
-    } else if (event.type === "BATSMAN_MILESTONE") {
-      text = `{BATTER} reaches {RUNS}* ({BALLS}). ${PAK_EMOJI}`
-        .replace("{BATTER}", event.batterName)
-        .replace("{RUNS}", event.runs)
-        .replace("{BALLS}", event.balls);
-    } else if (event.type === "PARTNERSHIP_MILESTONE") {
-      text = `Partnership reaches {RUNS}. ${PAK_EMOJI}`.replace(
-        "{RUNS}",
-        event.totalRuns
-      );
-    } else if (event.type === "TEAM_MILESTONE") {
-      text = `Team total reaches {RUNS}. ${PAK_EMOJI}`.replace(
-        "{RUNS}",
-        innings.runs
-      );
-    } else if (event.type === "BOWLER_MILESTONE") {
-      text = `{BOWLER} completes a {WICKETS}! ${PAK_EMOJI}`
-        .replace("{BOWLER}", event.bowlerName)
-        .replace("{WICKETS}", event.wickets);
-    }
-
-    const scoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
-    const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
-
-    let out = "";
-    if (SHOULD_ADD_HEADER) out += `${pakHeader}\n\n`;
-
-    out += `${text}\n\n${scoreLine}\n\n${match.status}\n\n${hashtags}`;
-    return out.trim();
-  }
 
   if (event.type === "SIX" || event.type === "FOUR") {
     text = body
@@ -169,25 +133,51 @@ export function buildTemplateTweet({ match, innings, event }) {
       .replace("{EMOJI}", EMOJI);
   } else if (event.type === "TEAM_MILESTONE") {
     text = body.replace("{RUNS}", innings.runs).replace("{EMOJI}", EMOJI);
-  } else if (event.type === "BOWLER_MILESTONE") {
-    text = body
-      .replace("{BOWLER}", event.bowlerName)
-      .replace("{WICKETS}", event.wickets)
-      .replace("{RUNS}", event.runs)
-      .replace("{OVERS}", event.overs)
-      .replace("{EMOJI}", EMOJI);
   }
 
-  // ==========================================================
-  // SCORELINE & FINAL OUTPUT
-  // ==========================================================
-  const scoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+  // else if (event.type === "BOWLER_MILESTONE") {
+  //   text = body
+  //     .replace("{BOWLER}", event.bowlerName)
+  //     .replace("{WICKETS}", event.wickets)
+  //     .replace("{RUNS}", event.runs)
+  //     .replace("{OVERS}", event.overs)
+  //     .replace("{EMOJI}", EMOJI);
+  // }
+
+  const baseScoreLine = `${innings.batteamsname} - ${innings.runs}/${innings.wickets} (${innings.overs} Overs)`;
+
+  const targetLine = innings.targetInning?.battingTeamName
+    ? `${innings.targetInning.battingTeamName} - ${innings.targetInning.targetRuns}/${innings.targetInning.targetWicket} (${innings.targetInning.targetOvers})`
+    : "";
+  let targetLineShort = "";
+  if (event.type === "WICKET" && innings.targetInning?.targetRuns) {
+    targetLineShort = `Target (${innings.targetInning.battingTeamShortName}): ${innings.targetInning.targetRuns}`;
+  }
+
+  // Easy helper to include target only when it exists
+  const maybeTarget = targetLineShort ? `${targetLineShort}\n\n` : "\n";
+
+  const scoreLine = `${baseScoreLine}`;
+
+  // const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
   const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
 
-  let finalOut = "";
-  if (SHOULD_ADD_HEADER) finalOut += `${universalHeader}\n\n`;
+  text = isIndiaBatting ? text.toUpperCase() : text;
 
-  finalOut += `${eventHeader}\n${text}\n\n${scoreLine}\n\n${match.status}\n\n${hashtags}`;
+  const variations = [
+    `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
 
+    `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
+
+    `${universalHeader}\n\n${text}\n\n${scoreLine}\n${maybeTarget}${hashtags}`,
+
+    `${universalHeader}\n\n${text}\n\n${match.status}\n\n${hashtags}`,
+
+    `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+
+    `${universalHeader}\n\n${scoreLine}\n${maybeTarget}${match.status}\n\n${hashtags}`,
+  ];
+
+  const finalOut = variations[Math.floor(Math.random() * variations.length)];
   return finalOut.trim();
 }

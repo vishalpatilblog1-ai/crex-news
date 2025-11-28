@@ -29,10 +29,10 @@ globalThis.LAST_EVENT_BALL = {};
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
-// const FORCE_MATCH_ID = 134452;
-const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
-  ? Number(process.env.FORCE_MATCH_ID)
-  : null;
+const FORCE_MATCH_ID = 126884;
+// const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
+//   ? Number(process.env.FORCE_MATCH_ID)
+//   : null;
 
 let MATCH_ID = FORCE_MATCH_ID || 0;
 let MATCH_NAME = FORCE_MATCH_ID ? `Forced Match #${FORCE_MATCH_ID}` : "";
@@ -68,6 +68,16 @@ function getCorrectInnings(scoreRes, mini) {
 
   return live || card[card.length - 1];
 }
+function getFirstInnings(scoreRes, mini) {
+  const firstInning = scoreRes?.scorecard[0];
+  return {
+    targetRuns: firstInning.score,
+    targetWicket: firstInning.wickets,
+    targetOvers: firstInning.overs,
+    battingTeamName: firstInning.batteamname,
+    battingTeamShortName: firstInning.batteamsname,
+  };
+}
 
 function normalizeOvers(overs) {
   if (!overs) return overs;
@@ -77,7 +87,13 @@ function normalizeOvers(overs) {
   return b === 6 ? (o + 1).toFixed(1).replace(".0", "") : overs;
 }
 
-function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
+function buildMatchContext({
+  comm,
+  currInnings,
+  event,
+  isMatchComplete,
+  firstInnings,
+}) {
   const mini = comm?.miniscore || {};
   const headers = comm?.matchheaders || {};
 
@@ -109,7 +125,6 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
       innings: null,
       event,
       players: {},
-      displayMatchObject: {},
     };
   }
 
@@ -203,6 +218,7 @@ function buildMatchContext({ comm, currInnings, event, isMatchComplete }) {
     batsman: currInnings.batsman,
     bowler: currInnings.bowler,
     partnership,
+    targetInning: firstInnings,
   };
 
   const displayMatchObject = {
@@ -262,8 +278,11 @@ async function startBot() {
 async function pollingLoop() {
   try {
     log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`, true);
+    console.log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`);
 
     const score = await getMatchScore(MATCH_ID);
+
+    // console.log(JSON.stringify(score, null, 2));
 
     const isMatchComplete = score?.ismatchcomplete;
     let comm = null;
@@ -289,6 +308,7 @@ async function pollingLoop() {
             currInnings: null,
             event: syntheticEvent,
             isMatchComplete: false,
+            firstInnings: null,
           });
 
           const tweet = buildTemplateTweet(matchContext);
@@ -328,6 +348,7 @@ async function pollingLoop() {
           currInnings: null,
           event: syntheticEvent,
           isMatchComplete: true,
+          firstInnings,
         });
 
         const tweet = buildTemplateTweet(matchContext); // 👈 use YOUR template builder
@@ -350,6 +371,7 @@ async function pollingLoop() {
 
     const mini = comm?.miniscore || {};
     const currInnings = getCorrectInnings(score, mini);
+    const firstInnings = getFirstInnings(score, mini);
 
     if (!currInnings) {
       log("⚠ No innings found in scorecard");
@@ -391,6 +413,7 @@ async function pollingLoop() {
 
     log("current running over::");
     log(globalThis.LAST_OVER);
+    console.log("current running over::", globalThis.LAST_OVER);
 
     if (currBall < globalThis.LAST_BALL && currOver === prevOver) {
       await wait(POLL_WAIT_TIME);
@@ -434,7 +457,7 @@ async function pollingLoop() {
     let evBowlerMilestone = null;
 
     if (isSingleBallAdvance) {
-      evBowlerMilestone = detectBowlerMilestone(prevInnings, currInnings);
+      // evBowlerMilestone = detectBowlerMilestone(prevInnings, currInnings);
       evWicket = detectWicket(prevInnings, currInnings);
       evBatsmanMilestone = detectBatsmanMilestone(prevInnings, currInnings);
       evSix = detectSix(prevInnings, currInnings);
@@ -444,7 +467,7 @@ async function pollingLoop() {
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
       if (evSix) events.push(evSix);
       if (evFour) events.push(evFour);
-      if (evBowlerMilestone) events.push(evBowlerMilestone);
+      // if (evBowlerMilestone) events.push(evBowlerMilestone);
     }
 
     const evPartnership = detectPartnership(prevInnings, currInnings);
@@ -475,20 +498,31 @@ async function pollingLoop() {
         currInnings,
         event: singleEvent,
         isMatchComplete,
+        firstInnings,
       });
 
+      log("matchContext:::");
+      log(matchContext);
+
+      // console.log("matchContext:::", JSON.stringify(matchContext, null, 2));
+
+      console.log("Evenet type::", matchContext.event);
+
       const tweetContent = await generateTweet(matchContext);
+      console.log("tweetContent:::", tweetContent);
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
         continue;
       }
-
-      await postTweet_console(tweetContent);
       let resp = null;
-      if (USE_WEB_TWEET) {
-        resp = await postTweet_web(tweetContent);
-      }
+      resp = await postTweet_web(tweetContent);
+
+      // await postTweet_console(tweetContent);
+      // let resp = null;
+      // if (USE_WEB_TWEET) {
+      //   resp = await postTweet_web(tweetContent);
+      // }
 
       if (resp?.id) log(`🟢 Tweet posted for event: ${singleEvent.type}!`);
       else log(`⚠ Tweet NOT posted for event: ${singleEvent.type}`);

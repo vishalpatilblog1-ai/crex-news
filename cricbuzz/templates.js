@@ -1,51 +1,47 @@
 // template.js
-// -----------------------------------------------
+
 export function getEmojiPack(team, opponent) {
   const t = team?.toLowerCase() || "";
   const o = opponent?.toLowerCase() || "";
 
-  if (t.includes("india")) {
+  const isIndiaBatting = t.includes("india");
+  const isIndiaBowling = o.includes("india");
+
+  if (isIndiaBatting) {
     return {
-      hit: ["🇮🇳🔥", "🇮🇳💥", "🇮🇳👏", "🇮🇳⚡", "🇮🇳🌟"],
-      wicket: ["🇮🇳🔥", "🇮🇳💙", "🇮🇳✨"],
-      neutral: ["🔹", "📛", "⚡", "🎯", "💠"],
+      hit: ["🔥", "💥"],
+      wicket: ["🔴", "📛", "❌"],
     };
   }
 
-  if (t.includes("pakistan") || o.includes("pakistan")) {
+  if (isIndiaBowling) {
     return {
-      hit: ["⚡", "📛", "💠"],
-      wicket: ["⚡", "📛", "🎯"],
-      neutral: ["⚡", "📛", "🔹"],
+      hit: ["📛", "🔴"],
+      wicket: ["🟩", "✅"],
     };
   }
 
   return {
-    hit: ["⚡", "📛", "💥", "🎯"],
-    wicket: ["⚡", "📛", "🎯"],
-    neutral: ["🔹", "⚡", "📛"],
+    hit: ["🔥", "💥"],
+    wicket: ["🔴", "📛"],
   };
 }
 
-const HEADERS = [
-  "🚨 {MATCH} Updates 🚨",
-  "🔥 {MATCH} Action 🔥",
-  "📢 {MATCH} Moment 📢",
-];
+const HEADERS = ["🚨 MATCH UPDATES 🚨", "🟢 LIVE MATCH UPDATES 🟢"];
 
 const EVENT_HEADERS = {
   SIX: [
     "💥 BIG HIT ALERT!",
     "🔥 That's massive!",
-    "⚡ Launches it!",
-    "💣 Out of the park!",
-    "🚀 What a strike!",
+    "💥 Launches it!",
+    "💥 Out of the park!",
+    "🔥 What a strike!",
   ],
 
   FOUR: [
-    "🔹 Crunched to the boundary!",
-    "⚡ Finds the gap!",
-    "🎯 Precision timing!",
+    "🔥 Crunched to the boundary!",
+    "💥 Finds the gap!",
+    "🔥 Precision timing!",
     "💥 Races away!",
     "🔥 Beautiful shot!",
   ],
@@ -88,19 +84,19 @@ const EVENT_HEADERS = {
 // -----------------------------------------------
 const BODIES = {
   SIX: [
-    "{BATTER} smashes a SIX {EMOJI} ",
-    "{BATTER} sends it soaring for SIX! {EMOJI}",
-    "Massive SIX by {BATTER}! {EMOJI}",
-    "What a hit! {BATTER} goes downtown! {EMOJI}",
-    "Clean strike — SIX by {BATTER}! {EMOJI}",
+    "{BATTER} smashes a SIX 6️⃣  {EMOJI} ",
+    "{BATTER} sends it soaring for SIX! 6️⃣  {EMOJI}",
+    "Massive SIX by {BATTER}! 6️⃣  {EMOJI}",
+    "What a hit! {BATTER} goes downtown! 6️⃣  {EMOJI}",
+    "Clean strike — SIX by {BATTER}! 6️⃣  {EMOJI}",
   ],
 
   FOUR: [
-    "{BATTER} finds the boundary — FOUR! {EMOJI}",
-    "Sweet timing! FOUR by {BATTER} {EMOJI}",
-    "Classy shot — FOUR! {EMOJI}",
-    "Lovely placement from {BATTER} — FOUR! {EMOJI}",
-    "FOUR! {BATTER} keeps the scoreboard ticking {EMOJI}",
+    "{BATTER} finds the boundary — FOUR! 4️⃣  {EMOJI}",
+    "Sweet timing! FOUR by {BATTER} 4️⃣  {EMOJI}",
+    "Classy shot — FOUR! 4️⃣  {EMOJI}",
+    "Lovely placement from {BATTER} — FOUR! 4️⃣  {EMOJI}",
+    "FOUR! {BATTER} keeps the scoreboard ticking 4️⃣  {EMOJI}",
   ],
 
   WICKET: [
@@ -112,11 +108,11 @@ const BODIES = {
   ],
 
   BATSMAN_MILESTONE: [
-    "{BATTER} reaches {RUNS}* ({BALLS} balls) {EMOJI}",
-    "Milestone! {BATTER} gets to {RUNS}* {EMOJI}",
-    "{RUNS}* for {BATTER}! Steady batting {EMOJI}",
-    "{BATTER} brings up {RUNS}* — top knock {EMOJI}",
-    "{BATTER} crosses {RUNS}* ({BALLS}) {EMOJI}",
+    "{BATTER} reaches {RUNS}({BALLS} balls) {EMOJI}",
+    "Milestone! {BATTER} gets to {RUNS} {EMOJI}",
+    "{RUNS} for {BATTER}! Steady batting {EMOJI}",
+    "{BATTER} brings up {RUNS} — top knock {EMOJI}",
+    "{BATTER} crosses {RUNS}({BALLS}) {EMOJI}",
   ],
 
   PARTNERSHIP_MILESTONE: [
@@ -134,9 +130,63 @@ const BODIES = {
     "Team moves to {RUNS}! Positive batting {EMOJI}",
     "{RUNS} comes up! Momentum on {EMOJI}",
   ],
+
+  // BOWLER_MILESTONE: [
+  //   `{BOWLER} finishes with {WICKETS}/{RUNS} in {OVERS} overs {EMOJI}`,
+  //   `What a spell! {BOWLER} grabs {WICKETS}-for {RUNS} in {OVERS} overs {EMOJI}`,
+  // ],
+};
+const BODIES_OPPONENT = {
+  SIX: [
+    "{BATTER} smashes a SIX! 6️⃣",
+    "{BATTER} sends it soaring for SIX! 6️⃣",
+    "SIX by {BATTER}! 6️⃣",
+    "{BATTER} goes downtown! 6️⃣",
+    "strike — SIX by {BATTER}! 6️⃣",
+  ],
+
+  FOUR: [
+    "{BATTER} finds the boundary — FOUR! 4️⃣",
+    "FOUR by {BATTER} 4️⃣",
+    "FOUR! 4️⃣",
+    "{BATTER} — FOUR! 4️⃣",
+    "FOUR! {BATTER} keeps the scoreboard ticking 4️⃣",
+  ],
+
+  WICKET: [
+    "WICKET! {BATTER} is gone! {EMOJI}",
+    "{BOWLER} strikes — {BATTER} departs! {EMOJI}",
+    "{BATTER} dismissed! Big moment! {EMOJI}",
+    "Breakthrough! {BATTER} is out! {EMOJI}",
+    "{BOWLER} removes {BATTER}! {EMOJI}",
+  ],
+
+  BATSMAN_MILESTONE: [
+    "{BATTER} reaches {RUNS}({BALLS} balls)",
+    "Milestone! {BATTER} gets to {RUNS}",
+    "{RUNS} for {BATTER}! Steady batting",
+    "{BATTER} brings up {RUNS} — top knock",
+    "{BATTER} crosses {RUNS}({BALLS})",
+  ],
+
+  PARTNERSHIP_MILESTONE: [
+    "{RUNS}-run partnership! {BAT1} & {BAT2} steady the innings",
+    "Partnership reaches {RUNS}! Excellent running",
+    "{BAT1} & {BAT2} add {RUNS} together!",
+    "{RUNS}-run stand! Momentum building",
+    "Solid partnership of {RUNS}!",
+  ],
+
+  TEAM_MILESTONE: [
+    "Team reaches {RUNS}",
+    "{RUNS} up on the board! Good intent",
+    "Milestone reached — {RUNS}!",
+    "Team moves to {RUNS}! Positive batting",
+    "{RUNS} comes up! Momentum on",
+  ],
   BOWLER_MILESTONE: [
-    `{BOWLER} finishes with {WICKETS}/{RUNS} in {OVERS} overs {EMOJI}`,
-    `What a spell! {BOWLER} grabs {WICKETS}-for {RUNS} in {OVERS} overs {EMOJI}`,
+    `{BOWLER} finishes with {WICKETS}/{RUNS} in {OVERS} overs`,
+    `What a spell! {BOWLER} grabs {WICKETS}-for {RUNS} in {OVERS} overs`,
   ],
 };
 
@@ -147,6 +197,7 @@ export const TEMPLATES = {
   HEADERS,
   EVENT_HEADERS,
   BODIES,
+  BODIES_OPPONENT,
 };
 
 export function buildMatchResultTemplate(match, resultText) {
