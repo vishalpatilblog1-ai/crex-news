@@ -24,9 +24,6 @@ export function buildMatchContext({
   const mini = comm?.miniscore || {};
   const headers = comm?.matchheaders || {};
 
-  // ============================
-  // MATCH RESULT EVENT
-  // ============================
   if (event?.type === "MATCH_RESULT") {
     const match = {
       name:
@@ -58,9 +55,6 @@ export function buildMatchContext({
     };
   }
 
-  // ============================
-  // TOSS EVENT
-  // ============================
   if (event?.type === "TOSS") {
     const match = {
       name:
@@ -84,17 +78,20 @@ export function buildMatchContext({
       isMatchComplete: false,
     };
 
+    const enrichedEvent = {
+      ...event,
+      tossWinner: comm?.matchheaders?.tossresults?.tosswinnername || "",
+      tossDecision: comm?.matchheaders?.tossresults?.decision,
+    };
+
     return {
       match,
       innings: null,
-      event,
+      event: enrichedEvent,
       players: {},
     };
   }
 
-  // ============================
-  // NORMAL BALL EVENTS
-  // ============================
   const active = getActiveBattersFromInnings(currInnings);
   const partnership = getPartnershipContributions(currInnings);
 

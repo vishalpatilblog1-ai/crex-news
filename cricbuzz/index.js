@@ -85,7 +85,6 @@ async function pollingLoop() {
     console.log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`);
 
     const score = await getMatchScore(MATCH_ID);
-    console.log("score::", score);
 
     let comm = null;
     const mini = comm?.miniscore || {};

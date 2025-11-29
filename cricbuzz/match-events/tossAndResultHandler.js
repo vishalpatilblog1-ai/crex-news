@@ -43,10 +43,13 @@ export async function handleTossEvent({
 
     const tweet = await buildTemplateTweet(matchContext);
 
-    if (tweet) {
-      await postTweet_console(tweet);
-      if (USE_WEB_TWEET) await postTweet_web(tweet);
+    if (!tweet || tweet === "SKIP") {
+      console.log("⏭️ Toss not ready yet. Skipping...");
+      return;
     }
+
+    await postTweet_console(tweet);
+    if (USE_WEB_TWEET) await postTweet_web(tweet);
 
     console.log(`🪙 Toss tweet sent! -> ${toss.tossText}`);
   } catch (err) {

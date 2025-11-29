@@ -27,7 +27,22 @@ export async function buildTemplateTweet(matchContext) {
   if (!match || !event) return null;
 
   if (event.type === "TOSS") {
-    const { tossText } = event;
+    const tossWinner = event.tossWinner;
+
+    const tossDecision = event.tossDecision;
+
+    if (
+      !tossWinner ||
+      tossWinner.trim() === "" ||
+      !tossDecision ||
+      tossDecision.trim() === ""
+    ) {
+      return "SKIP";
+    }
+
+    const tossText =
+      event.tossText ||
+      `${tossWinner} won the toss and chose to ${tossDecision}`;
 
     const hashtags = buildHashtags(match, match.team1Short, match.team2Short);
 
