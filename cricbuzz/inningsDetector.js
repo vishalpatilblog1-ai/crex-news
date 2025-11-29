@@ -3,12 +3,14 @@
 import {
   BATSMAN_MILESTONE_RUNS,
   BOWLER_MILESTONE_WICKETS,
-  EVENT_TYPES,
-  PARTNERSHIP_MILESTONE_RUNS,
 } from "../utils/constants.js";
 
+function ballNbrToOverDecimal(ballNbr) {
+  const over = Math.floor(ballNbr / 6); // 294 → 49
+  const ball = ballNbr % 6 || 6; // 294 % 6 = 0 → 6
+  return `${over - (ball === 6 ? 1 : 0)}.${ball}`;
+}
 export function detectFour(prev, curr) {
-  // console.log("detectFour curr:::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
@@ -23,6 +25,8 @@ export function detectFour(prev, curr) {
         batterName: bat.name,
         runs: bat.runs,
         balls: bat.balls,
+        ballNbr: curr.ballnbr,
+        currentOver: ballNbrToOverDecimal(curr.ballnbr),
       };
     }
   }
@@ -30,7 +34,6 @@ export function detectFour(prev, curr) {
 }
 
 export function detectSix(prev, curr) {
-  // console.log("detectSix curr:::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
@@ -45,6 +48,8 @@ export function detectSix(prev, curr) {
         batterName: bat.name,
         runs: bat.runs,
         balls: bat.balls,
+        currentOver: ballNbrToOverDecimal(curr.ballnbr),
+        ballNbr: curr.ballnbr,
       };
     }
   }
@@ -66,7 +71,6 @@ export function detectPartnership(prev, curr) {
     prevActive.bat1id !== currActive.bat1id ||
     prevActive.bat2id !== currActive.bat2id;
 
-  // 🔁 New partnership
   if (isNewPair) {
     return {
       type: "NEW_PARTNERSHIP",
@@ -74,32 +78,35 @@ export function detectPartnership(prev, curr) {
       bat2: currActive.bat2name,
       runs: currActive.totalruns,
       balls: currActive.totalballs,
+      currentOver: ballNbrToOverDecimal(curr.ballnbr),
+      ballNbr: curr.ballnbr,
     };
   }
 
-  // 📈 Partnership increment
   if (currActive.totalruns > prevActive.totalruns) {
     const runs = currActive.totalruns;
 
-    // 🔥 MILESTONES ONLY (50/100/150/200...)
     if (runs % 50 === 0) {
       return {
         type: "PARTNERSHIP_MILESTONE",
-        milestone: runs, // 50 / 100 / 150
+        milestone: runs,
         bat1: currActive.bat1name,
         bat2: currActive.bat2name,
         runs,
         balls: currActive.totalballs,
+        currentOver: ballNbrToOverDecimal(curr.ballnbr),
+        ballNbr: curr.ballnbr,
       };
     }
 
-    // ❌ Normal update — NO TWEET
     return {
       type: "PARTNERSHIP_UPDATED",
       bat1: currActive.bat1name,
       bat2: currActive.bat2name,
       runs,
       balls: currActive.totalballs,
+      currentOver: ballNbrToOverDecimal(curr.ballnbr),
+      ballNbr: curr.ballnbr,
     };
   }
 
@@ -107,7 +114,6 @@ export function detectPartnership(prev, curr) {
 }
 
 export function detectWicket(prev, curr) {
-  // console.log("detectWicket curr:::", curr);
   if (!prev || !curr) return null;
   if (!curr.fow || !curr.fow.fow) return null;
 
@@ -128,6 +134,8 @@ export function detectWicket(prev, curr) {
     score: curr.score,
     wickets: curr.wickets,
     overs: curr.overs,
+    currentOver: ballNbrToOverDecimal(curr.ballnbr),
+    ballNbr: curr.ballnbr,
   };
 }
 
@@ -145,6 +153,7 @@ export function extractPlayersFromScorecard(innings) {
       nonStrikerRuns: "",
       nonStrikerBallsPlayed: "",
       bowler: "",
+      currentRunningOver: innings.overs,
     };
   }
 
@@ -153,11 +162,9 @@ export function extractPlayersFromScorecard(innings) {
   const strikerObj = notOut[0];
   const nonStrikerObj = notOut[1];
 
-  // 3) GET CURRENT BOWLER = last bowler in bowler list (most common)
   let bowlerObj = null;
 
   if (innings.bowler && innings.bowler.length > 0) {
-    // Cricbuzz lists current over bowler last (sometimes at index 0)
     bowlerObj =
       innings.bowler.find((b) => Number(b.balls) % 6 !== 0) ||
       innings.bowler[innings.bowler.length - 1];
@@ -171,6 +178,7 @@ export function extractPlayersFromScorecard(innings) {
     nonStrikerRuns: nonStrikerObj?.runs || "",
     nonStrikerBallsPlayed: nonStrikerObj?.balls || "",
     bowler: bowlerObj?.name || "",
+    currentRunningOver: innings.overs,
   };
 }
 
@@ -179,7 +187,6 @@ export function getActiveBattersFromInnings(innings) {
 
   const active = innings.batsman.filter((b) => b.outdec === "batting");
 
-  // Ensure exactly 2 batters (or fill blanks)
   const bat1 = active[0]?.name || "";
   const bat2 = active[1]?.name || "";
 
@@ -207,6 +214,8 @@ export function detectBatsmanMilestone(prev, curr) {
         batterName: bCurr.name,
         runs: currRuns,
         balls: bCurr.balls,
+        currentOver: ballNbrToOverDecimal(curr.ballnbr),
+        ballNbr: curr.ballnbr,
       };
     }
   }
@@ -233,6 +242,8 @@ export function detectBowlerMilestone(prev, curr) {
         wickets: bow.wickets,
         overs: bow.overs,
         runs: bow.runs,
+        currentRunningOver: curr.overs,
+        ballNbr: curr.ballnbr,
       };
     }
   }
@@ -257,5 +268,6 @@ export function getPartnershipContributions(currInnings) {
       runs: p.bat2runs,
       balls: p.bat2balls,
     },
+    currentRunningOver: currInnings.overs,
   };
 }

@@ -9,6 +9,7 @@ import { createLogger } from "../utils/logger.js";
 import { loadState, saveState } from "../utils/stateStore.js";
 import { buildMatchContext } from "./buildMatchContext.js";
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
+import { fetchCommentaryTextByOverNumber } from "./fetchCommentaryTextByOverNumber.js";
 import {
   detectBatsmanMilestone,
   detectFour,
@@ -29,6 +30,8 @@ const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
+
+// const FORCE_MATCH_ID = 136950;
 
 let MATCH_ID = FORCE_MATCH_ID || 0;
 let MATCH_NAME = FORCE_MATCH_ID ? `Forced Match #${FORCE_MATCH_ID}` : "";
@@ -73,7 +76,26 @@ function getCorrectInnings(scoreRes) {
   return card.reduce((a, b) => (a.ballnbr > b.ballnbr ? a : b));
 }
 
-function getFirstInnings(scoreRes, mini) {
+function getCorrectTestInnings(scoreRes, liveId) {
+  if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
+    return null; // MATCH NOT STARTED
+  }
+
+  const card = scoreRes.scorecard;
+  if (liveId) {
+    const exact = scoreRes.scorecard.find((inn) => inn.inningsid === liveId);
+    if (exact) return exact;
+  }
+
+  return scoreRes.scorecard.reduce((a, b) =>
+    (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
+  );
+}
+
+function getFirstInnings(scoreRes) {
+  if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
+    return null;
+  }
   const firstInning = scoreRes?.scorecard[0];
   return {
     targetRuns: firstInning.score,
@@ -121,13 +143,19 @@ async function pollingLoop() {
     console.log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`);
 
     const score = await getMatchScore(MATCH_ID);
+    // console.log("score:::", JSON.stringify(score, null, 2));
 
     let comm = null;
     const mini = comm?.miniscore || {};
-    const firstInnings = getFirstInnings(score, mini);
+    const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
     try {
       comm = await getCommentary(MATCH_ID);
+
+      console.log("current running score over::", globalThis.LAST_OVER);
+
+      // const singleBallCommentry = fetchCommentaryTextByOverNumber(comm, 5.2);
+      // console.log("singleBallCommentry texts:::", singleBallCommentry);
 
       try {
         const toss = extractTossInfo(comm);
@@ -152,7 +180,7 @@ async function pollingLoop() {
             currInnings: null,
             event: syntheticEvent,
             isMatchComplete: false,
-            firstInnings: null, //vishal
+            firstInnings: null,
           });
 
           const tweet = buildTemplateTweet(matchContext);
@@ -192,7 +220,7 @@ async function pollingLoop() {
           firstInnings,
         });
 
-        const tweet = buildTemplateTweet(matchContext); // 👈 use YOUR template builder
+        const tweet = await buildTemplateTweet(matchContext); // 👈 use YOUR template builder
         if (tweet) {
           await postTweet_console(tweet);
           if (USE_WEB_TWEET) await postTweet_web(tweet);
@@ -210,7 +238,22 @@ async function pollingLoop() {
       return pollingLoop();
     }
 
-    const currInnings = getCorrectInnings(score);
+    let currInnings;
+
+    if (comm?.matchheaders?.matchformat === "TEST") {
+      const liveId = comm?.miniscore?.inningsid;
+      currInnings = getCorrectTestInnings(score, liveId);
+    } else {
+      currInnings = getCorrectInnings(score);
+    }
+    // console.log("currInnings:::", currInnings);
+
+    if (!currInnings) {
+      log("⚠ No innings yet (Test match probably not started) — waiting...");
+      await wait(POLL_WAIT_TIME);
+      return pollingLoop();
+    }
+
     const newInningsId = currInnings?.inningsid;
     const newTeam = currInnings?.batteamname;
 
@@ -342,7 +385,7 @@ async function pollingLoop() {
 
     for (const singleEvent of events) {
       const eventType = singleEvent.type;
-      const ballNbr = singleEvent.ballnbr || currInnings.ballnbr;
+      const ballNbr = currInnings.ballnbr;
 
       if (eventType && ballNbr) {
         if (globalThis.LAST_EVENT_BALL[eventType] === ballNbr) {
@@ -351,6 +394,15 @@ async function pollingLoop() {
         }
         globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
       }
+
+      const commentaryTexts = fetchCommentaryTextByOverNumber(
+        comm,
+        singleEvent.currentOver
+      );
+
+      console.log("🎤 Commentary lines for event:", commentaryTexts);
+
+      singleEvent.commentaryTexts = commentaryTexts;
       console.log("singleEvent::", singleEvent);
       const matchContext = buildMatchContext({
         comm,
@@ -362,9 +414,8 @@ async function pollingLoop() {
 
       log("matchContext:::");
       log(matchContext);
-
       const tweetContent = await generateTweet(matchContext);
-      //   console.log("tweetContent:::", tweetContent);
+      console.log("tweetContent:::", tweetContent);
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);

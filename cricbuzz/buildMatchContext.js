@@ -150,6 +150,7 @@ export function buildMatchContext({
   const enrichedEvent = {
     ...event,
     bowlerName: mini?.bowlerstriker?.name || "",
+    overs: normalizeOvers(currInnings.overs),
   };
 
   return {

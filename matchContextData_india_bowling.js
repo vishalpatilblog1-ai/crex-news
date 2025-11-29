@@ -53,10 +53,17 @@ export const matchContextData_india_bowling = {
 
   event: {
     type: "WICKET",
+    batterId: 15273,
     batterName: "Babar Azam",
-    runs: 7,
-    balls: 3,
+    runs: 31,
+    balls: 14,
+    ballNbr: 35,
+    currentOver: "5.5",
+    commentaryTexts: [
+      "Joshua Little to Parvez Hossain Emon, B0$, to sweeper cover",
+    ],
     bowlerName: "Arshdip Singh",
+    overs: 5.5,
   },
 
   players: {
