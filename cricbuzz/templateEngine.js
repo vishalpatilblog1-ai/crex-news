@@ -13,6 +13,8 @@ export async function buildTemplateTweet(matchContext) {
 
   const eventType = matchContext?.event?.type;
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
+  const isSecondInningRunning = innings?.inningsid === 2;
+  // console.log("isSecondInningRunning:::", isSecondInningRunning);
 
   const team1Short = matchContext?.match?.team1Short || "";
   const team2Short = matchContext?.match?.team2Short || "";
@@ -88,7 +90,7 @@ export async function buildTemplateTweet(matchContext) {
 
   const scoreLine = `${baseScoreLine}`;
 
-  const safeStatus = safeLine(match.status);
+  const safeStatus = isSecondInningRunning && safeLine(match.status);
   const safeScore = safeLine(scoreLine);
   if (commentary) {
     finalTweet += `${commentary}\n\n`;
