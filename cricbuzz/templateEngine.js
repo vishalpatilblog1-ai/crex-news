@@ -37,7 +37,7 @@ export async function buildTemplateTweet(matchContext) {
   }
 
   if (event.type === "MATCH_RESULT") {
-    const output = await buildMatchResultTemplate(match, event.resultText);
+    const output = buildMatchResultTemplate(match, event.resultText);
 
     if (!output || typeof output !== "string") {
       return `🏆 Match Result\n\n${event.resultText}\n\n#${match.team1Short}vs${match.team2Short}`;

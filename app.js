@@ -1479,5 +1479,3 @@ const score = {
   status: "Sudur Paschim Royals won by 7 wkts",
   responselastupdated: 1764235215,
 };
-
-console.log("ismatchcomplete::", score.ismatchcomplete);

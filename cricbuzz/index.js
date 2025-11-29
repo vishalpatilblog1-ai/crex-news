@@ -6,7 +6,7 @@ import generateTweet from "../ai.js";
 import { postTweet_console, postTweet_web } from "../twitter.js";
 
 import { createLogger } from "../utils/logger.js";
-import { loadState, saveState } from "../utils/stateStore.js";
+import { loadState } from "../utils/stateStore.js";
 import { buildMatchContext } from "./buildMatchContext.js";
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 import { fetchCommentaryTextByOverNumber } from "./fetchCommentaryTextByOverNumber.js";
@@ -17,7 +17,14 @@ import {
   detectSix,
   detectWicket,
 } from "./inningsDetector.js";
-import { buildTemplateTweet } from "./templateEngine.js";
+import {
+  extractTossInfo,
+  getCorrectInnings,
+  getCorrectTestInnings,
+  getFirstInnings,
+  handleMatchResultEvent,
+  handleTossEvent,
+} from "./match-events/tossAndResultHandler.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
@@ -31,7 +38,7 @@ const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
 
-// const FORCE_MATCH_ID = 136950;
+// const FORCE_MATCH_ID = 138699;
 
 let MATCH_ID = FORCE_MATCH_ID || 0;
 let MATCH_NAME = FORCE_MATCH_ID ? `Forced Match #${FORCE_MATCH_ID}` : "";
@@ -40,71 +47,6 @@ const POLL_WAIT_TIME = 5000;
 const log = createLogger("prod");
 
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-
-function extractTossInfo(comm) {
-  const t = comm?.matchheaders?.tossresults;
-  if (!t) return null;
-
-  return {
-    tossWinner: t.tosswinnername || "",
-    tossDecision: (t.decision || "").toLowerCase(), // batting / bowling
-    tossText: `${
-      t.tosswinnername
-    } won the toss and chose to ${t.decision.toLowerCase()}`,
-  };
-}
-
-function getCorrectInnings(scoreRes) {
-  const card = scoreRes?.scorecard;
-  if (!card || card.length === 0) return null;
-
-  const first = card[0];
-  const second = card[1];
-
-  // 1️⃣ If 2nd innings exists and has ANY activity → choose it
-  if (second) {
-    const hasStarted =
-      Number(second.overs) > 0 ||
-      Number(second.runs) > 0 ||
-      Number(second.wickets) > 0 ||
-      Number(second.ballnbr) > 0;
-
-    if (hasStarted) return second;
-  }
-
-  // 2️⃣ Else pick the innings with highest ballnbr
-  return card.reduce((a, b) => (a.ballnbr > b.ballnbr ? a : b));
-}
-
-function getCorrectTestInnings(scoreRes, liveId) {
-  if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
-    return null; // MATCH NOT STARTED
-  }
-
-  const card = scoreRes.scorecard;
-  if (liveId) {
-    const exact = scoreRes.scorecard.find((inn) => inn.inningsid === liveId);
-    if (exact) return exact;
-  }
-
-  return scoreRes.scorecard.reduce((a, b) =>
-    (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
-  );
-}
-
-function getFirstInnings(scoreRes) {
-  if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
-    return null;
-  }
-  const firstInning = scoreRes?.scorecard[0];
-  return {
-    targetRuns: firstInning.score,
-    targetWicket: firstInning.wickets,
-    targetOvers: firstInning.overs,
-    battingTeamName: firstInning.batteamname,
-    battingTeamShortName: firstInning.batteamsname,
-  };
-}
 
 let STATE = loadState();
 async function startBot() {
@@ -143,7 +85,6 @@ async function pollingLoop() {
     console.log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`);
 
     const score = await getMatchScore(MATCH_ID);
-    // console.log("score:::", JSON.stringify(score, null, 2));
 
     let comm = null;
     const mini = comm?.miniscore || {};
@@ -153,48 +94,15 @@ async function pollingLoop() {
       comm = await getCommentary(MATCH_ID);
 
       console.log("current running score over::", globalThis.LAST_OVER);
-
-      // const singleBallCommentry = fetchCommentaryTextByOverNumber(comm, 5.2);
-      // console.log("singleBallCommentry texts:::", singleBallCommentry);
-
-      try {
-        const toss = extractTossInfo(comm);
-        const ballNbrFromMini = comm?.miniscore?.ballnbr ?? null;
-        const inningsFromScore = score?.scorecard?.[0]?.ballnbr ?? null;
-
-        const matchStarted =
-          (ballNbrFromMini !== null && ballNbrFromMini > 0) ||
-          (inningsFromScore !== null && inningsFromScore > 0);
-
-        if (toss && !STATE[`toss_${MATCH_ID}`] && !matchStarted) {
-          STATE[`toss_${MATCH_ID}`] = true;
-          saveState(STATE);
-
-          const syntheticEvent = {
-            type: "TOSS",
-            ...toss,
-          };
-
-          const matchContext = buildMatchContext({
-            comm,
-            currInnings: null,
-            event: syntheticEvent,
-            isMatchComplete: false,
-            firstInnings: null,
-          });
-
-          const tweet = buildTemplateTweet(matchContext);
-
-          if (tweet) {
-            await postTweet_console(tweet);
-            if (USE_WEB_TWEET) await postTweet_web(tweet);
-          }
-
-          log(`🪙 Toss tweet sent! -> ${toss.tossText}`);
-        }
-      } catch (e) {
-        log("⚠ Toss detection error", e);
-      }
+      const toss = extractTossInfo(comm);
+      await handleTossEvent({
+        comm,
+        score,
+        toss,
+        MATCH_ID,
+        STATE,
+        USE_WEB_TWEET,
+      });
     } catch (e) {
       log("⚠ Commentary API failed, continuing with scorecard only");
     }
@@ -202,35 +110,14 @@ async function pollingLoop() {
     const playingTeam1 = comm?.matchheaders?.team1.teamname || "";
     const playingTeam2 = comm?.matchheaders?.team2.teamname || "";
 
-    if (score?.ismatchcomplete && score?.status) {
-      if (!STATE[`result_${MATCH_ID}`]) {
-        STATE[`result_${MATCH_ID}`] = true;
-        saveState(STATE);
-
-        const syntheticEvent = {
-          type: "MATCH_RESULT",
-          resultText: score.status,
-        };
-
-        const matchContext = buildMatchContext({
-          comm,
-          currInnings: null,
-          event: syntheticEvent,
-          isMatchComplete: true,
-          firstInnings,
-        });
-
-        const tweet = await buildTemplateTweet(matchContext); // 👈 use YOUR template builder
-        if (tweet) {
-          await postTweet_console(tweet);
-          if (USE_WEB_TWEET) await postTweet_web(tweet);
-        }
-
-        console.log("🏆 Match result tweet sent!");
-      }
-
-      return;
-    }
+    await handleMatchResultEvent({
+      comm,
+      score,
+      STATE,
+      MATCH_ID,
+      USE_WEB_TWEET,
+      firstInnings,
+    });
 
     if (!score) {
       log("⚠ No score data… retrying");
@@ -246,7 +133,6 @@ async function pollingLoop() {
     } else {
       currInnings = getCorrectInnings(score);
     }
-    // console.log("currInnings:::", currInnings);
 
     if (!currInnings) {
       log("⚠ No innings yet (Test match probably not started) — waiting...");
@@ -355,7 +241,6 @@ async function pollingLoop() {
     let evBowlerMilestone = null;
 
     if (isSingleBallAdvance) {
-      // evBowlerMilestone = detectBowlerMilestone(prevInnings, currInnings);
       evWicket = detectWicket(prevInnings, currInnings);
       evBatsmanMilestone = detectBatsmanMilestone(prevInnings, currInnings);
       evSix = detectSix(prevInnings, currInnings);
@@ -365,7 +250,6 @@ async function pollingLoop() {
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
       if (evSix) events.push(evSix);
       if (evFour) events.push(evFour);
-      // if (evBowlerMilestone) events.push(evBowlerMilestone);
     }
 
     const evPartnership = detectPartnership(prevInnings, currInnings);
