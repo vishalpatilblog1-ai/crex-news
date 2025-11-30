@@ -9,7 +9,9 @@ export const EVENT_TYPES = {
 };
 
 export const BATSMAN_MILESTONE_RUNS = 50;
-export const PARTNERSHIP_MILESTONE_RUNS = 5;
+export const TEAM_MILESTONE_RUNS = 50;
+export const PARTNERSHIP_MILESTONE_RUNS = 50;
+
 export const BOWLER_MILESTONE_WICKETS = 5;
 export const PARTNERSHIP_UPDATED = "PARTNERSHIP_UPDATED";
 

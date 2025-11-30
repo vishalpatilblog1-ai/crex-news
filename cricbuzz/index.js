@@ -15,6 +15,7 @@ import {
   detectFour,
   detectPartnership,
   detectSix,
+  detectTeamMilestone,
   detectWicket,
 } from "./inningsDetector.js";
 import {
@@ -29,8 +30,10 @@ import {
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
 globalThis.LAST_BALL = null;
-globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 globalThis.LAST_EVENT_BALL = {};
+globalThis.PREV_INNINGS_ID = null;
+globalThis.PREV_BATTEAM = null;
+globalThis.PREV_SNAPSHOT = null;
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
@@ -38,7 +41,10 @@ const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
 
-// const FORCE_MATCH_ID = 138699;
+// const FORCE_MATCH_ID = 117389;
+
+// "toss_117389": true,
+// "result_135063": true,
 
 let MATCH_ID = FORCE_MATCH_ID || 0;
 let MATCH_NAME = FORCE_MATCH_ID ? `Forced Match #${FORCE_MATCH_ID}` : "";
@@ -49,6 +55,19 @@ const log = createLogger("prod");
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 let STATE = loadState();
+function isNewInnings(prevInn, currInn) {
+  if (!prevInn || !currInn) return false;
+
+  const prevOvers = parseFloat(prevInn.overs || 0);
+  const currOvers = parseFloat(currInn.overs || 0);
+
+  const prevWkts = prevInn.wickets ?? 0;
+  const currWkts = currInn.wickets ?? 0;
+
+  // True new innings when overs drop AND wickets reset
+  return prevOvers > currOvers && currWkts === 0;
+}
+
 async function startBot() {
   if (MATCH_ID) {
     log(`🎯 Using forced MATCH_ID: ${MATCH_ID}`);
@@ -79,15 +98,44 @@ async function startBot() {
 
   pollingLoop();
 }
+
+function formatTS() {
+  const now = new Date();
+  return now.toLocaleString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
 async function pollingLoop() {
   try {
     log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`, true);
-    console.log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`);
+    console.log(`🔄 Polling: ${MATCH_NAME || MATCH_ID} - [${formatTS()}]`);
+
+    if (!globalThis.PREV_MATCH_ID || globalThis.PREV_MATCH_ID !== MATCH_ID) {
+      console.log("🆕 New match detected — resetting global state");
+
+      globalThis.LAST_INNINGS = null;
+      globalThis.LAST_OVER = null;
+      globalThis.LAST_BALL = null;
+      globalThis.LAST_EVENT_BALL = {};
+      globalThis.LAST_HASH = null; // IMPORTANT
+      globalThis.LAST_PARTNERSHIP_MILESTONE = 0; // IMPORTANT
+      globalThis.PREV_INNINGS_ID = null;
+      globalThis.PREV_BATTEAM = null;
+      globalThis.PREV_SNAPSHOT = null;
+
+      globalThis.PREV_MATCH_ID = MATCH_ID;
+    }
 
     const score = await getMatchScore(MATCH_ID);
+    // console.log("score::", JSON.stringify(score, null, 2));
 
     let comm = null;
-    const mini = comm?.miniscore || {};
+
     const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
     try {
@@ -134,6 +182,8 @@ async function pollingLoop() {
       currInnings = getCorrectInnings(score);
     }
 
+    // console.log("currInnings::", JSON.stringify(currInnings, null, 2));
+
     if (!currInnings) {
       log("⚠ No innings yet (Test match probably not started) — waiting...");
       await wait(POLL_WAIT_TIME);
@@ -147,24 +197,39 @@ async function pollingLoop() {
       globalThis.PREV_INNINGS_ID = newInningsId;
       globalThis.PREV_BATTEAM = newTeam;
     }
+    if (isNewInnings(globalThis.LAST_INNINGS, currInnings)) {
+      console.log("🆕 TRUE NEW INNINGS DETECTED — resetting state");
 
-    const changed =
-      globalThis.PREV_INNINGS_ID !== newInningsId ||
-      globalThis.PREV_BATTEAM !== newTeam;
-
-    if (changed) {
-      console.log("🆕 New innings detected — resetting state");
+      globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+      globalThis.LAST_OVER = 0;
+      globalThis.LAST_BALL = -1;
+      globalThis.LAST_EVENT_BALL = {};
 
       globalThis.LAST_HASH = null;
-      globalThis.LAST_BALL = null;
-      globalThis.LAST_EVENT_BALL = {};
-      globalThis.PREV_SNAPSHOT = null;
+      globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 
-      globalThis.PREV_INNINGS_ID = newInningsId;
-      globalThis.PREV_BATTEAM = newTeam;
-
-      return;
+      // Continue polling next ball
+      await wait(POLL_WAIT_TIME);
+      return pollingLoop();
     }
+
+    // const changed =
+    //   globalThis.PREV_INNINGS_ID !== newInningsId ||
+    //   globalThis.PREV_BATTEAM !== newTeam;
+
+    // if (changed) {
+    //   console.log("🆕 New innings detected — resetting state");
+
+    //   globalThis.LAST_HASH = null;
+    //   globalThis.LAST_BALL = null;
+    //   globalThis.LAST_EVENT_BALL = {};
+    //   globalThis.PREV_SNAPSHOT = null;
+
+    //   globalThis.PREV_INNINGS_ID = newInningsId;
+    //   globalThis.PREV_BATTEAM = newTeam;
+
+    //   return;
+    // }
 
     if (!globalThis.PREV_INNINGS_ID) {
       globalThis.PREV_INNINGS_ID = currInnings.inningsid;
@@ -234,19 +299,21 @@ async function pollingLoop() {
 
     let events = [];
 
+    let evTeamMilestone = null;
     let evWicket = null;
     let evBatsmanMilestone = null;
     let evSix = null;
     let evFour = null;
-    let evBowlerMilestone = null;
 
     if (isSingleBallAdvance) {
+      evTeamMilestone = detectTeamMilestone(prevInnings, currInnings);
       evWicket = detectWicket(prevInnings, currInnings);
       evBatsmanMilestone = detectBatsmanMilestone(prevInnings, currInnings);
       evSix = detectSix(prevInnings, currInnings);
       evFour = detectFour(prevInnings, currInnings);
 
       if (evWicket) events.push(evWicket);
+      if (evTeamMilestone) events.push(evTeamMilestone);
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
       if (evSix) events.push(evSix);
       if (evFour) events.push(evFour);
@@ -254,10 +321,9 @@ async function pollingLoop() {
 
     const evPartnership = detectPartnership(prevInnings, currInnings);
 
-    if (evPartnership && evPartnership.type !== "PARTNERSHIP_UPDATED") {
+    if (evPartnership && evPartnership.type === "PARTNERSHIP_MILESTONE") {
       events.push(evPartnership);
     }
-
     globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
     globalThis.LAST_OVER = oversNow;
     globalThis.LAST_BALL = currBall;
@@ -287,7 +353,7 @@ async function pollingLoop() {
       console.log("🎤 Commentary lines for event:", commentaryTexts);
 
       singleEvent.commentaryTexts = commentaryTexts;
-      console.log("singleEvent::", singleEvent);
+
       const matchContext = buildMatchContext({
         comm,
         currInnings,
@@ -298,8 +364,10 @@ async function pollingLoop() {
 
       log("matchContext:::");
       log(matchContext);
+      // console.log("matchContext::", JSON.stringify(matchContext, null, 2));
+
       const tweetContent = await generateTweet(matchContext);
-      console.log("tweetContent:::", tweetContent);
+      // console.log("tweetContent:::", tweetContent);
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);

@@ -3,6 +3,8 @@
 import {
   BATSMAN_MILESTONE_RUNS,
   BOWLER_MILESTONE_WICKETS,
+  PARTNERSHIP_MILESTONE_RUNS,
+  TEAM_MILESTONE_RUNS,
 } from "../utils/constants.js";
 
 function ballNbrToOverDecimal(ballNbr) {
@@ -11,6 +13,8 @@ function ballNbrToOverDecimal(ballNbr) {
   return `${over - (ball === 6 ? 1 : 0)}.${ball}`;
 }
 export function detectFour(prev, curr) {
+  // console.log("detectFour prev::", prev);
+  // console.log("detectFour curr::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
@@ -34,6 +38,8 @@ export function detectFour(prev, curr) {
 }
 
 export function detectSix(prev, curr) {
+  // console.log("detectSix prev::", prev);
+  // console.log("detectSix curr::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
@@ -41,6 +47,7 @@ export function detectSix(prev, curr) {
 
   for (const bat of curr.batsman || []) {
     const before = prevMap[bat.id] ?? bat.sixes;
+
     if (bat.sixes > before) {
       return {
         type: "SIX",
@@ -54,6 +61,31 @@ export function detectSix(prev, curr) {
     }
   }
   return null;
+}
+
+export function detectTeamMilestone(prev, curr) {
+  if (!prev || !curr) return null;
+
+  const prevRuns = prev.score ?? prev.runs ?? null;
+  const currRuns = curr.score ?? curr.runs ?? null;
+
+  const prevBalls = prev.balls ?? null;
+  const currBalls = curr.balls ?? null;
+
+  if (prevRuns == null || currRuns == null) return null;
+
+  const isMilestone =
+    currRuns > prevRuns && currRuns % TEAM_MILESTONE_RUNS === 0;
+
+  if (!isMilestone) return null;
+
+  return {
+    type: "TEAM_MILESTONE",
+    runs: currRuns,
+    balls: currBalls || curr.ballnbr,
+    currentOver: ballNbrToOverDecimal(curr.ballnbr),
+    ballNbr: curr.ballnbr,
+  };
 }
 
 export function detectPartnership(prev, curr) {
@@ -86,10 +118,9 @@ export function detectPartnership(prev, curr) {
   if (currActive.totalruns > prevActive.totalruns) {
     const runs = currActive.totalruns;
 
-    if (runs % 50 === 0) {
+    if (runs % PARTNERSHIP_MILESTONE_RUNS === 0) {
       return {
         type: "PARTNERSHIP_MILESTONE",
-        milestone: runs,
         bat1: currActive.bat1name,
         bat2: currActive.bat2name,
         runs,
@@ -114,11 +145,16 @@ export function detectPartnership(prev, curr) {
 }
 
 export function detectWicket(prev, curr) {
+  // console.log("detectWicket prev::", prev);
+  // console.log("detectWicket curr::", curr);
   if (!prev || !curr) return null;
   if (!curr.fow || !curr.fow.fow) return null;
 
   const prevFowList = prev.fow?.fow || [];
   const currFowList = curr.fow.fow;
+
+  console.log("detectWicket1:::", currFowList.length);
+  console.log("detectWicket2:::", prevFowList.length);
 
   if (currFowList.length === prevFowList.length) return null;
 
@@ -206,7 +242,6 @@ export function detectBatsmanMilestone(prev, curr) {
     const milestone =
       Math.floor(currRuns / BATSMAN_MILESTONE_RUNS) * BATSMAN_MILESTONE_RUNS;
 
-    // milestone must be >= 50 and must be newly crossed
     if (milestone >= BATSMAN_MILESTONE_RUNS && prevRuns < milestone) {
       return {
         type: "BATSMAN_MILESTONE",
@@ -252,8 +287,10 @@ export function detectBowlerMilestone(prev, curr) {
 }
 
 export function getPartnershipContributions(currInnings) {
-  const p = currInnings?.partnership?.partnership?.[0];
-  if (!p) return null;
+  const list = currInnings?.partnership?.partnership;
+  if (!Array.isArray(list) || list.length === 0) return null;
+
+  const p = list[list.length - 1];
 
   return {
     totalRuns: p.totalruns,

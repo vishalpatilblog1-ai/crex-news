@@ -7,6 +7,7 @@ export function getFlagEmoji(teamShort) {
     AUS: "🇦🇺",
     ENG: "🇬🇧",
     SA: "🇿🇦",
+    RSA: "🇿🇦",
     NZ: "🇳🇿",
     PAK: "",
     SL: "🇱🇰",

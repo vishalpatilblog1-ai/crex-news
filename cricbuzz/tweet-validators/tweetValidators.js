@@ -1,8 +1,31 @@
 //tweetValidators.js
 
+// export function headlineValidator(team1Short, team2Short, format) {
+//   const team1 = team1Short && team1Short !== "null" ? team1Short : "";
+//   const team2 = team2Short && team2Short !== "null" ? team2Short : "";
+//   const fmt = format && format !== "null" ? format : "";
+
+//   if (team1 && team2 && fmt) {
+//     return `🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`;
+//   }
+
+//   return `🚨 MATCH UPDATES 🚨`;
+// }
+
+// function normalizeTeamShort(code) {
+//   if (!code) return code;
+
+//   const upper = code.toUpperCase().trim();
+
+//   // South Africa correction
+//   if (upper === "RSA") return "SA";
+
+//   return upper;
+// }
 export function headlineValidator(team1Short, team2Short, format) {
-  const team1 = team1Short && team1Short !== "null" ? team1Short : "";
-  const team2 = team2Short && team2Short !== "null" ? team2Short : "";
+  const team1 = normalizeTeamShort(team1Short);
+  const team2 = normalizeTeamShort(team2Short);
+
   const fmt = format && format !== "null" ? format : "";
 
   if (team1 && team2 && fmt) {
@@ -12,7 +35,21 @@ export function headlineValidator(team1Short, team2Short, format) {
   return `🚨 MATCH UPDATES 🚨`;
 }
 
-export function buildHashtags(match, team1Short, team2Short) {
+function normalizeTeamShort(code) {
+  if (!code) return code;
+
+  const upper = code.toUpperCase().trim();
+
+  // South Africa correction
+  if (upper === "RSA") return "SA";
+
+  return upper;
+}
+
+export function buildHashtags(match, t1, t2, batsman, bowler, eventType) {
+  const team1Short = normalizeTeamShort(t1);
+  const team2Short = normalizeTeamShort(t2);
+
   if (!team1Short || !team2Short) return "";
 
   const h1 = `#${team1Short}vs${team2Short}`;
@@ -22,12 +59,27 @@ export function buildHashtags(match, team1Short, team2Short) {
   const format = (match?.format || "").toUpperCase();
 
   if (format.includes("T20")) fmt = "#T20I";
-  else if (format.includes("ODI") || format.includes("ONE")) fmt = "#ODI";
+  else if (format.includes("ODI")) fmt = "#ODI";
   else if (format.includes("TEST")) fmt = "#Test";
+
+  const playerTags = new Set();
+
+  // Helper: convert "Virat Kohli" -> "#ViratKohli"
+  const makeTag = (name) => "#" + name.replace(/[^a-zA-Z]/g, "").trim();
+
+  // 🔥 Add batsman always (for FOUR, SIX, WICKET, MILESTONE)
+  if (batsman && typeof batsman === "string") {
+    playerTags.add(makeTag(batsman));
+  }
+
+  // 🔥 Add bowler ONLY for WICKET
+  if (eventType === "WICKET" && bowler && typeof bowler === "string") {
+    playerTags.add(makeTag(bowler));
+  }
 
   const blacklist = ["PSL", "BPL", "LPL", "KPL", "NCL"];
 
-  return [h1, h2, fmt]
+  return [h1, h2, fmt, ...Array.from(playerTags)]
     .filter(Boolean)
     .filter((tag) => !blacklist.some((x) => tag.toUpperCase().includes(x)))
     .join(" ");

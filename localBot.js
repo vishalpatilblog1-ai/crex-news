@@ -1,4 +1,4 @@
-// localBot.js — FINAL AI-Based Local Bot (Puppeteer / Console)
+// localBot.js — FINAL SCORECARD-BASED LOCAL BOT (MATCHING index.js)
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
@@ -6,227 +6,190 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { getMatchScore, getCommentary } from "./cricbuzz/cricbuzzApi.js";
+import { fetchCommentaryTextByOverNumber } from "./cricbuzz/fetchCommentaryTextByOverNumber.js";
+
 import generateTweet from "./ai.js";
 import { postTweet_console, postTweet_web } from "./Puppeteer/postTweet.js";
+
 import { createLogger } from "./utils/logger.js";
+
+import {
+  detectBatsmanMilestone,
+  detectFour,
+  detectPartnership,
+  detectSix,
+  detectTeamMilestone,
+  detectWicket,
+} from "./cricbuzz/inningsDetector.js";
+
+import { buildMatchContext } from "./cricbuzz/buildMatchContext.js";
 
 const log = createLogger("local");
 
-const FORCE_MATCH_ID = 117380;
-const FORCE_MATCH_NAME = "South Africa vs India";
-
-const POLL_WAIT_TIME = 10000;
+// ========= CONFIG =========
+const FORCE_MATCH_ID = 117389;
+const FORCE_MATCH_NAME = "FOREIGN LOCAL BOT TEST";
 
 const USE_WEB_TWEET = false;
+const POLL_WAIT_TIME = 5000;
 
+// ========= GLOBALS =========
+globalThis.LAST_INNINGS = null;
+globalThis.LAST_OVER = null;
 globalThis.LAST_BALL = null;
-globalThis.LAST_HASH = null;
-globalThis.LAST_EVENT_BALL = {};
+globalThis.LAST_EVENT_BALL = {}; // per-event dedupe
 
-let CURRENT_MATCH_ID = FORCE_MATCH_ID;
-let CURRENT_MATCH_NAME = FORCE_MATCH_NAME;
-
-log(`📌 Match: ${CURRENT_MATCH_NAME}`);
-
-const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-
-function extractLatestCommentary(res) {
-  if (!res || !Array.isArray(res.comwrapper)) return null;
-
-  const list = res.comwrapper.map((item) => item.commentary).filter(Boolean);
-  if (!list.length) return null;
-
-  for (const ball of list) {
-    if (!ball) continue;
-    const txt = (ball.commtxt || "").trim();
-    if (txt === "" || txt === "B0$") continue; // ghost entries
-    return ball;
-  }
-
-  return null;
+function wait(ms) {
+  return new Promise((res) => setTimeout(res, ms));
 }
 
-function getCurrentInningsFromScore(scoreRes, miniscore) {
-  if (!scoreRes?.scorecard || !Array.isArray(scoreRes.scorecard)) return null;
+function isNewInnings(prevInn, currInn) {
+  if (!prevInn || !currInn) return false;
 
-  if (miniscore?.inningsid) {
-    const byId = scoreRes.scorecard.find(
-      (inn) => inn.inningsid === miniscore.inningsid
-    );
-    if (byId) return byId;
-  }
+  const prevOvers = parseFloat(prevInn.overs || 0);
+  const currOvers = parseFloat(currInn.overs || 0);
 
-  return scoreRes.scorecard[scoreRes.scorecard.length - 1] || null;
-}
+  const prevWkts = prevInn.wickets ?? 0;
+  const currWkts = currInn.wickets ?? 0;
 
-function normalizeOvers(overs) {
-  if (overs == null) return overs;
-  const parts = overs.toString().split(".");
-  const full = parseInt(parts[0], 10);
-  const balls = parseInt(parts[1] || "0", 10);
-  if (balls === 6) return (full + 1).toFixed(1).replace(".0", "");
-  return overs;
-}
-
-function getMiniScorePlayers(miniscore) {
-  if (!miniscore) return {};
-  return {
-    striker: miniscore.batsmanstriker?.name || "",
-    nonStriker: miniscore.batsmannonstriker?.name || "",
-    bowler: miniscore.bowlerstriker?.name || "",
-    strikerRuns: miniscore.batsmanstriker?.runs || "",
-    strikerBallsPlayed: miniscore.batsmanstriker?.balls || "",
-    nonStrikerRuns: miniscore.batsmannonstriker?.runs || "",
-    nonStrikerBallsPlayed: miniscore.batsmannonstrister?.balls || "",
-  };
-}
-
-function buildMatchContext(scoreRes, commRes, latestBall) {
-  const partnership = commRes?.miniscore?.partnership;
-
-  const miniscore = commRes?.miniscore || {};
-  const matchheaders = commRes?.matchheaders || {};
-  const currentInnings = getCurrentInningsFromScore(scoreRes, miniscore);
-
-  const format = matchheaders.matchformat || "UNKNOWN";
-  const status = matchheaders.status || scoreRes?.status || "";
-
-  const team1 =
-    matchheaders.team1?.teamname || scoreRes?.scorecard?.[0]?.batteamname || "";
-  const team2 =
-    matchheaders.team2?.teamname || scoreRes?.scorecard?.[1]?.batteamname || "";
-
-  const inningsscores = miniscore.inningsscores?.inningsscore || [];
-  const battingInnings =
-    inningsscores.find((inn) => inn.inningsid === miniscore.inningsid) ||
-    inningsscores[0] ||
-    {};
-
-  const inningsContext = {
-    battingTeam:
-      matchheaders.teamdetails?.batteamname ||
-      battingInnings.batteamshortname ||
-      currentInnings?.batteamname ||
-      "",
-    bowlingTeam: matchheaders.teamdetails?.bowlteamname || "",
-    runs: battingInnings.runs ?? currentInnings?.score ?? null,
-    wickets: battingInnings.wickets ?? currentInnings?.wickets ?? null,
-    overs: normalizeOvers(
-      battingInnings.overs ?? currentInnings?.overs ?? null
-    ),
-    target: miniscore.target ?? 0,
-    crr: miniscore.crr ?? currentInnings?.runrate ?? null,
-    rrr: miniscore.rrr ?? 0,
-    trailOrLeadText: status || miniscore.custstatus || "",
-    // currentPartnership: getCurrentPartnership(scoreRes, miniscore),
-  };
-
-  const players = getMiniScorePlayers(miniscore);
-
-  return {
-    match: {
-      name: `${team1} vs ${team2}`,
-      format,
-      status,
-      venue: "",
-      team1,
-      team2,
-    },
-    innings: inningsContext,
-    ball: {
-      text: latestBall.commtxt,
-      eventtype: latestBall.eventtype,
-      overnum: latestBall.overnum,
-      inningsid: latestBall.inningsid,
-      ballnbr: latestBall.ballnbr,
-      partnership,
-    },
-    players,
-  };
+  // Overs reset + wickets reset → new innings
+  return prevOvers > currOvers && currWkts === 0;
 }
 
 async function pollOnce() {
   try {
-    log(`🔄 Polling: ${CURRENT_MATCH_NAME}`, true);
+    log(`🔄 Polling LOCAL MATCH: ${FORCE_MATCH_NAME}`);
 
-    const scoreRes = await getMatchScore(CURRENT_MATCH_ID);
+    // ============= 1. SCORECARD =============
+    const scoreRes = await getMatchScore(FORCE_MATCH_ID);
     if (!scoreRes || !scoreRes.scorecard) {
+      log("⚠ No scorecard… retrying");
       return;
     }
 
-    const commentaryRaw = await getCommentary(CURRENT_MATCH_ID);
-    const latest = extractLatestCommentary(commentaryRaw);
+    const commRes = await getCommentary(FORCE_MATCH_ID);
 
-    if (!latest) {
+    // Determine current innings
+    const currInnings =
+      scoreRes.scorecard[scoreRes.scorecard.length - 1] || null;
+
+    if (!currInnings) {
+      log("⚠ No current innings yet");
       return;
     }
 
-    if (latest.eventtype === "over-break") {
+    // ======= NEW INNINGS DETECTED ========
+    if (isNewInnings(globalThis.LAST_INNINGS, currInnings)) {
+      console.log("🆕 TRUE NEW INNINGS DETECTED — resetting state");
+      globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+      globalThis.LAST_OVER = 0;
+      globalThis.LAST_BALL = -1;
+      globalThis.LAST_EVENT_BALL = {};
       return;
     }
 
-    const commHash = (latest.commtxt || "").trim();
+    // ======= FIRST RUN / INITIAL SET =======
+    if (!globalThis.LAST_INNINGS) {
+      globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+      globalThis.LAST_OVER = parseFloat(currInnings.overs) || 0;
+      globalThis.LAST_BALL = currInnings.ballnbr ?? null;
 
-    if (
-      latest.ballnbr === globalThis.LAST_BALL &&
-      commHash === globalThis.LAST_HASH
-    ) {
-      log("⏩ Exact same commentary — skipping...");
+      console.log("📌 Initial innings snapshot saved");
+      console.log(
+        `💥 ${scoreRes.scorecard[0]?.batteamname} Vs ${scoreRes.scorecard[1]?.batteamname} 💥`
+      );
       return;
     }
 
-    globalThis.LAST_BALL = latest.ballnbr;
-    globalThis.LAST_HASH = commHash;
+    // ============= 2. NEW BALL CHECK =============
+    const prevInn = globalThis.LAST_INNINGS;
+    const currBall = currInnings.ballnbr ?? null;
 
-    // DEDUPE 2: per-event, per-ball (handles multiple commentary for same wicket/six/four)
-    const EVENT_TYPES_TO_DEDUPE = [
-      "WICKET",
-      "SIX",
-      "FOUR",
-      "FIFTY",
-      "HUNDRED",
-      "TEAM_FIFTY",
-      "TEAM_HUNDRED",
-    ];
+    const prevBall = globalThis.LAST_BALL;
 
-    if (EVENT_TYPES_TO_DEDUPE.includes(latest.eventtype)) {
-      const prevBallForEvent = globalThis.LAST_EVENT_BALL[latest.eventtype];
+    if (currBall !== null && prevBall !== null && currBall === prevBall) {
+      return; // same ball → skip
+    }
 
-      if (prevBallForEvent === latest.ballnbr) {
-        log(
-          `⏩ Duplicate ${latest.eventtype} on same ball (${latest.ballnbr}) — skipping`
-        );
-        return;
+    const oversNow = parseFloat(currInnings.overs);
+
+    if (oversNow < globalThis.LAST_OVER) {
+      return; // overs reversed but NOT new innings → skip
+    }
+
+    // ============= 3. EVENT DETECTION =============
+    let events = [];
+
+    const evTeam = detectTeamMilestone(prevInn, currInnings);
+    const evWicket = detectWicket(prevInn, currInnings);
+    const evBatMS = detectBatsmanMilestone(prevInn, currInnings);
+    const evSix = detectSix(prevInn, currInnings);
+    const evFour = detectFour(prevInn, currInnings);
+    const evPart = detectPartnership(prevInn, currInnings);
+
+    if (evWicket) events.push(evWicket);
+    if (evTeam) events.push(evTeam);
+    if (evBatMS) events.push(evBatMS);
+    if (evSix) events.push(evSix);
+    if (evFour) events.push(evFour);
+    if (evPart && evPart.type === "PARTNERSHIP_MILESTONE") events.push(evPart);
+
+    // ============= UPDATE SNAPSHOT =============
+    globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+    globalThis.LAST_OVER = oversNow;
+    globalThis.LAST_BALL = currBall;
+
+    if (events.length === 0) return;
+
+    // ============= 4. PROCESS EVENTS =============
+    for (const singleEvent of events) {
+      const eventType = singleEvent.type;
+      const ballNbr = currInnings.ballnbr;
+
+      // DEDUPE by event type per ball
+      if (globalThis.LAST_EVENT_BALL[eventType] === ballNbr) {
+        log(`⏩ Duplicate ${eventType} on ball ${ballNbr} — skipped`);
+        continue;
+      }
+      globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
+
+      // ============= FETCH COMMENTARY TEXTS =============
+      const lines = fetchCommentaryTextByOverNumber(
+        commRes,
+        singleEvent.currentOver
+      );
+
+      singleEvent.commentaryTexts = lines;
+
+      // ============= BUILD MATCH CONTEXT =============
+      const matchContext = buildMatchContext({
+        comm: commRes,
+        currInnings,
+        event: singleEvent,
+        isMatchComplete: scoreRes.ismatchcomplete,
+      });
+
+      // ============= GENERATE TWEET =============
+      const tweetContent = await generateTweet(matchContext);
+
+      if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
+        log(`ℹ AI skipped event: ${singleEvent.type}`);
+        continue;
       }
 
-      globalThis.LAST_EVENT_BALL[latest.eventtype] = latest.ballnbr;
-    }
+      if (USE_WEB_TWEET) {
+        await postTweet_web(tweetContent);
+      } else {
+        await postTweet_console(tweetContent);
+      }
 
-    const matchContext = buildMatchContext(scoreRes, commentaryRaw, latest);
-
-    const tweetContent = await generateTweet(matchContext);
-
-    log("tweetContent::");
-    log(tweetContent);
-
-    if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
-      log("ℹ AI decided to SKIP this ball");
-      return;
-    }
-
-    if (USE_WEB_TWEET) {
-      await postTweet_web(tweetContent);
-    } else {
-      await postTweet_console(tweetContent);
+      log(`🟢 Tweet posted for event: ${singleEvent.type}`);
     }
   } catch (err) {
-    console.error("❌ ERROR in pollOnce():", err);
+    console.error("❌ ERROR in LOCAL pollOnce():", err);
   }
 }
 
-// ===============================
-// LOOP
-// ===============================
 async function startLoop() {
   while (true) {
     await pollOnce();

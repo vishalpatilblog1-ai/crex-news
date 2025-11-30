@@ -14,6 +14,62 @@ function normalizeOvers(overs) {
   return b === 6 ? (o + 1).toFixed(1).replace(".0", "") : overs;
 }
 
+function buildBaseMatchObject(headers) {
+  return {
+    name:
+      headers?.matchdescription ||
+      `${headers?.team1?.teamname || ""} vs ${
+        headers?.team2?.teamname || ""
+      }`.trim(),
+
+    team1: headers?.team1?.teamname || "",
+    team2: headers?.team2?.teamname || "",
+
+    team1Short:
+      headers?.team1?.teamsname ||
+      shortTeamName(headers?.team1?.teamname || ""),
+
+    team2Short:
+      headers?.team2?.teamsname ||
+      shortTeamName(headers?.team2?.teamname || ""),
+
+    format: headers?.matchformat || "",
+    venue: headers?.venue || "",
+  };
+}
+function buildMatchResultContext(headers, event) {
+  const match = {
+    ...buildBaseMatchObject(headers),
+    status: event.resultText || headers?.status || "",
+    isMatchComplete: true,
+  };
+
+  return {
+    match,
+    event,
+    players: {},
+  };
+}
+
+function buildTossContext(headers, comm, event) {
+  const match = {
+    ...buildBaseMatchObject(headers),
+    status: headers?.status || "",
+    isMatchComplete: false,
+  };
+
+  const enrichedEvent = {
+    ...event,
+    tossWinner: comm?.matchheaders?.tossresults?.tosswinnername || "",
+    tossDecision: comm?.matchheaders?.tossresults?.decision,
+  };
+
+  return {
+    match,
+    event: enrichedEvent,
+    players: {},
+  };
+}
 export function buildMatchContext({
   comm,
   currInnings,
@@ -23,73 +79,12 @@ export function buildMatchContext({
 }) {
   const mini = comm?.miniscore || {};
   const headers = comm?.matchheaders || {};
-
   if (event?.type === "MATCH_RESULT") {
-    const match = {
-      name:
-        headers?.matchdescription ||
-        `${headers?.team1?.teamname || ""} vs ${
-          headers?.team2?.teamname || ""
-        }`.trim(),
-
-      team1: headers?.team1?.teamname || "",
-      team2: headers?.team2?.teamname || "",
-      team1Short:
-        headers?.team1?.teamsname ||
-        shortTeamName(headers?.team1?.teamname || ""),
-      team2Short:
-        headers?.team2?.teamsname ||
-        shortTeamName(headers?.team2?.teamname || ""),
-
-      format: headers?.matchformat || "",
-      status: event.resultText || headers?.status || "",
-      venue: headers?.venue || "",
-      isMatchComplete: true,
-    };
-
-    return {
-      match,
-      innings: null,
-      event,
-      players: {},
-    };
+    return buildMatchResultContext(headers, event);
   }
 
   if (event?.type === "TOSS") {
-    const match = {
-      name:
-        headers?.matchdescription ||
-        `${headers?.team1?.teamname || ""} vs ${
-          headers?.team2?.teamname || ""
-        }`.trim(),
-
-      team1: headers?.team1?.teamname || "",
-      team2: headers?.team2?.teamname || "",
-      team1Short:
-        headers?.team1?.teamsname ||
-        shortTeamName(headers?.team1?.teamname || ""),
-      team2Short:
-        headers?.team2?.teamsname ||
-        shortTeamName(headers?.team2?.teamname || ""),
-
-      format: headers?.matchformat || "",
-      status: headers?.status || "",
-      venue: headers?.venue || "",
-      isMatchComplete: false,
-    };
-
-    const enrichedEvent = {
-      ...event,
-      tossWinner: comm?.matchheaders?.tossresults?.tosswinnername || "",
-      tossDecision: comm?.matchheaders?.tossresults?.decision,
-    };
-
-    return {
-      match,
-      innings: null,
-      event: enrichedEvent,
-      players: {},
-    };
+    return buildTossContext(headers, comm, event);
   }
 
   const active = getActiveBattersFromInnings(currInnings);
@@ -105,54 +100,33 @@ export function buildMatchContext({
     bowler: mini?.bowlerstriker?.name || "",
   };
 
-  // On wicket, batsman name becomes striker
   if (event?.type === "WICKET" && event?.batterName) {
     players.striker = event.batterName;
   }
 
   const match = {
-    name:
-      headers?.matchdescription ||
-      `${headers?.team1?.teamname || ""} vs ${
-        headers?.team2?.teamname || ""
-      }`.trim(),
-    team1: headers?.team1?.teamname || "",
-    team2: headers?.team2?.teamname || "",
-    team1Short:
-      headers?.team1?.teamsname ||
-      shortTeamName(headers?.team1?.teamname || ""),
-    team2Short:
-      headers?.team2?.teamsname ||
-      shortTeamName(headers?.team2?.teamname || ""),
-    format: headers?.matchformat || "",
+    ...buildBaseMatchObject(headers),
     status: headers?.status || "",
-    venue: headers?.venue || "",
     isMatchComplete,
   };
 
-  const innings = {
+  const enrichedEvent = {
+    ...event,
+    bowlerName: mini?.bowlerstriker?.name || "",
     inningsid: currInnings.inningsid,
     runs: currInnings.score,
     wickets: currInnings.wickets,
     overs: normalizeOvers(currInnings.overs),
     batteamname: currInnings.batteamname,
     batteamsname: currInnings.batteamsname,
-    partnership: currInnings.partnership,
     batsman: currInnings.batsman,
     bowler: currInnings.bowler,
-    partnership,
+    partnership: partnership || currInnings.partnership,
     targetInning: firstInnings,
-  };
-
-  const enrichedEvent = {
-    ...event,
-    bowlerName: mini?.bowlerstriker?.name || "",
-    overs: normalizeOvers(currInnings.overs),
   };
 
   return {
     match,
-    innings,
     event: enrichedEvent,
     players,
   };
