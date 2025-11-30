@@ -5,6 +5,7 @@ import { buildMatchResultTemplate, getFlagEmoji } from "./templates.js";
 import {
   buildHashtags,
   headlineValidator,
+  normalizeTeamShort,
   safeLine,
 } from "./tweet-validators/tweetValidators.js";
 
@@ -13,6 +14,27 @@ function cleanEventLog(event) {
 
   const { batsman, bowler, ...rest } = event;
   return rest;
+}
+function computeChaseStatus(event) {
+  if (!event?.targetInning?.targetRuns || !event?.overs) return null;
+
+  const target = event.targetInning.targetRuns;
+  const winningScore = target + 1;
+
+  const currentRuns = event.runs;
+
+  const runsNeeded = Math.max(winningScore - currentRuns, 0);
+
+  // Parse overs like 37.5 → ov=37, ball=5
+  const [ovStr, ballStr] = event.overs.toString().split(".");
+  const overs = parseInt(ovStr, 10);
+  const balls = parseInt(ballStr || "0", 10);
+
+  const ballsBowled = overs * 6 + balls;
+  const totalBalls = 50 * 6; // ODI
+  const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
+
+  return { runsNeeded, ballsLeft };
 }
 
 export async function buildTemplateTweet(matchContext) {
@@ -87,15 +109,17 @@ export async function buildTemplateTweet(matchContext) {
     event.targetInning?.battingTeamShortName
   );
 
-  const firstLine = `${firstInningFlag ? firstInningFlag + " " : ""}${
-    event.batteamsname
-  } - ${event.runs}/${event.wickets} (${event.overs} Overs)`;
+  const firstLine = `${
+    firstInningFlag ? firstInningFlag + " " : ""
+  }${normalizeTeamShort(event.batteamsnameShort || event.batteamsname)} - ${
+    event.runs
+  }/${event.wickets} (${event.overs} Overs)`;
 
   const secondLine =
     isSecondInningRunning && event.targetInning
-      ? `${secondInningFlag ? secondInningFlag + " " : ""}${
+      ? `${secondInningFlag ? secondInningFlag + " " : ""}${normalizeTeamShort(
           event.targetInning.battingTeamShortName
-        } - ${event.targetInning?.targetRuns} Runs (Target)`
+        )} - ${event.targetInning.targetRuns} Runs (Target)`
       : "";
 
   const baseScoreLine = secondLine
@@ -114,8 +138,19 @@ export async function buildTemplateTweet(matchContext) {
   const commentary = commentaryTexts?.trim() ? commentaryTexts.trim() : "";
 
   const scoreLine = `${baseScoreLine}`;
+  let safeStatus = "";
 
-  const safeStatus = safeLine(match.status);
+  if (isSecondInningRunning && event.targetInning) {
+    const chase = computeChaseStatus(event);
+    if (chase) {
+      safeStatus = `${normalizeTeamShort(event.batteamsname)} need ${
+        chase.runsNeeded
+      } runs in ${chase.ballsLeft} balls`;
+    }
+  } else {
+    safeStatus = safeLine(match.status);
+  }
+
   const safeScore = safeLine(scoreLine);
   if (commentary) {
     finalTweet += `${commentary}\n\n`;

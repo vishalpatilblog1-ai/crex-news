@@ -35,12 +35,11 @@ export function headlineValidator(team1Short, team2Short, format) {
   return `🚨 MATCH UPDATES 🚨`;
 }
 
-function normalizeTeamShort(code) {
+export function normalizeTeamShort(code) {
   if (!code) return code;
 
   const upper = code.toUpperCase().trim();
 
-  // South Africa correction
   if (upper === "RSA") return "SA";
 
   return upper;

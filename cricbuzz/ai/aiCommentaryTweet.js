@@ -15,13 +15,11 @@ export async function generateCommentaryTweet(
 ) {
   if (!event?.type) return "";
 
-  // EVENT FLAGS
   const eventType = event.type;
   const isTeamMilestone = eventType === "TEAM_MILESTONE";
   const isBatsmanMilestone = eventType === "BATSMAN_MILESTONE";
   const isPartnershipMilestone = eventType === "PARTNERSHIP_MILESTONE";
 
-  // Extract milestone data
   let bat1 = "";
   let bat2 = "";
   let milestone = event?.milestone || "";
@@ -59,25 +57,22 @@ export async function generateCommentaryTweet(
   }
 
   const battingTeam = event?.batteamsname || "";
-  const fielder = event?.fielderName || ""; // NEW
 
-  // Sanitize commentary
   const cleanCommentary = (rawCommentary || "").replace(/\s+/g, " ").trim();
 
-  // FINAL PRODUCTION PROMPT
+  // FINAL ULTRA-CONTROLLED PROMPT
   const prompt = `
-You are a cricket AI that converts raw Cricbuzz commentary into a short, crisp, emotional, human Twitter update.
+You are a cricket AI that generates extremely crisp, emotional, human-quality commentary for SIX, FOUR, WICKET, and milestone events.
 
 =====================================================
-EVENT DETAILS (STRICT — DO NOT GUESS)
+CONTEXT — STRICT (DO NOT GUESS ANYTHING)
 =====================================================
 eventType: ${eventType}
-milestone: ${milestone}
 batterName: ${event.batterName || ""}
 bowlerName: ${event.bowlerName || ""}
-fielder: ${fielder}
 battingTeam: ${battingTeam}
 
+milestone: ${milestone}
 teamMilestoneRuns: ${isTeamMilestone ? finalRuns : ""}
 teamMilestoneBalls: ${isTeamMilestone ? finalBalls : ""}
 
@@ -94,64 +89,78 @@ RAW COMMENTARY:
 "${cleanCommentary}"
 
 TEAMS:
-team1: ${team1Short}
-team2: ${team2Short}
-battingTeam: ${battingTeam}
+${team1Short} vs ${team2Short}
 
 =====================================================
-STRICT NAME RULES
+ABSOLUTE NAME RULES
 =====================================================
-- NEVER take batter or bowler names from commentary.
-- ONLY use provided fields:
-      batter = batterName
-      bowler = bowlerName
-- Extract fielder ONLY from:
-      "Caught by NAME"
-      "run out (A/B)" → use A
-- For "Caught & Bowled", use bowlerName as both bowler & fielder.
+- NEVER extract batter/bowler from commentary.
+- ONLY use batterName and bowlerName provided.
 
 =====================================================
-SIX / FOUR RULES
+SIX / FOUR RULES (MOST IMPORTANT)
 =====================================================
-- MUST mention:
-      batterName
-      bowlerName
-- Commentary is ONLY for:
-      shot type, direction, emotion, timing words
-- NO numbers, NO other names, NO long analysis.
-- ONE sentence only, max 18 words.
+1. Output ONLY:
+   - One short headline (3–6 words) + ONE emoji
+   - One commentary sentence (max 18 words)
+
+2. Headline Rules:
+   - HEADLINE MUST BE IN ALL CAPS
+   - Creative, emotional, cricket-style
+   - No fixed list. AI must generate new phrases every time.
+
+3. Commentary MUST include:
+   - batterName
+   - bowlerName
+   - power/timing/elegance indicator
+   - short direction (cover, mid-wicket, point, long-on, square, etc.)
+
+4. Commentary MUST NOT include:
+   - Numbers of any kind
+   - Other players
+   - Match situation
+   - Emojis
+   - Long descriptions
+
+5. Format EXACTLY:
+<HEADLINE>
+<one sentence>
 
 =====================================================
-WICKET RULES
+WICKET RULES — STRICT + DYNAMIC EMOTIONS
 =====================================================
-If fielder exists:
-   "<batterName> dismissed! <fielder> takes it off <bowlerName>."
-If bowled/LBW:
-   "<bowlerName> removes <batterName>."
-If run out:
-   "<batterName> run out by <fielder>."
+Use ONLY batterName and bowlerName.
+NEVER mention fielder.
+NEVER mention caught/bowled/LBW/run out.
+NEVER guess dismissal style from commentary.
+NEVER extract names from commentary.
+
+If bowlerName exists:
+   Choose EXACTLY ONE of the following lines:
+     "<batterName> falls! <bowlerName> strikes again."
+     "<batterName> falls! <bowlerName> breaks the stand."
+     "<batterName> falls! A huge moment created by <bowlerName>."
+     "<batterName> falls! <bowlerName> delivers the breakthrough."
+     "<batterName> falls! <bowlerName> ends the resistance."
+     "<batterName> falls! <bowlerName> produces the big wicket."
+
+If bowlerName is missing:
+   Choose EXACTLY ONE of the following lines:
+     "<batterName> falls! Big breakthrough."
+     "<batterName> falls! Huge moment in the match."
+     "<batterName> falls! Momentum shifts."
+     "<batterName> falls! Pressure back on the batting side."
+     "<batterName> falls! Game tilts again."
 
 =====================================================
 MILESTONE RULES
 =====================================================
 TEAM_MILESTONE:
-   "<battingTeam> bring up ${milestone} in ${finalBalls} balls."
+   "${battingTeam} bring up ${milestone}."
 BATSMAN_MILESTONE:
-   "${bat1} brings up ${milestone} off ${finalBalls} balls."
+   "${bat1} reaches ${milestone}."
 PARTNERSHIP_MILESTONE:
-   "${bat1} & ${bat2} bring up ${finalRuns} off ${finalBalls} balls."
-
-=====================================================
-HEADLINE RULES
-=====================================================
-- ALL CAPS
-- EXACTLY ONE emoji
-- 3–7 words
-Emoji logic:
-  SIX → 🔥 💥 🚀 🌟
-  FOUR → ⚡ ✨ 🔥
-  WICKET → 🎯 ❌ 🔴
-  MILESTONE → ⭐ 👏 🔥
+   "${bat1} and ${bat2} bring up ${finalRuns} together."
 
 =====================================================
 OUTPUT FORMAT
@@ -164,7 +173,7 @@ OUTPUT FORMAT
     const res = await client.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 90,
+      max_tokens: 110,
       temperature: 0.85,
     });
 
