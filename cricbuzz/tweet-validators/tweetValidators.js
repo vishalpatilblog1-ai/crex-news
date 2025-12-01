@@ -1,27 +1,5 @@
 //tweetValidators.js
 
-// export function headlineValidator(team1Short, team2Short, format) {
-//   const team1 = team1Short && team1Short !== "null" ? team1Short : "";
-//   const team2 = team2Short && team2Short !== "null" ? team2Short : "";
-//   const fmt = format && format !== "null" ? format : "";
-
-//   if (team1 && team2 && fmt) {
-//     return `🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`;
-//   }
-
-//   return `🚨 MATCH UPDATES 🚨`;
-// }
-
-// function normalizeTeamShort(code) {
-//   if (!code) return code;
-
-//   const upper = code.toUpperCase().trim();
-
-//   // South Africa correction
-//   if (upper === "RSA") return "SA";
-
-//   return upper;
-// }
 export function headlineValidator(team1Short, team2Short, format) {
   const team1 = normalizeTeamShort(team1Short);
   const team2 = normalizeTeamShort(team2Short);
@@ -63,15 +41,12 @@ export function buildHashtags(match, t1, t2, batsman, bowler, eventType) {
 
   const playerTags = new Set();
 
-  // Helper: convert "Virat Kohli" -> "#ViratKohli"
   const makeTag = (name) => "#" + name.replace(/[^a-zA-Z]/g, "").trim();
 
-  // 🔥 Add batsman always (for FOUR, SIX, WICKET, MILESTONE)
   if (batsman && typeof batsman === "string") {
     playerTags.add(makeTag(batsman));
   }
 
-  // 🔥 Add bowler ONLY for WICKET
   if (eventType === "WICKET" && bowler && typeof bowler === "string") {
     playerTags.add(makeTag(bowler));
   }

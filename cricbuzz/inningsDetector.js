@@ -6,6 +6,8 @@ import {
   PARTNERSHIP_MILESTONE_RUNS,
   TEAM_MILESTONE_RUNS,
 } from "../utils/constants.js";
+import { buildMatchResultTemplate } from "./templates.js";
+import { buildHashtags } from "./tweet-validators/tweetValidators.js";
 
 function ballNbrToOverDecimal(ballNbr) {
   const over = Math.floor(ballNbr / 6); // 294 → 49
@@ -307,4 +309,51 @@ export function getPartnershipContributions(currInnings) {
     },
     currentRunningOver: currInnings.overs,
   };
+}
+
+// cricbuzz/handlers/specialEvents.js
+
+// import { buildMatchResultTemplate } from "../templates.js";
+// import { buildHashtags } from "../../tweet-validators/tweetValidators.js";
+
+export function handleTossTweet(match, event) {
+  const tossWinner = event?.tossWinner;
+  const tossDecision = event?.tossDecision;
+
+  // Invalid data → skip
+  if (
+    !tossWinner ||
+    tossWinner.trim() === "" ||
+    !tossDecision ||
+    tossDecision.trim() === ""
+  ) {
+    return "SKIP";
+  }
+
+  const tossText =
+    event.tossText || `${tossWinner} won the toss and chose to ${tossDecision}`;
+
+  const hashtags = buildHashtags(
+    match,
+    match.team1Short,
+    match.team2Short,
+    event.bat1 || event.partnership?.bat1?.name,
+    event.bat2 || event.partnership?.bat2?.name
+  );
+
+  return `🪙 Toss Update
+
+${tossText}
+
+${hashtags}`;
+}
+
+export function handleMatchResultTweet(match, event) {
+  const output = buildMatchResultTemplate(match, event.resultText);
+
+  if (!output || typeof output !== "string") {
+    return `🏆 Match Result\n\n${event.resultText}\n\n#${match.team1Short}vs${match.team2Short}`;
+  }
+
+  return output;
 }

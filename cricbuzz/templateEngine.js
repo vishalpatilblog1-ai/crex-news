@@ -2,6 +2,16 @@
 
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { buildMatchResultTemplate, getFlagEmoji } from "./templates.js";
+import { basicTemplateOne } from "./templates/basic-template-1.js";
+import { basicTemplateTwo } from "./templates/basic-template-2.js";
+import { basicTemplateThree } from "./templates/basic-template-3.js";
+import { basicTemplateFour } from "./templates/basic-template-4.js";
+import { basicTemplateFive } from "./templates/basic-template-5.js";
+import { premiumTemplateOne } from "./templates/premium-template-1.js";
+import { premiumTemplateTwo } from "./templates/premium-template-2.js";
+import { premiumTemplateThree } from "./templates/premium-template-3.js";
+import { premiumTemplateFour } from "./templates/premium-template-4.js";
+import { premiumTemplateFive } from "./templates/premium-template-5.js";
 import {
   buildHashtags,
   headlineValidator,
@@ -18,8 +28,8 @@ function cleanEventLog(event) {
 function computeChaseStatus(event) {
   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
 
-  const target = event.targetInning.targetRuns;
-  const winningScore = target + 1;
+  const runs = event.targetInning.targetRuns;
+  const winningScore = runs + 1;
 
   const currentRuns = event.runs;
 
@@ -47,7 +57,10 @@ export async function buildTemplateTweet(matchContext) {
 
   const team1Short = matchContext?.match?.team1Short || "";
   const team2Short = matchContext?.match?.team2Short || "";
+  const team1Long = matchContext?.match?.team1 || "";
+  const team2Long = matchContext?.match?.team2 || "";
   const format = (match?.format || "").toUpperCase() || "";
+  const targetRuns = event?.targetInning?.targetRuns;
 
   const universalHeader = headlineValidator(team1Short, team2Short, format);
 
@@ -139,7 +152,7 @@ export async function buildTemplateTweet(matchContext) {
 
   const scoreLine = `${baseScoreLine}`;
   let safeStatus = "";
-
+  const chase = computeChaseStatus(event);
   if (isSecondInningRunning && event.targetInning) {
     const chase = computeChaseStatus(event);
     if (chase) {
@@ -168,11 +181,30 @@ export async function buildTemplateTweet(matchContext) {
     event.batterName,
     event.bowlerName,
     event.type
-
-    // event.bat2 || event.partnership?.bat2?.name
   );
 
   finalTweet += `${hashtags}`;
+
+  let tweet1 = premiumTemplateOne(
+    team1Short,
+    team2Short,
+    team1Long,
+    team2Long,
+    format,
+    commentary,
+    firstInningFlag,
+    secondInningFlag,
+    event.runs,
+    event.overs,
+    event.wickets,
+    team2Short,
+    chase.runsNeeded,
+    chase.ballsLeft,
+    targetRuns,
+    hashtags
+  );
+
+  // console.log(tweet1);
 
   return finalTweet.trim();
 }

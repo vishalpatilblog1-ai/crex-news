@@ -167,3 +167,16 @@ export function getFirstInnings(scoreRes) {
     battingTeamShortName: firstInning.batteamsname,
   };
 }
+
+export function splitCommentary(text) {
+  // Normalize double-spaces + remove trailing spaces
+  const clean = text.replace(/\s+$/gm, "");
+
+  // Split by newline
+  const parts = clean.split(/\n+/);
+
+  const commLine1 = parts[0] || "";
+  const commLine2 = parts[1] || "";
+
+  return { commLine1, commLine2 };
+}

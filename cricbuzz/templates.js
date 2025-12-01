@@ -26,33 +26,6 @@ export function getFlagEmoji(teamShort) {
   return map[teamShort.toUpperCase()] || "";
 }
 
-// export function getEmojiPack(team, opponent) {
-//   const t = team?.toLowerCase() || "";
-//   const o = opponent?.toLowerCase() || "";
-
-//   const isIndiaBatting = t.includes("india");
-//   const isIndiaBowling = o.includes("india");
-
-//   if (isIndiaBatting) {
-//     return {
-//       hit: ["🔥", "💥"],
-//       wicket: ["🔴", "📛", "❌"],
-//     };
-//   }
-
-//   if (isIndiaBowling) {
-//     return {
-//       hit: ["📛", "🔴"],
-//       wicket: ["🟩", "✅"],
-//     };
-//   }
-
-//   return {
-//     hit: ["🔥", "💥"],
-//     wicket: ["🔴", "📛"],
-//   };
-// }
-
 export async function buildMatchResultTemplate(match, resultText) {
   const { team1Short, team2Short, format } = match;
 
