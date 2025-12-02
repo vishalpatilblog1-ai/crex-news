@@ -4,18 +4,6 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-function formatWithNewlines(text) {
-  // Split by ".", "?", "!" but keep punctuation
-  const sentences = text.match(/[^.!?]+[.!?]/g) || [text];
-
-  return sentences
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => s + "\n") // sentence + newline
-    .join("\n") // extra blank line
-    .trim();
-}
-
 export async function generateNewsTweet(headline, intro, fullArticleText) {
   const isQuotedHeadline =
     headline.trim().startsWith("'") ||
@@ -59,5 +47,8 @@ Write ONLY the tweet. No extra text.
     ],
   });
 
-  return response.choices[0].message.content.trim();
+  return `
+🚨 NEWS UPDATES 🚨
+
+${response.choices[0].message.content.trim()}`;
 }

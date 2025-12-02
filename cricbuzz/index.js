@@ -6,7 +6,9 @@ import generateTweet from "../ai.js";
 import { postTweet_console, postTweet_web } from "../twitter.js";
 
 import { createLogger } from "../utils/logger.js";
-import { loadState } from "../utils/stateStore.js";
+
+import { loadState, saveState } from "../utils/stateStoreCloud.js";
+
 import { buildMatchContext } from "./buildMatchContext.js";
 import { findIndiaMatch, getCommentary, getMatchScore } from "./cricbuzzApi.js";
 import { fetchCommentaryTextByOverNumber } from "./fetchCommentaryTextByOverNumber.js";
@@ -385,6 +387,13 @@ async function pollingLoop() {
 if (process.env.ENABLE_SCORE_POLLING === "true") {
   startBot();
 }
-if (process.env.ENABLE_NEWS_POLLING === "true") {
-  setInterval(newsPollingLoop, 1000 * 60 * 5);
+
+async function init() {
+  global.STATE = await loadState();
+
+  if (process.env.ENABLE_NEWS_POLLING === "true") {
+    setInterval(newsPollingLoop, 1000 * 60 * 5);
+  }
 }
+
+init();
