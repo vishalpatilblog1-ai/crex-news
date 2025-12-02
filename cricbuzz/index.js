@@ -18,6 +18,7 @@ import {
   detectTeamMilestone,
   detectWicket,
 } from "./inningsDetector.js";
+import { newsPollingLoop } from "./loops/newsPollingLoop.js";
 import {
   extractTossInfo,
   getCorrectInnings,
@@ -35,13 +36,13 @@ globalThis.PREV_INNINGS_ID = null;
 globalThis.PREV_BATTEAM = null;
 globalThis.PREV_SNAPSHOT = null;
 
-const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
 
 const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
 
-// const FORCE_MATCH_ID = 135063;
+// const FORCE_MATCH_ID = 117389;
 
 // "toss_117389": true,
 // "result_135063": true,
@@ -135,8 +136,6 @@ async function pollingLoop() {
 
     log("score::");
     log(score);
-
-    // console.log("score::", JSON.stringify(score, null, 2));
 
     let comm = null;
 
@@ -383,4 +382,9 @@ async function pollingLoop() {
   return pollingLoop();
 }
 
-startBot();
+if (process.env.ENABLE_SCORE_POLLING === "true") {
+  startBot();
+}
+if (process.env.ENABLE_NEWS_POLLING === "true") {
+  setInterval(newsPollingLoop, 1000 * 60 * 5);
+}

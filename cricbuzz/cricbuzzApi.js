@@ -29,6 +29,13 @@ export async function getLiveMatches() {
   return await fetchJson(`${BASE_URL}/matches/v1/live`);
 }
 
+export async function getLiveNewsList() {
+  return await fetchJson(`${BASE_URL}/news/v1/index`);
+}
+export async function getNewsDetailsByNewsId(newsId) {
+  return await fetchJson(`${BASE_URL}/news/v1/detail/${newsId}`);
+}
+
 export async function findIndiaMatch() {
   const data = await getLiveMatches();
 
@@ -114,3 +121,15 @@ export async function getMatchScore(matchId) {
 export async function getCommentary(matchId) {
   return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/comm`);
 }
+
+// export function getLatestCleanNews(newsResponse) {
+//   if (!newsResponse?.storyList) return null;
+
+//   for (const item of newsResponse.storyList) {
+//     if (item.story && !item.story.adsType) {
+//       return item.story;
+//     }
+//   }
+
+//   return null;
+// }

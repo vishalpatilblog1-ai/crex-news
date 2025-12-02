@@ -17,22 +17,52 @@ function cleanEventLog(event) {
   const { batsman, bowler, ...rest } = event;
   return rest;
 }
-function computeChaseStatus(event) {
+// function computeChaseStatus(event, format) {
+//   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
+
+//   const runs = event.targetInning.targetRuns;
+//   const winningScore = runs + 1;
+
+//   const currentRuns = event.runs;
+
+//   const runsNeeded = Math.max(winningScore - currentRuns, 0);
+
+//   const [ovStr, ballStr] = event.overs.toString().split(".");
+//   const overs = parseInt(ovStr, 10);
+//   const balls = parseInt(ballStr || "0", 10);
+
+//   const ballsBowled = overs * 6 + balls;
+//   const totalBalls = 50 * 6;
+//   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
+
+//   return { runsNeeded, ballsLeft };
+// }
+export function computeChaseStatus(event, format) {
   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
 
   const runs = event.targetInning.targetRuns;
   const winningScore = runs + 1;
 
   const currentRuns = event.runs;
-
   const runsNeeded = Math.max(winningScore - currentRuns, 0);
 
+  // Overs → balls conversion
   const [ovStr, ballStr] = event.overs.toString().split(".");
   const overs = parseInt(ovStr, 10);
   const balls = parseInt(ballStr || "0", 10);
 
   const ballsBowled = overs * 6 + balls;
-  const totalBalls = 50 * 6;
+
+  let totalBalls = 120; // default T20 (fallback)
+
+  const fmt = (format || "").toUpperCase();
+
+  if (fmt === "T20") totalBalls = 20 * 6;
+  else if (fmt === "ODI") totalBalls = 50 * 6;
+  else if (fmt === "T10") totalBalls = 10 * 6;
+  else if (fmt === "TEST") totalBalls = 90 * 6; // 90 overs/day (optional)
+  // else keep default (T20)
+
   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
 
   return { runsNeeded, ballsLeft };
@@ -57,15 +87,6 @@ export async function buildTemplateTweet(matchContext) {
 
   if (!match || !event) return null;
 
-  // if (event.type === "MATCH_RESULT") {
-  //   const output = buildMatchResultTemplate(match, event.resultText);
-
-  //   if (!output || typeof output !== "string") {
-  //     return `🏆 Match Result\n\n${event.resultText}\n\n#${match.team1Short}vs${match.team2Short}`;
-  //   }
-
-  //   return output;
-  // }
   if (!event?.type) return null;
 
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
@@ -110,9 +131,9 @@ export async function buildTemplateTweet(matchContext) {
 
   const scoreLine = `${baseScoreLine}`;
   let safeStatus = "";
-  const chase = computeChaseStatus(event);
+  const chase = computeChaseStatus(event, match?.format);
   if (isSecondInningRunning && event.targetInning) {
-    const chase = computeChaseStatus(event);
+    const chase = computeChaseStatus(event.match?.format);
     if (chase) {
       safeStatus = `${normalizeTeamShort(event.batteamsname)} need ${
         chase.runsNeeded
