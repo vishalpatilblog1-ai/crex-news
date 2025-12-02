@@ -392,7 +392,7 @@ async function init() {
   global.STATE = await loadState();
 
   if (process.env.ENABLE_NEWS_POLLING === "true") {
-    setInterval(newsPollingLoop, 10000);
+    setInterval(newsPollingLoop, 1000 * 60 * 10);
   }
 }
 
