@@ -41,7 +41,7 @@ const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
 
-// const FORCE_MATCH_ID = 117389;
+// const FORCE_MATCH_ID = 135063;
 
 // "toss_117389": true,
 // "result_135063": true,
@@ -132,6 +132,10 @@ async function pollingLoop() {
     }
 
     const score = await getMatchScore(MATCH_ID);
+
+    log("score::");
+    log(score);
+
     // console.log("score::", JSON.stringify(score, null, 2));
 
     let comm = null;
@@ -140,6 +144,8 @@ async function pollingLoop() {
     const isMatchComplete = score?.ismatchcomplete;
     try {
       comm = await getCommentary(MATCH_ID);
+      log("comm::");
+      log(comm);
 
       console.log("current running score over::", globalThis.LAST_OVER);
       const toss = extractTossInfo(comm);
@@ -208,28 +214,9 @@ async function pollingLoop() {
       globalThis.LAST_HASH = null;
       globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 
-      // Continue polling next ball
       await wait(POLL_WAIT_TIME);
       return pollingLoop();
     }
-
-    // const changed =
-    //   globalThis.PREV_INNINGS_ID !== newInningsId ||
-    //   globalThis.PREV_BATTEAM !== newTeam;
-
-    // if (changed) {
-    //   console.log("🆕 New innings detected — resetting state");
-
-    //   globalThis.LAST_HASH = null;
-    //   globalThis.LAST_BALL = null;
-    //   globalThis.LAST_EVENT_BALL = {};
-    //   globalThis.PREV_SNAPSHOT = null;
-
-    //   globalThis.PREV_INNINGS_ID = newInningsId;
-    //   globalThis.PREV_BATTEAM = newTeam;
-
-    //   return;
-    // }
 
     if (!globalThis.PREV_INNINGS_ID) {
       globalThis.PREV_INNINGS_ID = currInnings.inningsid;
@@ -367,7 +354,7 @@ async function pollingLoop() {
       // console.log("matchContext::", JSON.stringify(matchContext, null, 2));
 
       const tweetContent = await generateTweet(matchContext);
-      // console.log("tweetContent:::", tweetContent);
+      // log("tweetContent:::", tweetContent);
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);

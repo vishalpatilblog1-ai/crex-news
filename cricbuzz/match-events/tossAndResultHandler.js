@@ -1,9 +1,13 @@
-// cricbuzz/handlers/handleTossEvent.js
+// cricbuzz/tossAndResultHandler.js
 
 import { postTweet_console, postTweet_web } from "../../twitter.js";
 import { saveState } from "../../utils/stateStore.js";
 import { buildMatchContext } from "../buildMatchContext.js";
 import { buildTemplateTweet } from "../templateEngine.js";
+import {
+  buildMatchResultTweet,
+  buildTossTweet,
+} from "../templates/toss-and-result-default-template.js";
 
 export async function handleTossEvent({
   comm,
@@ -21,10 +25,8 @@ export async function handleTossEvent({
       (ballNbrFromMini !== null && ballNbrFromMini > 0) ||
       (inningsFromScore !== null && inningsFromScore > 0);
 
-    // Skip if toss already tweeted or match already started
     if (!toss || STATE[`toss_${MATCH_ID}`] || matchStarted) return;
 
-    // Mark toss as tweeted
     STATE[`toss_${MATCH_ID}`] = true;
     saveState(STATE);
 
@@ -41,7 +43,20 @@ export async function handleTossEvent({
       firstInnings: null,
     });
 
-    const tweet = await buildTemplateTweet(matchContext);
+    const { match, event } = matchContext;
+    const team1Short = matchContext?.match?.team1Short || "";
+    const team2Short = matchContext?.match?.team2Short || "";
+    const tossWinnerShortName = event?.tossWinnerShortName;
+    const format = (match?.format || "").toUpperCase() || "";
+
+    const tweet = buildTossTweet(
+      match,
+      event,
+      team1Short,
+      team2Short,
+      tossWinnerShortName,
+      format
+    );
 
     if (!tweet || tweet === "SKIP") {
       console.log("⏭️ Toss not ready yet. Skipping...");
@@ -56,7 +71,6 @@ export async function handleTossEvent({
     console.log("⚠ Toss handler error:", err);
   }
 }
-
 export async function handleMatchResultEvent({
   comm,
   score,
@@ -66,22 +80,20 @@ export async function handleMatchResultEvent({
   firstInnings,
 }) {
   try {
-    // No match result? Skip.
     if (!score?.ismatchcomplete || !score?.status) return;
 
-    // Already tweeted? Skip.
     if (STATE[`result_${MATCH_ID}`]) return;
 
-    // Mark result as tweeted.
     STATE[`result_${MATCH_ID}`] = true;
     saveState(STATE);
 
+    const resultText = score.status;
+
     const syntheticEvent = {
       type: "MATCH_RESULT",
-      resultText: score.status,
+      resultText,
     };
 
-    // Build match context using the same function used everywhere
     const matchContext = buildMatchContext({
       comm,
       currInnings: null,
@@ -90,12 +102,20 @@ export async function handleMatchResultEvent({
       firstInnings,
     });
 
-    const tweet = await buildTemplateTweet(matchContext);
+    const { match, event } = matchContext;
+    const team1Short = matchContext?.match?.team1Short || "";
+    const team2Short = matchContext?.match?.team2Short || "";
+    const format = (match?.format || "").toUpperCase() || "";
 
-    if (tweet) {
-      await postTweet_console(tweet);
-      if (USE_WEB_TWEET) await postTweet_web(tweet);
-    }
+    const tweet = buildMatchResultTweet(
+      team1Short,
+      team2Short,
+      format,
+      resultText
+    );
+
+    await postTweet_console(tweet);
+    if (USE_WEB_TWEET) await postTweet_web(tweet);
 
     console.log("🏆 Match result tweet sent!");
   } catch (err) {
@@ -123,7 +143,6 @@ export function getCorrectInnings(scoreRes) {
   const first = card[0];
   const second = card[1];
 
-  // 1️⃣ If 2nd innings exists and has ANY activity → choose it
   if (second) {
     const hasStarted =
       Number(second.overs) > 0 ||
@@ -134,13 +153,12 @@ export function getCorrectInnings(scoreRes) {
     if (hasStarted) return second;
   }
 
-  // 2️⃣ Else pick the innings with highest ballnbr
   return card.reduce((a, b) => (a.ballnbr > b.ballnbr ? a : b));
 }
 
 export function getCorrectTestInnings(scoreRes, liveId) {
   if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
-    return null; // MATCH NOT STARTED
+    return null;
   }
 
   const card = scoreRes.scorecard;
@@ -169,14 +187,9 @@ export function getFirstInnings(scoreRes) {
 }
 
 export function splitCommentary(text) {
-  // Normalize double-spaces + remove trailing spaces
   const clean = text.replace(/\s+$/gm, "");
-
-  // Split by newline
   const parts = clean.split(/\n+/);
-
   const commLine1 = parts[0] || "";
   const commLine2 = parts[1] || "";
-
   return { commLine1, commLine2 };
 }

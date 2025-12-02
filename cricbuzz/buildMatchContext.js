@@ -50,6 +50,18 @@ function buildMatchResultContext(headers, event) {
     players: {},
   };
 }
+export function getTossWinnerShortName(comm) {
+  const tossId = comm?.matchheaders?.tossresults?.tosswinnerid;
+  if (!tossId) return "";
+
+  const team1 = comm?.matchheaders?.team1;
+  const team2 = comm?.matchheaders?.team2;
+
+  if (team1?.teamid === tossId) return team1?.teamsname || "";
+  if (team2?.teamid === tossId) return team2?.teamsname || "";
+
+  return "";
+}
 
 function buildTossContext(headers, comm, event) {
   const match = {
@@ -57,10 +69,12 @@ function buildTossContext(headers, comm, event) {
     status: headers?.status || "",
     isMatchComplete: false,
   };
+  const tossWinnerShortName = getTossWinnerShortName(comm);
 
   const enrichedEvent = {
     ...event,
     tossWinner: comm?.matchheaders?.tossresults?.tosswinnername || "",
+    tossWinnerShortName,
     tossDecision: comm?.matchheaders?.tossresults?.decision,
   };
 

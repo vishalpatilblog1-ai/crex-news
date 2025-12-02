@@ -11,6 +11,29 @@ node_modules/
 Puppeteer/chrome-profile/
 x-cookies.json
 
+# Playwright persistent browser profiles
+playwright-profile/
+Playwright/
+*.db
+*.db-journal
+*.log
+*.pma
+*.sqlite
+.DS_Store
+
+# Chrome/Chromium profile junk
+Default/
+User Data/
+**/Crashpad/
+**/GPUCache/
+**/Local Storage/
+**/Network/
+**/IndexedDB/
+**/ShaderCache/
+**/Service Worker/
+**/Local Extension Settings/
+
+
 # Local app state (if used)
 state/
 

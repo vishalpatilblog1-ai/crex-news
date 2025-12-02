@@ -2,16 +2,8 @@
 
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { buildMatchResultTemplate, getFlagEmoji } from "./templates.js";
-import { basicTemplateOne } from "./templates/basic-template-1.js";
-import { basicTemplateTwo } from "./templates/basic-template-2.js";
-import { basicTemplateThree } from "./templates/basic-template-3.js";
-import { basicTemplateFour } from "./templates/basic-template-4.js";
-import { basicTemplateFive } from "./templates/basic-template-5.js";
 import { premiumTemplateOne } from "./templates/premium-template-1.js";
-import { premiumTemplateTwo } from "./templates/premium-template-2.js";
-import { premiumTemplateThree } from "./templates/premium-template-3.js";
-import { premiumTemplateFour } from "./templates/premium-template-4.js";
-import { premiumTemplateFive } from "./templates/premium-template-5.js";
+import { buildTossTweet } from "./templates/toss-and-result-default-template.js";
 import {
   buildHashtags,
   headlineValidator,
@@ -35,13 +27,12 @@ function computeChaseStatus(event) {
 
   const runsNeeded = Math.max(winningScore - currentRuns, 0);
 
-  // Parse overs like 37.5 → ov=37, ball=5
   const [ovStr, ballStr] = event.overs.toString().split(".");
   const overs = parseInt(ovStr, 10);
   const balls = parseInt(ballStr || "0", 10);
 
   const ballsBowled = overs * 6 + balls;
-  const totalBalls = 50 * 6; // ODI
+  const totalBalls = 50 * 6;
   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
 
   return { runsNeeded, ballsLeft };
@@ -54,7 +45,7 @@ export async function buildTemplateTweet(matchContext) {
 
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
   const isSecondInningRunning = event?.inningsid === 2;
-
+  const tossWinnerShortName = event?.tossWinnerShortName;
   const team1Short = matchContext?.match?.team1Short || "";
   const team2Short = matchContext?.match?.team2Short || "";
   const team1Long = matchContext?.match?.team1 || "";
@@ -66,48 +57,15 @@ export async function buildTemplateTweet(matchContext) {
 
   if (!match || !event) return null;
 
-  if (event.type === "TOSS") {
-    const tossWinner = event.tossWinner;
+  // if (event.type === "MATCH_RESULT") {
+  //   const output = buildMatchResultTemplate(match, event.resultText);
 
-    const tossDecision = event.tossDecision;
+  //   if (!output || typeof output !== "string") {
+  //     return `🏆 Match Result\n\n${event.resultText}\n\n#${match.team1Short}vs${match.team2Short}`;
+  //   }
 
-    if (
-      !tossWinner ||
-      tossWinner.trim() === "" ||
-      !tossDecision ||
-      tossDecision.trim() === ""
-    ) {
-      return "SKIP";
-    }
-
-    const tossText =
-      event.tossText ||
-      `${tossWinner} won the toss and chose to ${tossDecision}`;
-
-    const hashtags = buildHashtags(
-      match,
-      match.team1Short,
-      match.team2Short,
-      event.bat1 || event.partnership?.bat1?.name,
-      event.bat2 || event.partnership?.bat2?.name
-    );
-
-    return `🪙 Toss Update
-  
-  ${tossText}
-  
-  ${hashtags}`;
-  }
-
-  if (event.type === "MATCH_RESULT") {
-    const output = buildMatchResultTemplate(match, event.resultText);
-
-    if (!output || typeof output !== "string") {
-      return `🏆 Match Result\n\n${event.resultText}\n\n#${match.team1Short}vs${match.team2Short}`;
-    }
-
-    return output;
-  }
+  //   return output;
+  // }
   if (!event?.type) return null;
 
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
