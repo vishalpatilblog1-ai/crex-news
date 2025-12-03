@@ -35,7 +35,7 @@ import { loadState } from "../../utils/stateStoreCloud.js";
 const log = createLogger("prod");
 
 const POLL_WAIT_TIME = 5000;
-const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 let STATE = loadState();
 
