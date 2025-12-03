@@ -1,15 +1,16 @@
 //templateEngine.js
 
+import { createLogger } from "../utils/logger.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
-import { buildMatchResultTemplate, getFlagEmoji } from "./templates.js";
+import { getFlagEmoji } from "./templates.js";
 import { premiumTemplateOne } from "./templates/premium-template-1.js";
-import { buildTossTweet } from "./templates/toss-and-result-default-template.js";
 import {
   buildHashtags,
   headlineValidator,
   normalizeTeamShort,
   safeLine,
 } from "./tweet-validators/tweetValidators.js";
+// import { createLogger } from "./utils/logger.js";
 
 function cleanEventLog(event) {
   if (!event) return event;
@@ -17,26 +18,7 @@ function cleanEventLog(event) {
   const { batsman, bowler, ...rest } = event;
   return rest;
 }
-// function computeChaseStatus(event, format) {
-//   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
-
-//   const runs = event.targetInning.targetRuns;
-//   const winningScore = runs + 1;
-
-//   const currentRuns = event.runs;
-
-//   const runsNeeded = Math.max(winningScore - currentRuns, 0);
-
-//   const [ovStr, ballStr] = event.overs.toString().split(".");
-//   const overs = parseInt(ovStr, 10);
-//   const balls = parseInt(ballStr || "0", 10);
-
-//   const ballsBowled = overs * 6 + balls;
-//   const totalBalls = 50 * 6;
-//   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
-
-//   return { runsNeeded, ballsLeft };
-// }
+const log = createLogger("prod");
 export function computeChaseStatus(event, format) {
   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
 
@@ -70,8 +52,11 @@ export function computeChaseStatus(event, format) {
 
 export async function buildTemplateTweet(matchContext) {
   const { match, event } = matchContext;
+  log("event buildTemplateTweet::", cleanEventLog(event));
+  log("match buildTemplateTweet::", match);
+
   console.log("event buildTemplateTweet::", cleanEventLog(event));
-  console.log("match buildTemplateTweet::", match);
+  // console.log("match buildTemplateTweet::", match);
 
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
   const isSecondInningRunning = event?.inningsid === 2;
@@ -164,26 +149,8 @@ export async function buildTemplateTweet(matchContext) {
 
   finalTweet += `${hashtags}`;
 
-  let tweet1 = premiumTemplateOne(
-    team1Short,
-    team2Short,
-    team1Long,
-    team2Long,
-    format,
-    commentary,
-    firstInningFlag,
-    secondInningFlag,
-    event.runs,
-    event.overs,
-    event.wickets,
-    team2Short,
-    chase.runsNeeded,
-    chase.ballsLeft,
-    targetRuns,
-    hashtags
-  );
-
-  // console.log(tweet1);
+  // log("Final Tweet:::");
+  // log(finalTweet.trim());
 
   return finalTweet.trim();
 }

@@ -1,12 +1,19 @@
-import { postTweet_web } from "../../twitter.js";
+import { createLogger } from "../../utils/logger.js";
 import { saveState } from "../../utils/stateStoreCloud.js";
 import { generateNewsTweet } from "../ai/aiNewsTweet.js";
-import { getLiveNewsList, getNewsDetailsByNewsId } from "../cricbuzzApi.js";
+import {
+  fetchNewsPhotos,
+  getLiveNewsList,
+  getNewsDetailsByNewsId,
+} from "../cricbuzzApi.js";
+import { tweetNewsWithImage } from "../tweetNewsWithImage.js";
+const BASE_URL = "https://static.cricbuzz.com";
 
+const log = createLogger("prod");
 export async function newsPollingLoop() {
   const STATE = global.STATE;
+  log("newsPollingLoop:::::");
   console.log("newsPollingLoop:::::");
-  console.log("newsPollingLoop STATE:::::", STATE);
 
   try {
     const news = await getLiveNewsList();
@@ -15,6 +22,13 @@ export async function newsPollingLoop() {
     if (!latestNews) return;
 
     const latestNewsId = latestNews.id;
+
+    console.log("latestNews:::", latestNews);
+    log("latestNews:::", latestNews);
+
+    const imageId = latestNews?.imageId || latestNews?.coverImage?.id;
+
+    const imageUrl = `${BASE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`;
 
     const newsKey = `news_${latestNewsId}`;
 
@@ -42,10 +56,13 @@ export async function newsPollingLoop() {
 
     console.log("📝 News Tweet Preview:\n", tweetText);
 
-    await postTweet_web(tweetText);
+    // await postTweet_web(tweetText);
+    await tweetNewsWithImage(tweetText, imageUrl);
+    console.log(`🟢 Posted NEWS tweet with IMAGE for ID ${latestNewsId}`);
+
     console.log(`🟢 Posted NEWS tweet for ID ${latestNewsId}`);
 
-    STATE[newsKey] = true; // backup
+    STATE[newsKey] = true;
     await saveState(STATE);
     console.log("💾 State saved to JSONBin successfully");
   } catch (err) {
@@ -62,6 +79,7 @@ function buildFullArticleText(detailNews) {
     .join(" ");
 }
 function getTopNews(newsResponse) {
+  // console.log("newsResponse::", JSON.stringify(newsResponse, null, 2));
   if (!newsResponse?.storyList) return null;
 
   for (const item of newsResponse.storyList) {
@@ -69,3 +87,15 @@ function getTopNews(newsResponse) {
   }
   return null;
 }
+
+// export function getStoryById(newsId, storyList) {
+//   if (!storyList || !Array.isArray(storyList)) return null;
+
+//   for (const item of storyList) {
+//     if (item.story && item.story.id === newsId) {
+//       return item.story;
+//     }
+//   }
+
+//   return null; // not found
+// }

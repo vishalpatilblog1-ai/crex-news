@@ -60,113 +60,114 @@ export async function generateCommentaryTweet(
 
   const cleanCommentary = (rawCommentary || "").replace(/\s+/g, " ").trim();
 
-  // FINAL ULTRA-CONTROLLED PROMPT
   const prompt = `
-You are a cricket AI that generates extremely crisp, emotional, human-quality commentary for SIX, FOUR, WICKET, and milestone events.
+  You are a cricket AI that generates short, simple, emotional commentary for SIX, FOUR, WICKET, and milestone events.
 
-=====================================================
-CONTEXT — STRICT (DO NOT GUESS ANYTHING)
-=====================================================
-eventType: ${eventType}
-batterName: ${event.batterName || ""}
-bowlerName: ${event.bowlerName || ""}
-battingTeam: ${battingTeam}
-
-milestone: ${milestone}
-teamMilestoneRuns: ${isTeamMilestone ? finalRuns : ""}
-teamMilestoneBalls: ${isTeamMilestone ? finalBalls : ""}
-
-milestoneBatter: ${isBatsmanMilestone ? bat1 : ""}
-batsmanMilestoneRuns: ${isBatsmanMilestone ? finalRuns : ""}
-batsmanMilestoneBalls: ${isBatsmanMilestone ? finalBalls : ""}
-
-partnershipBat1: ${isPartnershipMilestone ? bat1 : ""}
-partnershipBat2: ${isPartnershipMilestone ? bat2 : ""}
-partnershipRuns: ${isPartnershipMilestone ? finalRuns : ""}
-partnershipBalls: ${isPartnershipMilestone ? finalBalls : ""}
-
-RAW COMMENTARY:
-"${cleanCommentary}"
-
-TEAMS:
-${team1Short} vs ${team2Short}
-
-=====================================================
-ABSOLUTE NAME RULES
-=====================================================
-- NEVER extract batter/bowler from commentary.
-- ONLY use batterName and bowlerName provided.
-
-=====================================================
-SIX / FOUR RULES (MOST IMPORTANT)
-=====================================================
-1. Output ONLY:
-   - One short headline (3–6 words) + ONE emoji
-   - One commentary sentence (max 18 words)
-
-2. Headline Rules:
-   - HEADLINE MUST BE IN ALL CAPS
-   - Creative, emotional, cricket-style
-   - No fixed list. AI must generate new phrases every time.
-
-3. Commentary MUST include:
-   - batterName
-   - bowlerName
-   - power/timing/elegance indicator
-   - short direction (cover, mid-wicket, point, long-on, square, etc.)
-
-4. Commentary MUST NOT include:
-   - Numbers of any kind
-   - Other players
-   - Match situation
-   - Emojis
-   - Long descriptions
-
-5. Format EXACTLY:
-<HEADLINE>
-<one sentence>
-
-=====================================================
-WICKET RULES — STRICT + DYNAMIC EMOTIONS
-=====================================================
-Use ONLY batterName and bowlerName.
-NEVER mention fielder.
-NEVER mention caught/bowled/LBW/run out.
-NEVER guess dismissal style from commentary.
-NEVER extract names from commentary.
-
-If bowlerName exists:
-   Choose EXACTLY ONE of the following lines:
-     "<batterName> falls! <bowlerName> strikes again."
-     "<batterName> falls! <bowlerName> breaks the stand."
-     "<batterName> falls! A huge moment created by <bowlerName>."
-     "<batterName> falls! <bowlerName> delivers the breakthrough."
-     "<batterName> falls! <bowlerName> ends the resistance."
-     "<batterName> falls! <bowlerName> produces the big wicket."
-
-If bowlerName is missing:
-   Choose EXACTLY ONE of the following lines:
-     "<batterName> falls! Big breakthrough."
-     "<batterName> falls! Huge moment in the match."
-     "<batterName> falls! Momentum shifts."
-     "<batterName> falls! Pressure back on the batting side."
-     "<batterName> falls! Game tilts again."
-
-=====================================================
-MILESTONE RULES
-=====================================================
-TEAM_MILESTONE:
-   "${battingTeam} bring up ${milestone}."
-BATSMAN_MILESTONE:
-   "${bat1} reaches ${milestone}."
-PARTNERSHIP_MILESTONE:
-   "${bat1} and ${bat2} bring up ${finalRuns} together."
-
-=====================================================
-OUTPUT FORMAT
-=====================================================
-<HEADLINE_WITH_ONE_EMOJI>
-<one_sentence_body>
+  =====================================================
+  LANGUAGE RULES
+  =====================================================
+  - Use simple English a 5th-grade student can understand.
+  - Keep emotions, but stay easy and clean.
+  - Never guess anything. Use ONLY the data provided.
+  - Output must always have EXACTLY two lines:
+    1) SHORT HEADLINE (ALL CAPS)
+    2) SIMPLE COMMENTARY SENTENCE
+  
+  =====================================================
+  EVENT DATA (DO NOT GUESS ANYTHING)
+  =====================================================
+  eventType: ${eventType}
+  batterName: ${event.batterName || ""}
+  bowlerName: ${event.bowlerName || ""}
+  battingTeam: ${battingTeam}
+  
+  milestone: ${milestone}
+  teamMilestoneRuns: ${isTeamMilestone ? finalRuns : ""}
+  teamMilestoneBalls: ${isTeamMilestone ? finalBalls : ""}
+  
+  milestoneBatter: ${isBatsmanMilestone ? bat1 : ""}
+  batsmanMilestoneRuns: ${isBatsmanMilestone ? finalRuns : ""}
+  batsmanMilestoneBalls: ${isBatsmanMilestone ? finalBalls : ""}
+  
+  partnershipBat1: ${isPartnershipMilestone ? bat1 : ""}
+  partnershipBat2: ${isPartnershipMilestone ? bat2 : ""}
+  partnershipRuns: ${isPartnershipMilestone ? finalRuns : ""}
+  partnershipBalls: ${isPartnershipMilestone ? finalBalls : ""}
+  
+  RAW COMMENTARY:
+  "${cleanCommentary}"
+  
+  TEAMS:
+  ${team1Short} vs ${team2Short}
+  
+  =====================================================
+  ABSOLUTE NAME RULES
+  =====================================================
+  - NEVER take names from commentary.
+  - ONLY use batterName and bowlerName given above.
+  - If bowlerName is missing, do not invent one.
+  
+  =====================================================
+  HEADLINE RULES (FIRST LINE)
+  =====================================================
+  - ALL CAPS
+  - 3–6 words only
+  - Must clearly include the event type:
+      SIX / FOUR / WICKET / PARTNERSHIP
+  - Add EXACTLY ONE emoji at the end
+  - Must be simple and emotional:
+    Example style:
+      BIG COVER DRIVE FOUR 🏏
+      STRONG MID-WICKET SIX 🔥
+      SIMPLE, CLEAN WICKET 🎯
+  
+  =====================================================
+  BODY RULES (SECOND LINE)
+  =====================================================
+  - One single sentence (max 18 words)
+  - Very simple English
+  - No emojis
+  - Include batterName and bowlerName
+  - Must describe action with simple cricket words (cover, point, mid-wicket, long-on, straight, cut, pull, drive)
+  - Never mention:
+    - numbers
+    - fielders
+    - match situation
+    - dismissal method
+  
+  =====================================================
+  WICKET SENTENCE RULES (BODY)
+  =====================================================
+  If bowlerName exists, choose ONE:
+    "<batterName> falls! <bowlerName> strikes again."
+    "<batterName> falls! <bowlerName> breaks the stand."
+    "<batterName> falls! <bowlerName> delivers the breakthrough."
+    "<batterName> falls! <bowlerName> ends the resistance."
+    "<batterName> falls! <bowlerName> produces the big wicket."
+  
+  If bowlerName is missing, choose ONE:
+    "<batterName> falls! Big breakthrough."
+    "<batterName> falls! Huge moment."
+    "<batterName> falls! Pressure rises."
+    "<batterName> falls! The game shifts."
+  
+  =====================================================
+  MILESTONE RULES (BODY)
+  =====================================================
+  TEAM_MILESTONE:
+     "${battingTeam} bring up ${milestone}."
+  
+  BATSMAN_MILESTONE:
+     "${bat1} reaches ${milestone}."
+  
+  PARTNERSHIP_MILESTONE:
+     "${bat1} and ${bat2} bring up ${finalRuns} together."
+  
+  =====================================================
+  FINAL OUTPUT FORMAT (STRICT)
+  =====================================================
+  <HEADLINE_WITH_ONE_EMOJI>
+  <ONE_SIMPLE_SENTENCE>  
 `;
 
   try {

@@ -26,8 +26,18 @@ export async function postTweet_console(text) {
   }
 
   console.log("=============================");
-  console.log("🟦 AI PROD TWEET (CONSOLE MODE):");
-  console.log(text);
+  // console.log("🟦 AI PROD TWEET (CONSOLE MODE):");
+  console.log(`
+  
+  
+  
+  
+${text}
+  
+  
+  
+  
+  `);
   console.log("=============================");
 
   return { status: "console_ok", text };

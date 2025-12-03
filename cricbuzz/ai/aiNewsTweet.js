@@ -21,34 +21,38 @@ export async function generateNewsTweet(headline, intro, fullArticleText) {
   else if (isControversy) mode = "controversy";
 
   const prompt = `
-You are an expert cricket journalist writing a 280-char tweet.
+You are an expert cricket journalist. Write a tweet within 280 characters.
 
 MODE: ${mode}
 
-RULES:
-- Always multi-line. Add a blank line between sentences.
-- No emojis, no hashtags.
-- Neutral tone.
-- If MODE = quoted → include the key quote from the headline, in quotes.
-- If MODE = controversy → be extra neutral. No opinions or emotional phrasing.
+GUIDELINES:
+- Output must be multi-line. Add a blank line between sentences.
+- Use simple English that a standard 5th grade student can understand.
+- Add 1–2 relevant emojis based on the situation.
+- Add 2–4 appropriate hashtags.
+- Tone must be neutral.
+- If MODE = "quoted": include one key quote from the headline, inside quotation marks.
+- If MODE = "controversy": be extra neutral — no opinions, no emotional wording.
 
+CONTENT:
 HEADLINE: ${headline}
 INTRO: ${intro}
 FULL ARTICLE: ${fullArticleText}
 
-Write ONLY the tweet. No extra text.
+Write ONLY the tweet. Do not add any explanation or extra text.
 `;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You write clean, factual cricket updates." },
+      { role: "system", content: "You write clear, factual cricket updates." },
       { role: "user", content: prompt },
     ],
   });
 
   return `
-🚨 NEWS UPDATES 🚨
+
+🚨 BREAKING NEWS 🚨
 
 ${response.choices[0].message.content.trim()}`;
 }

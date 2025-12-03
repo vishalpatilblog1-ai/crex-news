@@ -112,6 +112,29 @@ export async function findIndiaMatch() {
 
   return null;
 }
+export async function getBestImageUrl(imageId) {
+  const cdnBase = "https://static.cricbuzz.com/a/img/v1/i1/c";
+  const apiBase = "https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c";
+
+  const candidates = [
+    `${cdnBase}${imageId}/o.jpg`,
+    `${cdnBase}${imageId}/l.jpg`,
+    `${apiBase}${imageId}/i.jpg`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await axios.get(url, {
+        responseType: "arraybuffer",
+        validateStatus: (s) => s < 500,
+      });
+
+      if (res.status === 200) return url;
+    } catch (err) {}
+  }
+
+  return null;
+}
 
 export async function getMatchScore(matchId) {
   const data = await await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/scard`);
@@ -122,14 +145,12 @@ export async function getCommentary(matchId) {
   return await fetchJson(`${BASE_URL}/mcenter/v1/${matchId}/comm`);
 }
 
-// export function getLatestCleanNews(newsResponse) {
-//   if (!newsResponse?.storyList) return null;
-
-//   for (const item of newsResponse.storyList) {
-//     if (item.story && !item.story.adsType) {
-//       return item.story;
-//     }
-//   }
-
-//   return null;
-// }
+export async function fetchNewsImageById(imageId) {
+  return await fetchJson(`${BASE_URL}/img/v1/i1/c${imageId}/i.jpg`);
+}
+export async function fetchNewsPhotos() {
+  return await fetchJson(`${BASE_URL}/photos/v1/index`);
+}
+export async function fetchNewsPhotoGallery() {
+  return await fetchJson(`${BASE_URL}/photos/v1/detail/5374`);
+}
