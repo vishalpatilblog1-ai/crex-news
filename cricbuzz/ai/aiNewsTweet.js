@@ -31,6 +31,7 @@ GUIDELINES:
 - Add 1–2 relevant emojis based on the situation.
 - Add 2–4 appropriate hashtags.
 - Tone must be neutral.
+- Do NOT use Pakistan flag emojis or any Pakistan-related flag symbols.
 - If MODE = "quoted": include one key quote from the headline, inside quotation marks.
 - If MODE = "controversy": be extra neutral — no opinions, no emotional wording.
 
@@ -52,7 +53,7 @@ Write ONLY the tweet. Do not add any explanation or extra text.
 
   return `
 
-🚨 BREAKING NEWS 🚨
+🟢 LIVE CRICKET UPDATES 🟢
 
 ${response.choices[0].message.content.trim()}`;
 }

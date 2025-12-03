@@ -58,13 +58,9 @@ export async function buildTemplateTweet(matchContext) {
 
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
   const isSecondInningRunning = event?.inningsid === 2;
-  const tossWinnerShortName = event?.tossWinnerShortName;
   const team1Short = matchContext?.match?.team1Short || "";
   const team2Short = matchContext?.match?.team2Short || "";
-  const team1Long = matchContext?.match?.team1 || "";
-  const team2Long = matchContext?.match?.team2 || "";
   const format = (match?.format || "").toUpperCase() || "";
-  const targetRuns = event?.targetInning?.targetRuns;
 
   const universalHeader = headlineValidator(team1Short, team2Short, format);
 
@@ -75,7 +71,7 @@ export async function buildTemplateTweet(matchContext) {
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
 
   let targetLineShort = "";
-  if (event.type === "WICKET" && event.targetInning?.targetRuns) {
+  if (event.type === "WICKET" && event?.targetInning?.targetRuns) {
     targetLineShort = `Target (${event.targetInning.battingTeamShortName}): ${event.targetInning.targetRuns}`;
   }
 

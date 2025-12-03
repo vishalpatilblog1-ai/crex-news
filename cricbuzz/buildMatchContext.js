@@ -136,10 +136,16 @@ export function buildMatchContext({
   } else {
     correctBowlerName = mini?.bowlerstriker?.name || "";
   }
+  const { overs, ...rest } = currInnings;
+  console.log("current ball:::", overs);
+  console.log("bowlerstriker ::", mini?.bowlerstriker?.name);
+  console.log("bowlernonstriker ::", mini?.bowlernonstriker?.name);
+  console.log("correctBowlerName::", correctBowlerName);
+
   const enrichedEvent = {
     ...event,
-    bowlerName: correctBowlerName,
-    // bowlerName: mini?.bowlerstriker?.name || "",
+    // bowlerName: correctBowlerName,
+    bowlerName: mini?.bowlerstriker?.name || "",
     inningsid: currInnings.inningsid,
     runs: currInnings.score,
     wickets: currInnings.wickets,

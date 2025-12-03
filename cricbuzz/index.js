@@ -22,7 +22,7 @@ const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
 
-// const FORCE_MATCH_ID = 117398;
+// const FORCE_MATCH_ID = 134100;
 
 // "toss_117389": true,
 // "result_135063": true,
@@ -74,7 +74,7 @@ async function bootstrap() {
     await startBot();
   }
 
-  if (process.env.ENABLE_NEWS_POLLING === "true") {
+  if (process.env.ENABLE_NEWS_POLLING === "false") {
     setInterval(newsPollingLoop, 1000 * 60 * 10);
   }
 }
