@@ -74,7 +74,7 @@ async function bootstrap() {
     await startBot();
   }
 
-  if (process.env.ENABLE_NEWS_POLLING === "false") {
+  if (process.env.ENABLE_NEWS_POLLING === "true") {
     setInterval(newsPollingLoop, 5000);
   }
 }

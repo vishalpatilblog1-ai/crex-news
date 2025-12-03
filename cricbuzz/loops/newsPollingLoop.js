@@ -11,12 +11,12 @@ const BASE_URL = "https://static.cricbuzz.com";
 
 const log = createLogger("prod");
 export async function newsPollingLoop() {
-  const STATE = global.STATE;
-  // if (!global.STATE) {
-  //   console.log("⚠️ global.STATE not ready yet. Skipping news polling.");
-  //   return;
-  // }
   // const STATE = global.STATE;
+  if (!global.STATE) {
+    console.log("⚠️ global.STATE not ready yet. Skipping news polling.");
+    return;
+  }
+  const STATE = global.STATE;
   log("newsPollingLoop:::::");
   console.log("newsPollingLoop:::::");
 
