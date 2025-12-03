@@ -28,22 +28,20 @@ export function computeChaseStatus(event, format) {
   const currentRuns = event.runs;
   const runsNeeded = Math.max(winningScore - currentRuns, 0);
 
-  // Overs → balls conversion
   const [ovStr, ballStr] = event.overs.toString().split(".");
   const overs = parseInt(ovStr, 10);
   const balls = parseInt(ballStr || "0", 10);
 
   const ballsBowled = overs * 6 + balls;
 
-  let totalBalls = 120; // default T20 (fallback)
+  let totalBalls = 120;
 
   const fmt = (format || "").toUpperCase();
 
   if (fmt === "T20") totalBalls = 20 * 6;
   else if (fmt === "ODI") totalBalls = 50 * 6;
   else if (fmt === "T10") totalBalls = 10 * 6;
-  else if (fmt === "TEST") totalBalls = 90 * 6; // 90 overs/day (optional)
-  // else keep default (T20)
+  else if (fmt === "TEST") totalBalls = 90 * 6;
 
   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
 
@@ -116,9 +114,10 @@ export async function buildTemplateTweet(matchContext) {
 
   const scoreLine = `${baseScoreLine}`;
   let safeStatus = "";
-  const chase = computeChaseStatus(event, match?.format);
+
   if (isSecondInningRunning && event.targetInning) {
-    const chase = computeChaseStatus(event.match?.format);
+    const chase = computeChaseStatus(event, match?.format);
+
     if (chase) {
       safeStatus = `${normalizeTeamShort(event.batteamsname)} need ${
         chase.runsNeeded
@@ -127,7 +126,6 @@ export async function buildTemplateTweet(matchContext) {
   } else {
     safeStatus = safeLine(match.status);
   }
-
   const safeScore = safeLine(scoreLine);
   if (commentary) {
     finalTweet += `${commentary}\n\n`;
@@ -136,7 +134,9 @@ export async function buildTemplateTweet(matchContext) {
   if (safeScore) {
     finalTweet += `${safeScore}\n\n`;
   }
-  if (safeStatus) finalTweet += `${safeStatus}\n\n`;
+  if (safeStatus) {
+    finalTweet += `${safeStatus}\n\n`;
+  }
 
   const hashtags = buildHashtags(
     match,

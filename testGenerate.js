@@ -1,4 +1,4 @@
-import generateTweet from "./ai.js";
+import generateTweet from "./cricbuzz/ai/ai.js";
 import { matchContextData_all_milestones } from "./test/matchContextTextData.js";
 
 async function test() {

@@ -86,8 +86,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
     const score = await getMatchScore(MATCH_ID);
 
-    // log("score::");
-    // log(score);
+    log("score::");
+    log(score);
 
     let comm = null;
     // const photos = await fetchNewsPhotoGallery();
@@ -96,8 +96,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     const isMatchComplete = score?.ismatchcomplete;
     try {
       comm = await getCommentary(MATCH_ID);
-      //   log("comm::");
-      //   log(comm);
+      log("comm::");
+      log(comm);
 
       console.log("current running score over::", globalThis.LAST_OVER);
       const toss = extractTossInfo(comm);
@@ -272,7 +272,6 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
     if (events.length === 0) {
       await wait(POLL_WAIT_TIME);
-      //   return pollingLoop();
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
 

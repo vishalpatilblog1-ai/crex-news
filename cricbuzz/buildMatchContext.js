@@ -124,9 +124,22 @@ export function buildMatchContext({
     isMatchComplete,
   };
 
+  const isLastBall = (() => {
+    const overStr = currInnings?.overs?.toString() || "";
+    return overStr.endsWith(".6");
+  })();
+  let correctBowlerName;
+
+  if (isLastBall) {
+    correctBowlerName =
+      mini?.bowlernonstriker?.name || mini?.bowlerstriker?.name || "";
+  } else {
+    correctBowlerName = mini?.bowlerstriker?.name || "";
+  }
   const enrichedEvent = {
     ...event,
-    bowlerName: mini?.bowlerstriker?.name || "",
+    bowlerName: correctBowlerName,
+    // bowlerName: mini?.bowlerstriker?.name || "",
     inningsid: currInnings.inningsid,
     runs: currInnings.score,
     wickets: currInnings.wickets,
