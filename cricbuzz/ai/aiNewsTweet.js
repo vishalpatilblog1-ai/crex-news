@@ -28,9 +28,10 @@ MODE: ${mode}
 GUIDELINES:
 - Output must be multi-line. Add a blank line between sentences.
 - Use simple English that a standard 5th grade student can understand.
-- Add 1–2 relevant emojis based on the situation.
+- Add 1–2 relevant emojis based on the situation -  — but DO NOT use the 🚨 siren emoji.
 - Add 2–4 appropriate hashtags.
 - Tone must be neutral.
+- The tweet body should NOT repeat or mimic the header. No words like “BREAKING NEWS” or “LIVE UPDATE” inside the tweet.
 - Do NOT use Pakistan flag emojis or any Pakistan-related flag symbols.
 - If MODE = "quoted": include one key quote from the headline, inside quotation marks.
 - If MODE = "controversy": be extra neutral — no opinions, no emotional wording.
@@ -53,7 +54,7 @@ Write ONLY the tweet. Do not add any explanation or extra text.
 
   return `
 
-🟢 LIVE CRICKET UPDATES 🟢
+  🚨 BREAKING NEWS 🚨
 
 ${response.choices[0].message.content.trim()}`;
 }
