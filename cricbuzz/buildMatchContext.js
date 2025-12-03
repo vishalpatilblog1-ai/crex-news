@@ -125,9 +125,11 @@ export function buildMatchContext({
   };
 
   const isLastBall = (() => {
-    const overStr = currInnings?.overs?.toString() || "";
-    return overStr.endsWith(".6");
+    const ballNbr = currInnings?.ballnbr;
+    if (ballNbr == null) return false;
+    return ballNbr % 6 === 0;
   })();
+
   let correctBowlerName;
 
   if (isLastBall) {

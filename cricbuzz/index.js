@@ -75,7 +75,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_NEWS_POLLING === "false") {
-    setInterval(newsPollingLoop, 1000 * 60 * 10);
+    setInterval(newsPollingLoop, 5000);
   }
 }
 

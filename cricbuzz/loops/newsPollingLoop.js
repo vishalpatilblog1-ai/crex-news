@@ -16,7 +16,6 @@ export async function newsPollingLoop() {
     console.log("⚠️ global.STATE not ready yet. Skipping news polling.");
     return;
   }
-
   const STATE = global.STATE;
   log("newsPollingLoop:::::");
   console.log("newsPollingLoop:::::");
