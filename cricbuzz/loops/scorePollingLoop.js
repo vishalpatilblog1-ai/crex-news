@@ -208,6 +208,9 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     console.log("current running over::", globalThis.LAST_OVER);
 
     if (currBall < globalThis.LAST_BALL && currOver === prevOver) {
+      console.log(
+        `⏳ [SKIP] Ball rolled back from ${globalThis.LAST_BALL} to ${currBall} (same over ${currOver}). Waiting...`
+      );
       await wait(POLL_WAIT_TIME);
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
@@ -217,8 +220,10 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       globalThis.LAST_BALL !== null &&
       currBall === globalThis.LAST_BALL
     ) {
+      console.log(
+        `⏸️ [NO CHANGE] Same ball detected: ${currBall}. No new delivery yet.`
+      );
       await wait(POLL_WAIT_TIME);
-      //   return pollingLoop();
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
 
@@ -227,8 +232,10 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       globalThis.LAST_OVER !== null &&
       oversNow < globalThis.LAST_OVER
     ) {
+      console.log(
+        `⚠️ [ROLLBACK] Over decreased from ${globalThis.LAST_OVER} to ${oversNow}. Waiting...`
+      );
       await wait(POLL_WAIT_TIME);
-      //   return pollingLoop();
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
 
@@ -240,6 +247,9 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       Math.abs(currBall - prevInnings.ballnbr) > 1
     ) {
       isSingleBallAdvance = false;
+      console.log(
+        `🔍 [MULTI-BALL JUMP] Ball jumped from ${prevInnings.ballnbr} to ${currBall}. Not a single-ball advance.`
+      );
     }
 
     let events = [];
