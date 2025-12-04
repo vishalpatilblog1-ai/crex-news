@@ -18,11 +18,11 @@ globalThis.PREV_INNINGS_ID = null;
 globalThis.PREV_BATTEAM = null;
 globalThis.PREV_SNAPSHOT = null;
 
-// const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
-//   ? Number(process.env.FORCE_MATCH_ID)
-//   : null;
+const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
+  ? Number(process.env.FORCE_MATCH_ID)
+  : null;
 
-const FORCE_MATCH_ID = 108793;
+// const FORCE_MATCH_ID = 108793;
 
 // "toss_117389": true,
 // "result_135063": true,
