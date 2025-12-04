@@ -5,7 +5,6 @@ import {
   getPartnershipContributions,
 } from "./inningsDetector.js";
 
-// Copied from index.js exactly
 function normalizeOvers(overs) {
   if (!overs) return overs;
   const p = overs.toString().split(".");
@@ -138,16 +137,10 @@ export function buildMatchContext({
   } else {
     correctBowlerName = mini?.bowlerstriker?.name || "";
   }
-  const { overs, ...rest } = currInnings;
-  console.log("current ball:::", overs);
-  console.log("bowlerstriker ::", mini?.bowlerstriker?.name);
-  console.log("bowlernonstriker ::", mini?.bowlernonstriker?.name);
-  console.log("correctBowlerName::", correctBowlerName);
 
   const enrichedEvent = {
     ...event,
-    // bowlerName: correctBowlerName,
-    bowlerName: mini?.bowlerstriker?.name || "",
+    bowlerName: event?.bowlerName || mini?.bowlerstriker?.name || "",
     inningsid: currInnings.inningsid,
     runs: currInnings.score,
     wickets: currInnings.wickets,
@@ -158,6 +151,7 @@ export function buildMatchContext({
     bowler: currInnings.bowler,
     partnership: partnership || currInnings.partnership,
     targetInning: firstInnings,
+    series: headers?.seriesname || "",
   };
 
   return {

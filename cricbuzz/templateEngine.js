@@ -50,10 +50,11 @@ export function computeChaseStatus(event, format) {
 
 export async function buildTemplateTweet(matchContext) {
   const { match, event } = matchContext;
+
   log("event buildTemplateTweet::", cleanEventLog(event));
   log("match buildTemplateTweet::", match);
 
-  console.log("event buildTemplateTweet::", cleanEventLog(event));
+  // console.log("event buildTemplateTweet::", cleanEventLog(event));
   // console.log("match buildTemplateTweet::", match);
 
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
@@ -140,7 +141,8 @@ export async function buildTemplateTweet(matchContext) {
     match.team2Short,
     event.batterName,
     event.bowlerName,
-    event.type
+    event.type,
+    event.series
   );
 
   finalTweet += `${hashtags}`;

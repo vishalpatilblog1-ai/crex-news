@@ -19,7 +19,9 @@ import {
 } from "../match-events/tossAndResultHandler.js";
 import {
   detectBatsmanMilestone,
+  detectDefault,
   detectFour,
+  detectMaidenOver,
   detectPartnership,
   detectSix,
   detectTeamMilestone,
@@ -34,7 +36,7 @@ import { loadState } from "../../utils/stateStoreCloud.js";
 
 const log = createLogger("prod");
 
-const POLL_WAIT_TIME = 5000;
+const POLL_WAIT_TIME = 6000;
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 let STATE = loadState();
@@ -98,6 +100,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       comm = await getCommentary(MATCH_ID);
       log("comm::");
       log(comm);
+      // console.log("comm:::", comm);
 
       console.log("current running score over::", globalThis.LAST_OVER);
       const toss = extractTossInfo(comm);
@@ -246,6 +249,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     let evBatsmanMilestone = null;
     let evSix = null;
     let evFour = null;
+    let evDefault = null;
+    let evMaidenOver = null;
 
     if (isSingleBallAdvance) {
       evTeamMilestone = detectTeamMilestone(prevInnings, currInnings);
@@ -253,12 +258,17 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       evBatsmanMilestone = detectBatsmanMilestone(prevInnings, currInnings);
       evSix = detectSix(prevInnings, currInnings);
       evFour = detectFour(prevInnings, currInnings);
+      evDefault = detectDefault(prevInnings, currInnings);
+      evMaidenOver = detectMaidenOver(prevInnings, currInnings);
 
       if (evWicket) events.push(evWicket);
       if (evTeamMilestone) events.push(evTeamMilestone);
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
       if (evSix) events.push(evSix);
       if (evFour) events.push(evFour);
+      if (evMaidenOver) events.push(evMaidenOver);
+
+      // if (evDefault) events.push(evDefault);
     }
 
     const evPartnership = detectPartnership(prevInnings, currInnings);

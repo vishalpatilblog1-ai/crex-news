@@ -150,10 +150,21 @@ export async function generateCommentaryTweet(
     "<batterName> falls! Huge moment."
     "<batterName> falls! Pressure rises."
     "<batterName> falls! The game shifts."
-  
+
   =====================================================
   MILESTONE RULES (BODY)
   =====================================================
+  - For ALL milestone types (TEAM_MILESTONE, BATSMAN_MILESTONE, PARTNERSHIP_MILESTONE):
+  - Milestone sentences must ONLY mention:
+   - battingTeam (for team milestone)
+   - bat1 (for batsman milestone)
+   - bat1 and bat2 (for partnership milestone)
+ - Ignore bowlerName completely for milestone events.
+ - Milestone sentences MAY mention the opponent TEAM name.
+   Example: "against Australia", "versus South Africa", "against ENG".
+ - NEVER mention individual bowler or fielder names in milestone events.
+ - Team-level references are allowed; player-level references are forbidden.
+
   TEAM_MILESTONE:
      "${battingTeam} bring up ${milestone}."
   

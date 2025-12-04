@@ -6,21 +6,60 @@ import {
   PARTNERSHIP_MILESTONE_RUNS,
   TEAM_MILESTONE_RUNS,
 } from "../utils/constants.js";
-import { buildMatchResultTemplate } from "./templates.js";
-import { buildHashtags } from "./tweet-validators/tweetValidators.js";
 
 function ballNbrToOverDecimal(ballNbr) {
-  const over = Math.floor(ballNbr / 6); // 294 → 49
-  const ball = ballNbr % 6 || 6; // 294 % 6 = 0 → 6
+  const over = Math.floor(ballNbr / 6);
+  const ball = ballNbr % 6 || 6;
   return `${over - (ball === 6 ? 1 : 0)}.${ball}`;
 }
+
+function getCurrentBowler(prev, curr) {
+  if (!prev || !curr?.bowler) return null;
+
+  const prevMap = {};
+  prev.bowler?.forEach((b) => {
+    prevMap[b.id] = Number(b.balls) || 0;
+  });
+
+  const increased = curr.bowler.find((bow) => {
+    const prevBalls = prevMap[bow.id] ?? 0;
+    return Number(bow.balls) > prevBalls;
+  });
+
+  if (increased) return increased;
+  const midOver = curr.bowler.find((b) => Number(b.balls) % 6 !== 0);
+  if (midOver) return midOver;
+  return curr.bowler[0];
+}
+
+export function detectDefault(prev, curr) {
+  if (!prev || !curr) return null;
+
+  const bowler = getCurrentBowler(prev, curr);
+
+  return {
+    type: "BALL_UPDATE",
+
+    ballNbr: curr.ballnbr,
+    currentOver: ballNbrToOverDecimal(curr.ballnbr),
+    currentOverString: curr.overs ?? "",
+    bowlerId: bowler?.id || "",
+    bowlerName: bowler?.name || "",
+    bowlerOvers: bowler?.overs || "",
+    bowlerRuns: bowler?.runs || "",
+    bowlerWickets: bowler?.wickets || "",
+    bowlerBalls: bowler?.balls || "",
+    bowlerEconomy: bowler?.economy || "",
+    rawBowlerObject: bowler,
+  };
+}
+
 export function detectFour(prev, curr) {
-  // console.log("detectFour prev::", prev);
-  // console.log("detectFour curr::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
   prev.batsman?.forEach((b) => (prevMap[b.id] = b.fours));
+  const bowler = getCurrentBowler(prev, curr);
 
   for (const bat of curr.batsman || []) {
     const before = prevMap[bat.id] ?? bat.fours;
@@ -29,6 +68,7 @@ export function detectFour(prev, curr) {
         type: "FOUR",
         batterId: bat.id,
         batterName: bat.name,
+        bowlerName: bowler?.name || "",
         runs: bat.runs,
         balls: bat.balls,
         ballNbr: curr.ballnbr,
@@ -40,12 +80,11 @@ export function detectFour(prev, curr) {
 }
 
 export function detectSix(prev, curr) {
-  // console.log("detectSix prev::", prev);
-  // console.log("detectSix curr::", curr);
   if (!prev || !curr) return null;
 
   const prevMap = {};
   prev.batsman?.forEach((b) => (prevMap[b.id] = b.sixes));
+  const bowler = getCurrentBowler(prev, curr);
 
   for (const bat of curr.batsman || []) {
     const before = prevMap[bat.id] ?? bat.sixes;
@@ -55,6 +94,7 @@ export function detectSix(prev, curr) {
         type: "SIX",
         batterId: bat.id,
         batterName: bat.name,
+        bowlerName: bowler?.name || "",
         runs: bat.runs,
         balls: bat.balls,
         currentOver: ballNbrToOverDecimal(curr.ballnbr),
@@ -147,16 +187,13 @@ export function detectPartnership(prev, curr) {
 }
 
 export function detectWicket(prev, curr) {
-  // console.log("detectWicket prev::", prev);
-  // console.log("detectWicket curr::", curr);
   if (!prev || !curr) return null;
   if (!curr.fow || !curr.fow.fow) return null;
 
   const prevFowList = prev.fow?.fow || [];
   const currFowList = curr.fow.fow;
 
-  console.log("detectWicket1:::", currFowList.length);
-  console.log("detectWicket2:::", prevFowList.length);
+  const bowler = getCurrentBowler(prev, curr);
 
   if (currFowList.length === prevFowList.length) return null;
 
@@ -168,6 +205,7 @@ export function detectWicket(prev, curr) {
   return {
     type: "WICKET",
     batterName,
+    bowlerName: bowler?.name || "",
     howOut,
     score: curr.score,
     wickets: curr.wickets,
@@ -249,7 +287,8 @@ export function detectBatsmanMilestone(prev, curr) {
         type: "BATSMAN_MILESTONE",
         milestone,
         batterName: bCurr.name,
-        runs: currRuns,
+        // runs: currRuns,
+        runs: bCurr.runs,
         balls: bCurr.balls,
         currentOver: ballNbrToOverDecimal(curr.ballnbr),
         ballNbr: curr.ballnbr,
@@ -309,4 +348,42 @@ export function getPartnershipContributions(currInnings) {
     },
     currentRunningOver: currInnings.overs,
   };
+}
+
+export function detectMaidenOver(prev, curr) {
+  if (!prev || !curr) return null;
+
+  const prevBowler = curr.bowler?.find((b) => {
+    const p = prev.bowler?.find((x) => x.id === b.id);
+    return p != null;
+  });
+
+  if (!prevBowler) return null;
+
+  const currBowler = curr.bowler.find((b) => b.id === prevBowler.id);
+  if (!currBowler) return null;
+
+  const prevOvers = prevBowler.overs;
+  const currOvers = currBowler.overs;
+
+  const toBalls = (o) => {
+    const [ov, balls] = o.toString().split(".");
+    return Number(ov) * 6 + Number(balls || 0);
+  };
+
+  const prevBalls = toBalls(prevOvers);
+  const currBalls = toBalls(currOvers);
+
+  const ballsDelta = currBalls - prevBalls;
+  const runsDelta = (currBowler.runs || 0) - (prevBowler.runs || 0);
+
+  if (ballsDelta === 6 && runsDelta === 0) {
+    return {
+      type: "MAIDEN_OVER",
+      bowlerName: currBowler.name,
+      overs: currOvers,
+    };
+  }
+
+  return null;
 }

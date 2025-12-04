@@ -23,13 +23,21 @@ export function normalizeTeamShort(code) {
   return upper;
 }
 
-export function buildHashtags(match, t1, t2, batsman, bowler, eventType) {
+export function buildHashtags(
+  match,
+  t1,
+  t2,
+  batsman,
+  bowler,
+  eventType,
+  series
+) {
   const team1Short = normalizeTeamShort(t1);
   const team2Short = normalizeTeamShort(t2);
 
   if (!team1Short || !team2Short) return "";
 
-  const h1 = `#${team1Short}vs${team2Short}`;
+  // const h1 = `#${team1Short}vs${team2Short}`;
   const h2 = `#${team1Short}v${team2Short}`;
 
   let fmt = "";
@@ -51,9 +59,15 @@ export function buildHashtags(match, t1, t2, batsman, bowler, eventType) {
     playerTags.add(makeTag(bowler));
   }
 
+  let ashesTag = "";
+  const seriesName = series?.toLowerCase();
+  if (seriesName && seriesName.includes("ashes")) {
+    ashesTag = "#Ashes";
+  }
+
   const blacklist = ["PSL", "BPL", "LPL", "KPL", "NCL"];
 
-  return [h1, h2, fmt, ...Array.from(playerTags)]
+  return ["#CricketTwitter", h2, fmt, ashesTag, ...Array.from(playerTags)]
     .filter(Boolean)
     .filter((tag) => !blacklist.some((x) => tag.toUpperCase().includes(x)))
     .join(" ");
