@@ -175,3 +175,64 @@ export const matchContextData_wicket_over = {
     bowler: "Mitchell Starc",
   },
 };
+
+//=================================================================================
+// 🇦🇺 AUS - 125/1 (19.5 Overs)
+// 🇬🇧 ENG - 334 Runs - first innings
+//=================================================================================
+export const matchContextData_test_firstSession_Second_inning = {
+  match: {
+    name: "Australia vs England",
+    team1: "Australia",
+    team2: "England",
+    team1Short: "AUS",
+    team2Short: "ENG",
+    format: "TEST",
+    venue: "",
+    status: "Day 2: 1st Session - Australia trail by 206 runs",
+    isMatchComplete: false,
+  },
+  event: {
+    type: "BALL_UPDATE",
+    ballNbr: 126,
+    currentOver: "20.6",
+    currentOverString: 21,
+    bowlerId: 6557,
+    bowlerName: "Ben Stokes",
+    bowlerOvers: "6",
+    bowlerRuns: 35,
+    bowlerWickets: "",
+    bowlerBalls: 36,
+    bowlerEconomy: "5.8",
+    commentaryTexts: [],
+    inningsid: 2,
+    runs: 130,
+    wickets: 1,
+    overs: 21,
+    batteamname: "Australia",
+    batteamsname: "AUS",
+
+    partnership: {
+      totalRuns: 53,
+      totalBalls: 47,
+      currentRunningOver: 21,
+    },
+    targetInning: {
+      targetRuns: 334,
+      targetWicket: 10,
+      targetOvers: 76.2,
+      battingTeamName: "England",
+      battingTeamShortName: "ENG",
+    },
+    series: "The Ashes, 2025-26",
+  },
+  players: {
+    striker: "Jake Weatherald",
+    nonStriker: "Marnus Labuschagne",
+    strikerRuns: "",
+    strikerBallsPlayed: "",
+    nonStrikerRuns: "",
+    nonStrikerBallsPlayed: "",
+    bowler: "Ben Stokes",
+  },
+};

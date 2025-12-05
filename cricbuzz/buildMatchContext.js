@@ -1,10 +1,11 @@
 // cricbuzz/matchContext.js
 import { shortTeamName } from "../utils/formatter.js";
+import { createLogger } from "../utils/logger.js";
 import {
   getActiveBattersFromInnings,
   getPartnershipContributions,
 } from "./inningsDetector.js";
-
+const log = createLogger("prod");
 function normalizeOvers(overs) {
   if (!overs) return overs;
   const p = overs.toString().split(".");
@@ -152,6 +153,7 @@ export function buildMatchContext({
     partnership: partnership || currInnings.partnership,
     targetInning: firstInnings,
     series: headers?.seriesname || "",
+    scoreCardStatus: currInnings.scoreMeta.status,
   };
 
   return {

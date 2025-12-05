@@ -4,42 +4,122 @@ export function getFlagEmoji(teamShort) {
 
   const map = {
     IND: "🇮🇳",
+    INDW: "🇮🇳",
+    INDU19: "🇮🇳",
+    INDA: "🇮🇳",
+
     AUS: "🇦🇺",
+    AUSW: "🇦🇺",
+    AUSU19: "🇦🇺",
+    AUSA: "🇦🇺",
+
     ENG: "🇬🇧",
-    // ENG: "🏴", // England (correct flag)
+    ENGW: "🇬🇧",
+    ENGU19: "🇬🇧",
+    ENGA: "🇬🇧",
+
     SA: "🇿🇦",
     RSA: "🇿🇦",
+    SAW: "🇿🇦",
+    SAU19: "🇿🇦",
+    SAA: "🇿🇦",
+
     NZ: "🇳🇿",
-    PAK: "",
+    NZW: "🇳🇿",
+    NZU19: "🇳🇿",
+    NZA: "🇳🇿",
+
+    PAK: "🇵🇰",
+    PAKW: "🇵🇰",
+    PAKU19: "🇵🇰",
+    PAKA: "🇵🇰",
+
     SL: "🇱🇰",
+    SLW: "🇱🇰",
+    SLU19: "🇱🇰",
+    SLA: "🇱🇰",
+
     BAN: "🇧🇩",
-    IRE: "🇮🇪",
+    BANW: "🇧🇩",
+    BANU19: "🇧🇩",
+    BANA: "🇧🇩",
+
+    WI: "🇯🇲",
+    WIW: "🇯🇲",
+    WIU19: "🇯🇲",
+    WIA: "🇯🇲",
+
     AFG: "🇦🇫",
-    WI: "🇯🇲", // West Indies (political)
+    AFGW: "🇦🇫",
+    AFGU19: "🇦🇫",
+
+    IRE: "🇮🇪",
+    IREW: "🇮🇪",
+    IREU19: "🇮🇪",
+    IREA: "🇮🇪",
+
     ZIM: "🇿🇼",
+    ZIMW: "🇿🇼",
+    ZIMU19: "🇿🇼",
+    ZIMA: "🇿🇼",
+
     NEP: "🇳🇵",
+    NEPW: "🇳🇵",
+    NEPU19: "🇳🇵",
+
     NED: "🇳🇱",
-    SCO: "🏴", // Scotland
+    NEDW: "🇳🇱",
+    NEDU19: "🇳🇱",
+
+    SCO: "🏴",
+    SCOW: "🏴",
+
     UAE: "🇦🇪",
+    UAEW: "🇦🇪",
+    UAEU19: "🇦🇪",
+
     USA: "🇺🇸",
+    USAW: "🇺🇸",
+    USAU19: "🇺🇸",
 
-    // Associate Nations from timetable
-    BHU: "🇧🇹", // Bhutan
-    BHR: "🇧🇭", // Bahrain
-    SLE: "🇸🇱", // Sierra Leone
-    RWA: "🇷🇼", // Rwanda
-    NGA: "🇳🇬", // Nigeria
-    ZAM: "🇿🇲", // Zambia
+    THA: "🇹🇭",
+    THAW: "🇹🇭",
 
-    THA: "🇹🇭", // Thailand
-    INA: "🇮🇩", // Indonesia
-    MAS: "🇲🇾", // Malaysia
-    PHL: "🇵🇭", // Philippines
-    SIN: "🇸🇬", // Singapore
-    MYA: "🇲🇲", // Myanmar
+    BHU: "🇧🇹",
+    BHUW: "🇧🇹",
 
-    // If Mbira = Malawi (likely)
+    BHR: "🇧🇭",
+    BHRW: "🇧🇭",
+
+    SLE: "🇸🇱",
+    SLEW: "🇸🇱",
+
+    RWA: "🇷🇼",
+    RWAW: "🇷🇼",
+
+    NGA: "🇳🇬",
+    NGAW: "🇳🇬",
+
+    ZAM: "🇿🇲",
+    ZAMW: "🇿🇲",
+
+    INA: "🇮🇩",
+    INAW: "🇮🇩",
+
+    MAS: "🇲🇾",
+    MASW: "🇲🇾",
+
+    PHL: "🇵🇭",
+    PHLW: "🇵🇭",
+
+    SIN: "🇸🇬",
+    SINW: "🇸🇬",
+
+    MYA: "🇲🇲",
+    MYAW: "🇲🇲",
+
     MAL: "🇲🇼",
+    MALW: "🇲🇼",
   };
 
   return map[teamShort.toUpperCase()] || "";

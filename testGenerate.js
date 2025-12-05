@@ -2,21 +2,12 @@ import generateTweet from "./cricbuzz/ai/ai.js";
 import { matchContextData_maiden_over } from "./matchContextTextData.js";
 import { postTweet_http2 } from "./postTweet_http2.js";
 
-// async function test() {
-//   for (let index = 0; index < 1; index++) {
-//     const tweet = await generateTweet(matchContextData_maiden_over);
+async function test() {
+  for (let index = 0; index < 1; index++) {
+    const tweet = await generateTweet(matchContextData_maiden_over);
 
-//     console.log(tweet);
-//   }
-// }
+    console.log(tweet);
+  }
+}
 
-// test();
-
-// import { postTweet_http2 } from "./postTweet_http2.js";
-
-const run = async () => {
-  const r = await postTweet_http2("Hello from HTTP/2 bypass!");
-  console.log(r);
-};
-
-run();
+test();
