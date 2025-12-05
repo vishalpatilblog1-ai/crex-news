@@ -53,7 +53,8 @@ export async function buildTestTemplateTweet(matchContext) {
   )} - ${event.targetInning?.targetRuns} Runs - ${inningsLabel}`;
 
   const scoreBlock = `${firstLine}\n${secondLine}`;
-  const statusLine = match.status;
+  // const statusLine = match.status;
+  let statusLine = event?.scoreCardStatus;
 
   let finalTweet = `${universalHeader}\n\n`;
 
