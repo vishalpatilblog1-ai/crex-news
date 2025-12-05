@@ -6,6 +6,7 @@ export function getFlagEmoji(teamShort) {
     IND: "🇮🇳",
     AUS: "🇦🇺",
     ENG: "🇬🇧",
+    // ENG: "🏴", // England (correct flag)
     SA: "🇿🇦",
     RSA: "🇿🇦",
     NZ: "🇳🇿",
@@ -14,13 +15,31 @@ export function getFlagEmoji(teamShort) {
     BAN: "🇧🇩",
     IRE: "🇮🇪",
     AFG: "🇦🇫",
-    WI: "🇯🇲",
+    WI: "🇯🇲", // West Indies (political)
     ZIM: "🇿🇼",
     NEP: "🇳🇵",
     NED: "🇳🇱",
-    SCO: "🏴",
+    SCO: "🏴", // Scotland
     UAE: "🇦🇪",
     USA: "🇺🇸",
+
+    // Associate Nations from timetable
+    BHU: "🇧🇹", // Bhutan
+    BHR: "🇧🇭", // Bahrain
+    SLE: "🇸🇱", // Sierra Leone
+    RWA: "🇷🇼", // Rwanda
+    NGA: "🇳🇬", // Nigeria
+    ZAM: "🇿🇲", // Zambia
+
+    THA: "🇹🇭", // Thailand
+    INA: "🇮🇩", // Indonesia
+    MAS: "🇲🇾", // Malaysia
+    PHL: "🇵🇭", // Philippines
+    SIN: "🇸🇬", // Singapore
+    MYA: "🇲🇲", // Myanmar
+
+    // If Mbira = Malawi (likely)
+    MAL: "🇲🇼",
   };
 
   return map[teamShort.toUpperCase()] || "";
