@@ -91,6 +91,7 @@ export function buildMatchContext({
   isMatchComplete,
   firstInnings,
 }) {
+  // console.log("currInnings:::", currInnings);
   const mini = comm?.miniscore || {};
   const headers = comm?.matchheaders || {};
   if (event?.type === "MATCH_RESULT") {
