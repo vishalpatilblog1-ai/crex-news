@@ -2,6 +2,7 @@ import { getFlagEmoji } from "./templates.js";
 import {
   normalizeTeamShort,
   safeLine,
+  buildHashtags,
   headlineValidator,
 } from "./tweet-validators/tweetValidators.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
@@ -61,6 +62,18 @@ export async function buildTestTemplateTweet(matchContext) {
   if (commentary) finalTweet += `${commentary}\n\n`;
   finalTweet += `${scoreBlock}\n\n`;
   finalTweet += `${statusLine}\n\n`;
+
+  const hashtags = buildHashtags(
+    match,
+    match.team1Short,
+    match.team2Short,
+    event.batterName,
+    event.bowlerName,
+    event.type,
+    event.series
+  );
+
+  finalTweet += `${hashtags}`;
 
   return finalTweet.trim();
 }
