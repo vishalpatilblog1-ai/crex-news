@@ -154,7 +154,7 @@ export function buildMatchContext({
     partnership: partnership || currInnings.partnership,
     targetInning: firstInnings,
     series: headers?.seriesname || "",
-    scoreCardStatus: currInnings?.scoreMeta?.status,
+    scoreCardStatus: currInnings?.scoreMeta?.status || "",
   };
 
   return {
