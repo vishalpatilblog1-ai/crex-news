@@ -187,16 +187,27 @@ export function getCorrectTestInnings(scoreRes, liveId) {
   if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
     return null;
   }
-
+const fullScoreMeta = {
+    isMatchComplete: scoreRes.ismatchcomplete ?? false,
+    status: scoreRes.status ?? "",
+    appindex: scoreRes.appindex ?? {},
+    responselastupdated: scoreRes.responselastupdated ?? null,
+  };
+  
   const card = scoreRes.scorecard;
   if (liveId) {
     const exact = scoreRes.scorecard.find((inn) => inn.inningsid === liveId);
     if (exact) return exact;
   }
-
-  return scoreRes.scorecard.reduce((a, b) =>
+  let currInn = scoreRes.scorecard.reduce((a, b) =>
     (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
   );
+currInn.scoreMeta = fullScoreMeta
+  return currInn;
+  
+  //return scoreRes.scorecard.reduce((a, b) =>
+   // (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
+ // );
 }
 
 export function getFirstInnings(scoreRes) {
