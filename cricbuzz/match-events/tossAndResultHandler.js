@@ -198,7 +198,11 @@ const fullScoreMeta = {
   const card = scoreRes.scorecard;
   if (liveId) {
     const exact = scoreRes.scorecard.find((inn) => inn.inningsid === liveId);
-    if (exact) return exact;
+    if (exact) 
+    {
+      exact.scoreMeta = fullScoreMeta;
+      return exact;
+    }
   }
   let currInn = scoreRes.scorecard.reduce((a, b) =>
     (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
