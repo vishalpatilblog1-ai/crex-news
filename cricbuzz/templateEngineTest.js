@@ -20,7 +20,7 @@ export async function buildTestTemplateTweet(matchContext) {
   log("TEST buildLOITemplateTweet::", cleanEventLog(event));
   log("TEST buildLOITemplateTweet::", match);
   //   console.log("matchContext::", matchContext);
-     console.log("TEST buildLOITemplateTweet::", cleanEventLog(event));
+     console.log("TEST buildLOITemplateTweet::", event);
   //   console.log("TEST buildLOITemplateTweet::", match);
 
   if (!match || !event) return null;
