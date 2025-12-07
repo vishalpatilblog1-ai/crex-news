@@ -187,7 +187,7 @@ export function getCorrectTestInnings(scoreRes, liveId) {
   if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
     return null;
   }
-  console.log("score:::", scoreRes);
+ // console.log("score:::", scoreRes);
 const fullScoreMeta = {
     isMatchComplete: scoreRes.ismatchcomplete ?? false,
     status: scoreRes.status ?? "",
