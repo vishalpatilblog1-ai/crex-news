@@ -120,6 +120,12 @@ export function getFlagEmoji(teamShort) {
 
     MAL: "🇲🇼",
     MALW: "🇲🇼",
+
+    ESP: "🇪🇸",
+    ESPW: "🇪🇸",
+
+    CRO: "🇭🇷",
+    CROW: "🇭🇷",
   };
 
   return map[teamShort.toUpperCase()] || "";

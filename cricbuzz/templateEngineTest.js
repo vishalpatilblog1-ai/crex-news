@@ -1,29 +1,131 @@
+import { createLogger } from "../utils/logger.js";
+import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { getFlagEmoji } from "./templates.js";
 import {
-  normalizeTeamShort,
-  safeLine,
   buildHashtags,
   headlineValidator,
+  normalizeTeamShort,
 } from "./tweet-validators/tweetValidators.js";
-import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
-import { createLogger } from "../utils/logger.js";
 
-const log = createLogger("prod");
-function cleanEventLog(event) {
-  if (!event) return event;
-
-  const { batsman, bowler, ...rest } = event;
-  return rest;
+function ordinal(n) {
+  return ["1st", "2nd", "3rd"][n - 1] || `${n}th`;
 }
-export async function buildTestTemplateTweet(matchContext) {
-  const { match, event } = matchContext;
-  log("TEST buildLOITemplateTweet::", cleanEventLog(event));
-  log("TEST buildLOITemplateTweet::", match);
-  //   console.log("matchContext::", matchContext);
-     console.log("TEST buildLOITemplateTweet::", event);
-  //   console.log("TEST buildLOITemplateTweet::", match);
 
-  if (!match || !event) return null;
+// export function getTestInningsDisplay(scorecard, currentInningsId) {
+//   if (!Array.isArray(scorecard)) return [];
+
+//   const sorted = [...scorecard].sort((a, b) => a.inningsid - b.inningsid);
+
+//   const teamInningsCount = {};
+//   const display = [];
+
+//   for (const inn of sorted) {
+//     const team = normalizeTeamShort(inn.batteamsname);
+//     const flag = getFlagEmoji(inn.batteamsname);
+
+//     if (!teamInningsCount[team]) teamInningsCount[team] = 1;
+//     else teamInningsCount[team]++;
+
+//     const inningsNumber = teamInningsCount[team];
+
+//     const labelParts = [];
+//     labelParts.push(`${ordinal(inningsNumber)} inns`);
+
+//     if (inn.isdeclared) labelParts.push("declared");
+//     if (inn.isfollowon) labelParts.push("follow-on");
+
+//     const labelText = labelParts.join(", ");
+
+//     const score =
+//       inn.wickets != null ? `${inn.score}/${inn.wickets}` : `${inn.score}`;
+
+//     const overs = inn.overs ? `(${inn.overs} ovs)` : "";
+
+//     const line = `${
+//       flag ? flag + " " : ""
+//     }${team} – ${score} ${overs} (${labelText})`;
+
+//     display.push({
+//       inningsid: inn.inningsid,
+//       isCurrent: inn.inningsid === currentInningsId,
+//       text: line.trim(),
+//     });
+//   }
+
+//   display.sort((a, b) => b.inningsid - a.inningsid);
+
+//   const active = display.find((d) => d.isCurrent);
+//   const others = display.filter((d) => !d.isCurrent);
+
+//   return [active ? active.text : "", ...others.map((o) => o.text)].filter(
+//     Boolean
+//   );
+// }
+export function getTestInningsDisplay(scorecard, currentInningsId) {
+  if (!Array.isArray(scorecard)) return [];
+
+  // Sort by inningsid ascending (1 → 4)
+  const sorted = [...scorecard].sort((a, b) => a.inningsid - b.inningsid);
+
+  const teamInningsCount = {}; // Track 1st/2nd/3rd innings for each team
+  const display = [];
+
+  for (const inn of sorted) {
+    const team = normalizeTeamShort(inn.batteamsname);
+    const flag = getFlagEmoji(inn.batteamsname);
+
+    // Count how many times this team batted
+    if (!teamInningsCount[team]) teamInningsCount[team] = 1;
+    else teamInningsCount[team]++;
+
+    const inningsNumber = teamInningsCount[team];
+
+    // Build label: 1st inns / 2nd inns + declared + follow-on
+    const labelParts = [];
+    labelParts.push(`${ordinal(inningsNumber)} inns`);
+
+    if (inn.isdeclared) labelParts.push("declared");
+    if (inn.isfollowon) labelParts.push("follow-on");
+
+    const labelText = labelParts.join(", ");
+
+    // Score formatting
+    const scoreVal =
+      inn.wickets != null ? `${inn.score}/${inn.wickets}` : `${inn.score}`;
+
+    const overs = inn.overs ? `(${inn.overs} ovs)` : "";
+
+    // ❗ DO NOT show innings label for current innings
+    const labelSection =
+      inn.inningsid === currentInningsId ? "" : ` (${labelText})`;
+
+    const line = `${
+      flag ? flag + " " : ""
+    }${team} – ${scoreVal} ${overs}${labelSection}`.trim();
+
+    display.push({
+      inningsid: inn.inningsid,
+      isCurrent: inn.inningsid === currentInningsId,
+      text: line,
+    });
+  }
+
+  // Reverse order → current inning first
+  display.sort((a, b) => b.inningsid - a.inningsid);
+
+  const active = display.find((d) => d.isCurrent);
+  const others = display.filter((d) => !d.isCurrent);
+
+  // Return as array of lines
+  return [active ? active.text : "", ...others.map((o) => o.text)].filter(
+    Boolean
+  );
+}
+
+export async function buildTestTemplateTweet(matchContext, scoreRes) {
+  const { match, event } = matchContext;
+
+  if (!match || !event || !scoreRes) return null;
 
   const team1Short = match.team1Short;
   const team2Short = match.team2Short;
@@ -38,28 +140,20 @@ export async function buildTestTemplateTweet(matchContext) {
     team1Short,
     team2Short
   );
-
   const commentary = commentaryTexts?.trim() || "";
 
-  const firstFlag = getFlagEmoji(event.batteamsname);
-  const secondFlag = getFlagEmoji(event.targetInning?.battingTeamShortName);
+  const scorecard = scoreRes?.scorecard || [];
+  const currentInnId = event.targetInning?.inningsId || event.inningsid || null;
 
-  const firstLine = `${firstFlag ? firstFlag + " " : ""}${normalizeTeamShort(
-    event.batteamsname
-  )} - ${event.runs}/${event.wickets} (${event.overs} Overs)`;
+  const inningsLines = getTestInningsDisplay(scorecard, currentInnId);
+  const scoreBlock = inningsLines.join("\n");
 
-  const inningsLabel = getTestInningsLabel(event);
-  const secondLine = `${secondFlag ? secondFlag + " " : ""}${normalizeTeamShort(
-    event.targetInning?.battingTeamShortName
-  )} - ${event.targetInning?.targetRuns} Runs - ${inningsLabel}`;
-
-  const scoreBlock = `${firstLine}\n${secondLine}`;
-  // const statusLine = match.status;
-  let statusLine = event?.scoreCardStatus;
+  let statusLine = event?.scoreCardStatus || match.status || "";
 
   let finalTweet = `${universalHeader}\n\n`;
 
   if (commentary) finalTweet += `${commentary}\n\n`;
+
   finalTweet += `${scoreBlock}\n\n`;
   finalTweet += `${statusLine}\n\n`;
 
@@ -73,29 +167,7 @@ export async function buildTestTemplateTweet(matchContext) {
     event.series
   );
 
-  finalTweet += `${hashtags}`;
+  finalTweet += hashtags;
 
   return finalTweet.trim();
-}
-
-// Helper to derive Test innings label
-export function getTestInningsLabel(event) {
-  // If Cricbuzz provides inningsId
-  const id = event.targetInning?.inningsId;
-  if (id) return `${ordinal(id)} innings`;
-
-  // derive fallback
-  if (event.inningsid === 2) return "1st innings";
-  if (event.inningsid === 3) return "2nd innings";
-  if (event.inningsid === 4) return "3rd innings";
-  return "1st innings";
-}
-
-function ordinal(n) {
-  return (
-    n +
-    ["th", "st", "nd", "rd"][
-      n % 10 > 3 || Math.floor((n % 100) / 10) === 1 ? 0 : n % 10
-    ]
-  );
 }

@@ -60,12 +60,23 @@ function isNewInnings(prevInn, currInn) {
 
   const currWkts = currInn.wickets ?? 0;
 
-  // True new innings when overs drop AND wickets reset
   return prevOvers > currOvers && currWkts === 0;
 }
 
+export function getAllGlobalThisValues() {
+  return {
+    LAST_INNINGS: globalThis.LAST_INNINGS,
+    LAST_OVER: globalThis.LAST_OVER,
+    LAST_BALL: globalThis.LAST_BALL,
+    LAST_EVENT_BALL: globalThis.LAST_EVENT_BALL,
+    PREV_INNINGS_ID: globalThis.PREV_INNINGS_ID,
+    PREV_BATTEAM: globalThis.PREV_BATTEAM,
+    PREV_SNAPSHOT: globalThis.PREV_SNAPSHOT,
+  };
+}
+
 export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
-  //   const STATE = global.STATE;
+  // console.log("globalThis start:::", getAllGlobalThisValues());
   try {
     log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`, true);
     console.log(`🔄 Polling: ${MATCH_NAME || MATCH_ID} - [${formatTS()}]`);
@@ -77,8 +88,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       globalThis.LAST_OVER = null;
       globalThis.LAST_BALL = null;
       globalThis.LAST_EVENT_BALL = {};
-      globalThis.LAST_HASH = null; // IMPORTANT
-      globalThis.LAST_PARTNERSHIP_MILESTONE = 0; // IMPORTANT
+      globalThis.LAST_HASH = null;
+      globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
       globalThis.PREV_INNINGS_ID = null;
       globalThis.PREV_BATTEAM = null;
       globalThis.PREV_SNAPSHOT = null;
@@ -92,15 +103,13 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     log(score);
 
     let comm = null;
-    // const photos = await fetchNewsPhotoGallery();
-    // console.log("photos::::", JSON.stringify(photos, null, 2));
+
     const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
     try {
       comm = await getCommentary(MATCH_ID);
       log("comm::");
       log(comm);
-      // console.log("comm:::", comm);
 
       console.log("current running score over::", globalThis.LAST_OVER);
       const toss = extractTossInfo(comm);
@@ -132,7 +141,6 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       log("⚠ No score data… retrying");
       await wait(POLL_WAIT_TIME);
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
-      //   return pollingLoop();
     }
 
     let currInnings;
@@ -154,14 +162,53 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     const newInningsId = currInnings?.inningsid;
     const newTeam = currInnings?.batteamname;
 
+    // console.log("globalThis 2:::", getAllGlobalThisValues());
+
     if (!globalThis.PREV_INNINGS_ID) {
       globalThis.PREV_INNINGS_ID = newInningsId;
       globalThis.PREV_BATTEAM = newTeam;
     }
-    if (isNewInnings(globalThis.LAST_INNINGS, currInnings)) {
-      console.log("🆕 TRUE NEW INNINGS DETECTED — resetting state");
+    // if (isNewInnings(globalThis.LAST_INNINGS, currInnings)) {
+    //   console.log("🆕 TRUE NEW INNINGS DETECTED — resetting state");
 
+    //   globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+    //   globalThis.LAST_OVER = 0;
+    //   globalThis.LAST_BALL = -1;
+    //   globalThis.LAST_EVENT_BALL = {};
+
+    //   globalThis.LAST_HASH = null;
+    //   globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
+
+    //   await wait(POLL_WAIT_TIME);
+
+    //   return scorePollingLoop(MATCH_ID, MATCH_NAME);
+    // }
+    console.log(
+      "currInnings.inningsid:::::",
+      currInnings.inningsid,
+      globalThis.PREV_INNINGS_ID,
+      currInnings.inningsid !== globalThis.PREV_INNINGS_ID
+    );
+    const inningsChanged = currInnings.inningsid !== globalThis.PREV_INNINGS_ID;
+
+    // ballnbr reset also indicates innings change
+    const ballReset =
+      globalThis.LAST_BALL !== null &&
+      currInnings.ballnbr < globalThis.LAST_BALL;
+    console.log(
+      "ballReset:::",
+      currInnings.ballnbr,
+      globalThis.LAST_BALL,
+      currInnings.ballnbr < globalThis.LAST_BALL,
+      ballReset
+    );
+
+    if (inningsChanged || ballReset) {
+      console.log("🆕 NEW INNINGS DETECTED — RESETTING TRACKERS");
+
+      globalThis.PREV_INNINGS_ID = currInnings.inningsid;
       globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+
       globalThis.LAST_OVER = 0;
       globalThis.LAST_BALL = -1;
       globalThis.LAST_EVENT_BALL = {};
@@ -170,7 +217,6 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
 
       await wait(POLL_WAIT_TIME);
-
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
 
@@ -326,10 +372,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
       log("matchContext:::");
       log(matchContext);
-      // console.log("matchContext::", JSON.stringify(matchContext, null, 2));
 
-      const tweetContent = await generateTweet(matchContext);
-      // log("tweetContent:::", tweetContent);
+      const tweetContent = await generateTweet(matchContext, score); //vishal
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);

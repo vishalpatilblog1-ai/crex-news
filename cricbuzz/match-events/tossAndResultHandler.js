@@ -117,6 +117,8 @@ export async function handleMatchResultEvent({
     if (USE_WEB_TWEET) await postTweet_web(tweet);
 
     console.log("🏆 Match result tweet sent!");
+    console.log(`🛑 Stopping all polling for match ${MATCH_ID}`);
+    process.exit(0);
   } catch (err) {
     console.log("⚠ Match result handler error:", err);
   }
@@ -164,42 +166,22 @@ export function getCorrectInnings(scoreRes) {
   return currInn;
 }
 
-// export function getCorrectInnings(scoreRes) {
-//   const card = scoreRes?.scorecard;
-//   if (!card || card.length === 0) return null;
-
-//   const second = card[1];
-
-//   if (second) {
-//     const hasStarted =
-//       Number(second.overs) > 0 ||
-//       Number(second.runs) > 0 ||
-//       Number(second.wickets) > 0 ||
-//       Number(second.ballnbr) > 0;
-
-//     if (hasStarted) return second;
-//   }
-
-//   return card.reduce((a, b) => (a.ballnbr > b.ballnbr ? a : b));
-// }
-
 export function getCorrectTestInnings(scoreRes, liveId) {
   if (!scoreRes?.scorecard || scoreRes.scorecard.length === 0) {
     return null;
   }
- // console.log("score:::", scoreRes);
-const fullScoreMeta = {
+
+  const fullScoreMeta = {
     isMatchComplete: scoreRes.ismatchcomplete ?? false,
     status: scoreRes.status ?? "",
     appindex: scoreRes.appindex ?? {},
     responselastupdated: scoreRes.responselastupdated ?? null,
   };
-  
+
   const card = scoreRes.scorecard;
   if (liveId) {
     const exact = scoreRes.scorecard.find((inn) => inn.inningsid === liveId);
-    if (exact) 
-    {
+    if (exact) {
       exact.scoreMeta = fullScoreMeta;
       return exact;
     }
@@ -207,13 +189,8 @@ const fullScoreMeta = {
   let currInn = scoreRes.scorecard.reduce((a, b) =>
     (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
   );
-currInn.scoreMeta = fullScoreMeta;
-  console.log("meta::", currInn.scoreMeta);
+  currInn.scoreMeta = fullScoreMeta;
   return currInn;
-  
-  //return scoreRes.scorecard.reduce((a, b) =>
-   // (a.ballnbr ?? 0) > (b.ballnbr ?? 0) ? a : b
- // );
 }
 
 export function getFirstInnings(scoreRes) {

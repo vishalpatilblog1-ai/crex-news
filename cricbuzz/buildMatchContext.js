@@ -92,7 +92,7 @@ export function buildMatchContext({
   isMatchComplete,
   firstInnings,
 }) {
-   console.log("currInnings:::", currInnings?.scoreMeta);
+  //  console.log("currInnings:::", currInnings?.scoreMeta);
   const mini = comm?.miniscore || {};
   const headers = comm?.matchheaders || {};
   if (event?.type === "MATCH_RESULT") {

@@ -19,71 +19,12 @@ function cleanEventLog(event) {
   return rest;
 }
 const log = createLogger("prod");
-// export function computeChaseStatus(event, format) {
-//   // console.log("status::", event);
-//   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
 
-//   const runs = event.targetInning.targetRuns;
-//   const winningScore = runs + 1;
-
-//   const currentRuns = event.runs;
-//   const runsNeeded = Math.max(winningScore - currentRuns, 0);
-
-//   const [ovStr, ballStr] = event.overs.toString().split(".");
-//   const overs = parseInt(ovStr, 10);
-//   const balls = parseInt(ballStr || "0", 10);
-
-//   const ballsBowled = overs * 6 + balls;
-
-//   let totalBalls = 120;
-
-//   const fmt = (format || "").toUpperCase();
-
-//   if (fmt === "T20") totalBalls = 20 * 6;
-//   else if (fmt === "ODI") totalBalls = 50 * 6;
-//   else if (fmt === "T10") totalBalls = 10 * 6;
-//   else if (fmt === "TEST") totalBalls = 90 * 6;
-
-//   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
-
-//   return { runsNeeded, ballsLeft };
-// }
-
-// export function computeChaseStatus(event, format, status) {
-//   if (!event?.targetInning?.targetRuns || !event?.overs) return null;
-
-//   const fmt = (format || "").toUpperCase();
-
-//   if (fmt === "TEST") return null;
-
-//   const runs = event.targetInning.targetRuns;
-//   const winningScore = runs + 1;
-
-//   const currentRuns = event.runs;
-//   const runsNeeded = Math.max(winningScore - currentRuns, 0);
-
-//   const [ovStr, ballStr] = event.overs.toString().split(".");
-//   const overs = parseInt(ovStr, 10);
-//   const balls = parseInt(ballStr || "0", 10);
-//   const ballsBowled = overs * 6 + balls;
-
-//   let totalBalls = 20 * 6; // default T20
-//   if (fmt === "ODI") totalBalls = 50 * 6;
-//   else if (fmt === "T10") totalBalls = 10 * 6;
-
-//   const ballsLeft = Math.max(totalBalls - ballsBowled, 0);
-
-//   return { runsNeeded, ballsLeft };
-// }
-
-export async function buildLOITemplateTweet(matchContext) {
+export async function buildLOITemplateTweet(matchContext, score = null) {
   const { match, event } = matchContext;
 
   log("Event buildLOITemplateTweet::", cleanEventLog(event));
   log("Match buildLOITemplateTweet::", match);
-
-  // console.log("event buildTemplateTweet::", cleanEventLog(event));
-  // console.log("match buildTemplateTweet::", match);
 
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
   const isSecondInningRunning = event?.inningsid === 2;
@@ -158,32 +99,6 @@ export async function buildLOITemplateTweet(matchContext) {
   const scoreLine = `${baseScoreLine}`;
   let safeStatus = safeLine(event?.scoreCardStatus);
 
-  // let safeStatus = "";
-  // if (format === "TEST") {
-  //   safeStatus = match.status;
-  // } else if (isSecondInningRunning && event.targetInning) {
-  //   const chase = computeChaseStatus(event, match?.format);
-
-  //   if (chase) {
-  //     safeStatus = `${normalizeTeamShort(event.batteamsname)} need ${
-  //       chase.runsNeeded
-  //     } runs in ${chase.ballsLeft} balls`;
-  //   }
-  // } else {
-  //   safeStatus = safeLine(match.status);
-  // }
-
-  // if (isSecondInningRunning && event.targetInning) {
-  //   const chase = computeChaseStatus(event, match?.format, match?.status);
-
-  //   if (chase) {
-  //     safeStatus = `${normalizeTeamShort(event.batteamsname)} need ${
-  //       chase.runsNeeded
-  //     } runs in ${chase.ballsLeft} balls`;
-  //   }
-  // } else {
-  //   safeStatus = safeLine(match.status);
-  // }
   const safeScore = safeLine(scoreLine);
   if (commentary) {
     finalTweet += `${commentary}\n\n`;
