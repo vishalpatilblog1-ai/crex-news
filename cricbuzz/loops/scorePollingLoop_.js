@@ -60,23 +60,12 @@ function isNewInnings(prevInn, currInn) {
 
   const currWkts = currInn.wickets ?? 0;
 
+  // True new innings when overs drop AND wickets reset
   return prevOvers > currOvers && currWkts === 0;
 }
 
-export function getAllGlobalThisValues() {
-  return {
-    LAST_INNINGS: globalThis.LAST_INNINGS,
-    LAST_OVER: globalThis.LAST_OVER,
-    LAST_BALL: globalThis.LAST_BALL,
-    LAST_EVENT_BALL: globalThis.LAST_EVENT_BALL,
-    PREV_INNINGS_ID: globalThis.PREV_INNINGS_ID,
-    PREV_BATTEAM: globalThis.PREV_BATTEAM,
-    PREV_SNAPSHOT: globalThis.PREV_SNAPSHOT,
-  };
-}
-
 export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
-  // console.log("globalThis start:::", getAllGlobalThisValues());
+  //   const STATE = global.STATE;
   try {
     log(`\n🔄 Polling: ${MATCH_NAME || MATCH_ID}`, true);
     console.log(`🔄 Polling: ${MATCH_NAME || MATCH_ID} - [${formatTS()}]`);
@@ -88,8 +77,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       globalThis.LAST_OVER = null;
       globalThis.LAST_BALL = null;
       globalThis.LAST_EVENT_BALL = {};
-      globalThis.LAST_HASH = null;
-      globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
+      globalThis.LAST_HASH = null; // IMPORTANT
+      globalThis.LAST_PARTNERSHIP_MILESTONE = 0; // IMPORTANT
       globalThis.PREV_INNINGS_ID = null;
       globalThis.PREV_BATTEAM = null;
       globalThis.PREV_SNAPSHOT = null;
@@ -101,6 +90,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
     log("score::");
     log(score);
+    // console.log("score:::", JSON.stringify(score, null, 2));
 
     let comm = null;
 
@@ -162,53 +152,14 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     const newInningsId = currInnings?.inningsid;
     const newTeam = currInnings?.batteamname;
 
-    // console.log("globalThis 2:::", getAllGlobalThisValues());
-
     if (!globalThis.PREV_INNINGS_ID) {
       globalThis.PREV_INNINGS_ID = newInningsId;
       globalThis.PREV_BATTEAM = newTeam;
     }
-    // if (isNewInnings(globalThis.LAST_INNINGS, currInnings)) {
-    //   console.log("🆕 TRUE NEW INNINGS DETECTED — resetting state");
+    if (isNewInnings(globalThis.LAST_INNINGS, currInnings)) {
+      console.log("🆕 TRUE NEW INNINGS DETECTED — resetting state");
 
-    //   globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
-    //   globalThis.LAST_OVER = 0;
-    //   globalThis.LAST_BALL = -1;
-    //   globalThis.LAST_EVENT_BALL = {};
-
-    //   globalThis.LAST_HASH = null;
-    //   globalThis.LAST_PARTNERSHIP_MILESTONE = 0;
-
-    //   await wait(POLL_WAIT_TIME);
-
-    //   return scorePollingLoop(MATCH_ID, MATCH_NAME);
-    // }
-    console.log(
-      "currInnings.inningsid:::::",
-      currInnings.inningsid,
-      globalThis.PREV_INNINGS_ID,
-      currInnings.inningsid !== globalThis.PREV_INNINGS_ID
-    );
-    const inningsChanged = currInnings.inningsid !== globalThis.PREV_INNINGS_ID;
-
-    // ballnbr reset also indicates innings change
-    const ballReset =
-      globalThis.LAST_BALL !== null &&
-      currInnings.ballnbr < globalThis.LAST_BALL;
-    console.log(
-      "ballReset:::",
-      currInnings.ballnbr,
-      globalThis.LAST_BALL,
-      currInnings.ballnbr < globalThis.LAST_BALL,
-      ballReset
-    );
-
-    if (inningsChanged || ballReset) {
-      console.log("🆕 NEW INNINGS DETECTED — RESETTING TRACKERS");
-
-      globalThis.PREV_INNINGS_ID = currInnings.inningsid;
       globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
-
       globalThis.LAST_OVER = 0;
       globalThis.LAST_BALL = -1;
       globalThis.LAST_EVENT_BALL = {};
@@ -345,24 +296,13 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       const eventType = singleEvent.type;
       const ballNbr = currInnings.ballnbr;
 
-      // if (eventType && ballNbr) {
-      //   if (globalThis.LAST_EVENT_BALL[eventType] === ballNbr) {
-      //     log(`⏩ Duplicate ${eventType} on ball ${ballNbr} — skipping`);
-      //     continue;
-      //   }
-      //   globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
-      // }
-
-      const eventKey = `${currInnings.inningsid}_${eventType}`;
-
-      if (globalThis.LAST_EVENT_BALL[eventKey] === ballNbr) {
-        console.log(
-          `⏩ Duplicate ${eventType} in inns ${currInnings.inningsid} on ball ${ballNbr} — skipping`
-        );
-        continue;
+      if (eventType && ballNbr) {
+        if (globalThis.LAST_EVENT_BALL[eventType] === ballNbr) {
+          log(`⏩ Duplicate ${eventType} on ball ${ballNbr} — skipping`);
+          continue;
+        }
+        globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
       }
-
-      globalThis.LAST_EVENT_BALL[eventKey] = ballNbr;
 
       const commentaryTexts = fetchCommentaryTextByOverNumber(
         comm,
