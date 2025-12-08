@@ -85,8 +85,8 @@ export function getFlagEmoji(teamShort) {
     THA: "🇹🇭",
     THAW: "🇹🇭",
 
-    BHU: "🇧🇹",
-    BHUW: "🇧🇹",
+    BTN: "🇧🇹",
+    BTNW: "🇧🇹",
 
     BHR: "🇧🇭",
     BHRW: "🇧🇭",
