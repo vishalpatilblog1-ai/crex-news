@@ -6,6 +6,7 @@ import { createLogger } from "../utils/logger.js";
 
 import { loadState } from "../utils/stateStoreCloud.js";
 
+import { startAutoReplyV5 } from "../auto-reply/autoReplyV5.js";
 import { findIndiaMatch } from "./cricbuzzApi.js";
 import { newsPollingLoop } from "./loops/newsPollingLoop.js";
 import { scorePollingLoop } from "./loops/scorePollingLoop.js";
@@ -22,7 +23,7 @@ const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
   : null;
 
-// const FORCE_MATCH_ID = 108793;
+// const FORCE_MATCH_ID = 134150;
 
 // "toss_117389": true,
 // "result_135063": true,
@@ -76,6 +77,20 @@ async function bootstrap() {
 
   if (process.env.ENABLE_NEWS_POLLING === "true") {
     setInterval(newsPollingLoop, 1000 * 60 * 10);
+  }
+
+  // if (process.env.ENABLE_AUTO_REPLY === "true") {
+  //   console.log("💬 AUTO-REPLY BOT ACTIVATED...");
+  //   startAutoReplyV5();
+  // }
+
+  if (process.env.ENABLE_SCORE_POLLING === "true") {
+    console.log(
+      "⚠️ Score polling is active → Auto-reply disabled to avoid rate limits."
+    );
+  } else if (process.env.ENABLE_AUTO_REPLY === "true") {
+    console.log("💬 AUTO-REPLY BOT ACTIVATED (safe mode)...");
+    startAutoReplyV5();
   }
 }
 
