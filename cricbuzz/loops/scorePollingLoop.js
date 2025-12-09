@@ -36,7 +36,7 @@ import { loadState } from "../../utils/stateStoreCloud.js";
 
 const log = createLogger("prod");
 
-const POLL_WAIT_TIME = 6000;
+const POLL_WAIT_TIME = 10000;
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 let STATE = loadState();
@@ -265,7 +265,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       if (evTeamMilestone) events.push(evTeamMilestone);
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
       if (evSix) events.push(evSix);
-      if (evFour) events.push(evFour);
+     // if (evFour) events.push(evFour);
       if (evMaidenOver) events.push(evMaidenOver);
 
       // if (evDefault) events.push(evDefault);
