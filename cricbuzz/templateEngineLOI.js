@@ -3,6 +3,7 @@
 import { createLogger } from "../utils/logger.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { getFlagEmoji } from "./templates.js";
+import { premiumTemplateOne } from "./templates/premium-template-1.js";
 import { premiumTemplateSix } from "./templates/premium-template-6.js";
 import {
   buildHashtags,
@@ -21,6 +22,7 @@ function cleanEventLog(event) {
 const log = createLogger("prod");
 
 export async function buildLOITemplateTweet(matchContext, score = null) {
+  // console.log("matchContext:::", JSON.stringify(matchContext, null, 2));
   const { match, event } = matchContext;
 
   log("Event buildLOITemplateTweet::", cleanEventLog(event));
@@ -124,7 +126,7 @@ export async function buildLOITemplateTweet(matchContext, score = null) {
   const team2Flag = getFlagEmoji(team2Short) || "";
   const currentRuns = event.runs || "";
   const currentOvers = event.overs || "";
-  const currentWicket = event.wickets || "";
+  const currentWicket = event.wickets || 0;
   const targetRuns = event.targetInning.targetRuns || "";
 
   let tweet = premiumTemplateSix(
@@ -148,7 +150,7 @@ export async function buildLOITemplateTweet(matchContext, score = null) {
   finalTweet += `${hashtags}`;
 
   // log("Final Tweet:::");
-  // log(finalTweet.trim());
+  // console.log(finalTweet.trim());
 
   // return finalTweet.trim();
   return tweet.trim();

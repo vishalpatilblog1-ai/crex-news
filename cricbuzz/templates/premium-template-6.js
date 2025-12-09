@@ -16,39 +16,45 @@ export function premiumTemplateSix(
   safeStatus,
   hashtags
 ) {
+  const flag1 = team1Flag ? `${team1Flag} ` : "🚨";
+  const flag2 = team2Flag ? `${team2Flag} ` : "🚨";
+
   const headline = bold(
-    `${team1Flag}  ${team1Short} vs ${team2Short} ${format} UPDATES ${team2Flag}`
+    `${flag1} ${team1Short} vs ${team2Short} ${format} UPDATES ${flag2}`
   );
-  // const lineOne = `🟢 ${bold(
-  //   team1Short
-  // )} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
-  // const lineTwo = `🟠 ${bold(team2Short)} - ${targetRuns} Runs (Target)`;
-
-  // const isSecondInnings = !!targetRuns; // second inning always has target
-
-  const lineOne = `🟢 ${bold(
-    team1Short
-  )} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
-
-  const lineTwo = isSecondInningRunning
-    ? `🟠 ${bold(team2Short)} - ${targetRuns} Runs (Target)`
-    : "";
+  let localTweet = `${headline}\n\n`;
 
   const { commLine1, commLine2 } = splitCommentary(commentary);
 
-  return `${headline}\n
-  ${bold(commLine1).trim()}
-  ${commLine2}\n
-  ${lineOne}
-  ${lineTwo ? "\n" + lineTwo : ""}\n
-  📊 ${safeStatus}\n
-  ${hashtags}`.trim();
+  if (commLine1) {
+    localTweet += bold(`${commLine1}\n`);
+  }
 
-  // return `${headline}\n
-  // ${bold(commLine1).trim()}
-  // ${commLine2}\n
-  // ${lineOne}
-  // ${lineTwo}\n
-  // 📊 ${safeStatus}\n
-  // ${hashtags}`.trim();
+  if (commLine2) {
+    localTweet += `${commLine2}\n\n`;
+  }
+  const lineOne = `🟩 ${bold(
+    team1Short
+  )} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
+
+  if (lineOne) {
+    localTweet += isSecondInningRunning ? `${lineOne}\n` : `${lineOne}\n\n`;
+  }
+
+  const lineTwo = true
+    ? `🟧 ${bold(team2Short)} - ${targetRuns} Runs (Target)`
+    : "";
+
+  if (isSecondInningRunning && lineTwo) {
+    localTweet += `${lineTwo}\n\n`;
+  }
+
+  if (isSecondInningRunning && safeStatus) {
+    localTweet += `📊 ${safeStatus}\n\n`;
+  }
+  if (hashtags) {
+    localTweet += `${hashtags}\n\n`;
+  }
+
+  return localTweet.trim();
 }

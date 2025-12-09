@@ -302,3 +302,67 @@ export const matchContextData_test_allInnings = {
   status: "Australia won by 8 wkts",
   responselastupdated: 1765118021,
 };
+
+export const matchContext_T20_firstInning = {
+  match: {
+    name: "Perth Scorchers Women vs Melbourne Stars Women",
+    team1: "Perth Scorchers Women",
+    team2: "Melbourne Stars Women",
+    team1Short: "PRSW",
+    team2Short: "MLSW",
+    format: "T20",
+    venue: "",
+    status: "Perth Scorchers Women opt to bat",
+    isMatchComplete: false,
+  },
+  event: {
+    type: "FOUR",
+    batterId: 12005,
+    batterName: "Katie Mack",
+    bowlerName: "Sasha Moloney",
+    runs: 73,
+    balls: 27,
+    ballNbr: 57,
+    currentOver: "9.3",
+    commentaryTexts: ["Sasha Moloney to Katie Mack, byes, 1 run"],
+    inningsid: 1,
+    wickets: 0,
+    overs: 9.3,
+    batteamname: "Perth Scorchers Women",
+    batteamsname: "PRSW",
+
+    partnership: {
+      totalRuns: 73,
+      totalBalls: 57,
+      bat1: {
+        name: "Katie Mack",
+        runs: 32,
+        balls: 27,
+      },
+      bat2: {
+        name: "Mooney",
+        runs: 34,
+        balls: 30,
+      },
+      currentRunningOver: 9.3,
+    },
+    targetInning: {
+      targetRuns: 73,
+      targetWicket: 0,
+      targetOvers: 9.3,
+      battingTeamName: "Perth Scorchers Women",
+      battingTeamShortName: "PRSW",
+    },
+    series: "Womens Big Bash League 2025",
+    scoreCardStatus: "Perth Scorchers Women opt to bat",
+  },
+  players: {
+    striker: "Katie Mack",
+    nonStriker: "Beth Mooney",
+    strikerRuns: "",
+    strikerBallsPlayed: "",
+    nonStrikerRuns: "",
+    nonStrikerBallsPlayed: "",
+    bowler: "Sasha Moloney",
+  },
+};
