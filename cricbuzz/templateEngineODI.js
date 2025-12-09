@@ -134,7 +134,8 @@ export async function buildODITemplateTweet(matchContext, score = null) {
     currentWicket,
     targetRuns,
     safeStatus,
-    hashtags
+    hashtags,
+    event
   );
   // console.log("by template::");
   // console.log(tweet);

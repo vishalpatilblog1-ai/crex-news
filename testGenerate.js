@@ -1,13 +1,12 @@
 import generateTweet from "./cricbuzz/ai/ai.js";
-import {
-  matchContextData_maiden_over,
-  matchContext_T20_firstInning,
-} from "./matchContextTextData.js";
-import { postTweet_http2 } from "./postTweet_http2.js";
+import { matchContext_T20_secondInning_live_india_match } from "./matchContextTextData.js";
 
 async function test() {
   for (let index = 0; index < 1; index++) {
-    const tweet = await generateTweet(matchContext_T20_firstInning);
+    // const tweet = await generateTweet(matchContext_T20_secondInning);
+    const tweet = await generateTweet(
+      matchContext_T20_secondInning_live_india_match
+    );
 
     console.log(tweet);
   }
