@@ -3,7 +3,6 @@
 import { createLogger } from "../utils/logger.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { getFlagEmoji } from "./templates.js";
-import { premiumTemplateOne } from "./templates/premium-template-1.js";
 import { premiumTemplateSix } from "./templates/premium-template-6.js";
 import {
   buildHashtags,
@@ -21,12 +20,12 @@ function cleanEventLog(event) {
 }
 const log = createLogger("prod");
 
-export async function buildLOITemplateTweet(matchContext, score = null) {
+export async function buildODITemplateTweet(matchContext, score = null) {
   // console.log("matchContext:::", JSON.stringify(matchContext, null, 2));
   const { match, event } = matchContext;
 
-  log("Event buildLOITemplateTweet::", cleanEventLog(event));
-  log("Match buildLOITemplateTweet::", match);
+  log("Event ODI::", cleanEventLog(event));
+  log("Match ODI::", match);
 
   const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
   const isSecondInningRunning = event?.inningsid === 2;
@@ -75,13 +74,6 @@ export async function buildLOITemplateTweet(matchContext, score = null) {
       } Runs (Target)`;
     }
   }
-
-  // const secondLine =
-  //   isSecondInningRunning && event.targetInning
-  //     ? `${secondInningFlag ? secondInningFlag + " " : ""}${normalizeTeamShort(
-  //         event.targetInning.battingTeamShortName
-  //       )} - ${event.targetInning.targetRuns} Runs (Target)`
-  //     : "";
 
   const baseScoreLine = secondLine
     ? `${firstLine} \n${secondLine} `

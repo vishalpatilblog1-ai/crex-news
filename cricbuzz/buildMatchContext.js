@@ -142,6 +142,7 @@ export function buildMatchContext({
   }
 
   const enrichedEvent = {
+    ...buildBaseMatchObject(headers),
     ...event,
     bowlerName: event?.bowlerName || mini?.bowlerstriker?.name || "",
     inningsid: currInnings.inningsid,
@@ -156,6 +157,7 @@ export function buildMatchContext({
     targetInning: firstInnings,
     series: headers?.seriesname || "",
     scoreCardStatus: currInnings?.scoreMeta?.status || "",
+    isMatchComplete,
   };
 
   return {

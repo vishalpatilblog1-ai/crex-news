@@ -36,7 +36,7 @@ import { loadState } from "../../utils/stateStoreCloud.js";
 
 const log = createLogger("prod");
 
-const POLL_WAIT_TIME = 10000;
+const POLL_WAIT_TIME = 6000;
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 let STATE = loadState();
@@ -91,9 +91,9 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     log("score::");
     log(score);
 
+    // console.log("score:::", score);
     let comm = null;
-    // const photos = await fetchNewsPhotoGallery();
-    // console.log("photos::::", JSON.stringify(photos, null, 2));
+
     const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
     try {

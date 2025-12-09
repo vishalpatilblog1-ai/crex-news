@@ -1,7 +1,7 @@
 //templateEngine.js
 
-import { createLogger } from "../utils/logger.js";
-import { buildLOITemplateTweet } from "./templateEngineLOI.js";
+import { buildODITemplateTweet } from "./templateEngineODI.js";
+
 import { buildTestTemplateTweet } from "./templateEngineTest.js";
 
 export async function buildTemplateTweet(matchContext, score) {
@@ -11,5 +11,5 @@ export async function buildTemplateTweet(matchContext, score) {
     return buildTestTemplateTweet(matchContext, score);
   }
 
-  return buildLOITemplateTweet(matchContext, score);
+  return buildODITemplateTweet(matchContext, score);
 }
