@@ -1,6 +1,6 @@
-import { createLogger } from "../utils/logger.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
-import { getFlagEmoji } from "./templates.js";
+import { splitCommentary } from "./match-events/tossAndResultHandler.js";
+import { bold, getFlagEmoji } from "./templates.js";
 import {
   buildHashtags,
   headlineValidator,
@@ -11,56 +11,6 @@ function ordinal(n) {
   return ["1st", "2nd", "3rd"][n - 1] || `${n}th`;
 }
 
-// export function getTestInningsDisplay(scorecard, currentInningsId) {
-//   if (!Array.isArray(scorecard)) return [];
-
-//   const sorted = [...scorecard].sort((a, b) => a.inningsid - b.inningsid);
-
-//   const teamInningsCount = {};
-//   const display = [];
-
-//   for (const inn of sorted) {
-//     const team = normalizeTeamShort(inn.batteamsname);
-//     const flag = getFlagEmoji(inn.batteamsname);
-
-//     if (!teamInningsCount[team]) teamInningsCount[team] = 1;
-//     else teamInningsCount[team]++;
-
-//     const inningsNumber = teamInningsCount[team];
-
-//     const labelParts = [];
-//     labelParts.push(`${ordinal(inningsNumber)} inns`);
-
-//     if (inn.isdeclared) labelParts.push("declared");
-//     if (inn.isfollowon) labelParts.push("follow-on");
-
-//     const labelText = labelParts.join(", ");
-
-//     const score =
-//       inn.wickets != null ? `${inn.score}/${inn.wickets}` : `${inn.score}`;
-
-//     const overs = inn.overs ? `(${inn.overs} ovs)` : "";
-
-//     const line = `${
-//       flag ? flag + " " : ""
-//     }${team} – ${score} ${overs} (${labelText})`;
-
-//     display.push({
-//       inningsid: inn.inningsid,
-//       isCurrent: inn.inningsid === currentInningsId,
-//       text: line.trim(),
-//     });
-//   }
-
-//   display.sort((a, b) => b.inningsid - a.inningsid);
-
-//   const active = display.find((d) => d.isCurrent);
-//   const others = display.filter((d) => !d.isCurrent);
-
-//   return [active ? active.text : "", ...others.map((o) => o.text)].filter(
-//     Boolean
-//   );
-// }
 export function getTestInningsDisplay(scorecard, currentInningsId) {
   if (!Array.isArray(scorecard)) return [];
 
@@ -93,15 +43,15 @@ export function getTestInningsDisplay(scorecard, currentInningsId) {
     const scoreVal =
       inn.wickets != null ? `${inn.score}/${inn.wickets}` : `${inn.score}`;
 
-    const overs = inn.overs ? `(${inn.overs} ovs)` : "";
+    const overs = inn.overs ? `(${inn.overs} Overs)` : "";
 
     // ❗ DO NOT show innings label for current innings
     const labelSection =
       inn.inningsid === currentInningsId ? "" : ` (${labelText})`;
 
-    const line = `${
-      flag ? flag + " " : ""
-    }${team} – ${scoreVal} ${overs}${labelSection}`.trim();
+    const line = `${flag ? flag + " " : ""}${bold(
+      team
+    )} – ${scoreVal} ${overs}${labelSection}`.trim();
 
     display.push({
       inningsid: inn.inningsid,
@@ -123,6 +73,7 @@ export function getTestInningsDisplay(scorecard, currentInningsId) {
 }
 
 export async function buildTestTemplateTweet(matchContext, scoreRes) {
+  console.log("buildTestTemplateTweet::::::");
   const { match, event } = matchContext;
 
   if (!match || !event || !scoreRes) return null;
@@ -141,6 +92,7 @@ export async function buildTestTemplateTweet(matchContext, scoreRes) {
     team2Short
   );
   const commentary = commentaryTexts?.trim() || "";
+  const { commLine1, commLine2 } = splitCommentary(commentary);
 
   const scorecard = scoreRes?.scorecard || [];
   const currentInnId = event.targetInning?.inningsId || event.inningsid || null;
@@ -152,7 +104,9 @@ export async function buildTestTemplateTweet(matchContext, scoreRes) {
 
   let finalTweet = `${universalHeader}\n\n`;
 
-  if (commentary) finalTweet += `${commentary}\n\n`;
+  // if (commentary) finalTweet += `${commentary}\n\n`;
+  if (commLine1) finalTweet += bold(`${commLine1}\n`);
+  if (commLine2) finalTweet += `${commLine2}\n\n`;
 
   finalTweet += `${scoreBlock}\n\n`;
   finalTweet += `${statusLine}\n\n`;
