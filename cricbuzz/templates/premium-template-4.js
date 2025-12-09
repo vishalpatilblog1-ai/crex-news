@@ -1,4 +1,5 @@
 export function premiumTemplateFour(
+  isSecondInningRunning,
   team1Short,
   team2Short,
   format,

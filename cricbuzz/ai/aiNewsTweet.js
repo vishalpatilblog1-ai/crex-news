@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { bold } from "../templates.js";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -54,7 +55,7 @@ Write ONLY the tweet. Do not add any explanation or extra text.
 
   return `
 
-  🚨 BREAKING NEWS 🚨
+${bold("🚨 BREAKING NEWS 🚨")}
 
 ${response.choices[0].message.content.trim()}`;
 }

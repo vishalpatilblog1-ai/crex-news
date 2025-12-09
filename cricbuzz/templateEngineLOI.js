@@ -120,14 +120,15 @@ export async function buildLOITemplateTweet(matchContext, score = null) {
     event.type,
     event.series
   );
-  const team1Flag = getFlagEmoji(team1Short);
-  const team2Flag = getFlagEmoji(team2Short);
-  const currentRuns = event.runs;
-  const currentOvers = event.overs;
-  const currentWicket = event.wickets;
-  const targetRuns = event.targetInning.targetRuns;
+  const team1Flag = getFlagEmoji(team1Short) || "";
+  const team2Flag = getFlagEmoji(team2Short) || "";
+  const currentRuns = event.runs || "";
+  const currentOvers = event.overs || "";
+  const currentWicket = event.wickets || "";
+  const targetRuns = event.targetInning.targetRuns || "";
 
   let tweet = premiumTemplateSix(
+    isSecondInningRunning,
     team1Short,
     team2Short,
     format,

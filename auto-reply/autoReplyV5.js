@@ -51,8 +51,8 @@ const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 const nowTime = () =>
   new Date().toLocaleTimeString("en-US", { hour12: false });
 
-const user = await v2.userByUsername("CricCrazyJohns");
-console.log("user.data.id::::::",user.data.id);
+// const user = await v2.userByUsername("CricCrazyJohns");
+// console.log("user.data.id::::::",user.data.id);
 
 // ----------------------------------------
 // Daily Reset

@@ -1,4 +1,4 @@
-import { getFlagEmoji } from "../templates.js";
+import { bold, getFlagEmoji } from "../templates.js";
 import { buildHashtags } from "../tweet-validators/tweetValidators.js";
 
 export function buildTossTweet(
@@ -21,11 +21,13 @@ export function buildTossTweet(
     return "SKIP";
   }
 
-  const headline = `🚨 ${team1Short} vs ${team2Short} ${format} UPDATES 🚨`;
+  const headline = bold(
+    `🚨 ${team1Short} vs ${team2Short} ${format} UPDATES 🚨`
+  );
 
   let tossText = `${getFlagEmoji(
     tossWinnerShortName
-  )}  ${tossWinner} won the toss and chose to ${tossDecision}.`;
+  )}${tossWinner} won the toss and chose to ${tossDecision}.`;
 
   tossText = tossText.toUpperCase();
 
@@ -38,7 +40,7 @@ export function buildTossTweet(
   );
 
   return `${headline}\n
-🪙 Toss Update
+${bold("🪙 TOSS UPDATE")}
 
 ${tossText}
 
@@ -53,12 +55,11 @@ export function buildMatchResultTweet(
 ) {
   const headline = `🚨 ${team1Short} vs ${team2Short} ${format} UPDATES 🚨`;
 
+  //🏆 MATCH RESULT 🏆
   return `
-${headline}
+${bold(headline)}
 
-🏆 MATCH RESULT 🏆
-
-${resultText.toUpperCase()}
+${bold(resultText.toUpperCase())}
 
 #${team1Short}vs${team2Short} #${team2Short}vs${team1Short}
 `;

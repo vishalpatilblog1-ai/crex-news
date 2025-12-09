@@ -79,11 +79,6 @@ async function bootstrap() {
     setInterval(newsPollingLoop, 1000 * 60 * 10);
   }
 
-  // if (process.env.ENABLE_AUTO_REPLY === "true") {
-  //   console.log("💬 AUTO-REPLY BOT ACTIVATED...");
-  //   startAutoReplyV5();
-  // }
-
   if (process.env.ENABLE_SCORE_POLLING === "true") {
     console.log(
       "⚠️ Score polling is active → Auto-reply disabled to avoid rate limits."

@@ -1,6 +1,7 @@
 import { splitCommentary } from "../match-events/tossAndResultHandler.js";
 
 export function premiumTemplateThree(
+  isSecondInningRunning,
   team1Short,
   team2Short,
   format,
