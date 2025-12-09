@@ -1,8 +1,6 @@
 export function premiumTemplateTwo(
   team1Short,
   team2Short,
-  team1Long,
-  team2Long,
   format,
   commentary,
   team1Flag,
@@ -10,24 +8,18 @@ export function premiumTemplateTwo(
   currentRuns,
   currentOvers,
   currentWicket,
-  chaseTeam,
-  runsNeeded,
-  ballsLeft,
   targetRuns,
+  safeStatus,
   hashtags
 ) {
   const headline = `${team1Flag}  ${team1Short} vs ${team2Short} ${team2Flag}`;
   const lineOne = `📊 ${team1Short} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
   const lineTwo = `${team2Flag} ${team2Short} - ${targetRuns} Runs (Target)`;
-  let chaseLine = "";
-  if (chaseTeam && runsNeeded != null && ballsLeft != null) {
-    chaseLine = `${chaseTeam} need ${runsNeeded} runs in ${ballsLeft} balls`;
-  }
 
   return `${headline}\n
 ${commentary}\n
 ${lineOne}
 ${lineTwo}\n
-${chaseLine}\n
+${safeStatus}\n
 ${hashtags}`.trim();
 }

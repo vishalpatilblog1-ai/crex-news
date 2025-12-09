@@ -1,5 +1,7 @@
 //tweetValidators.js
 
+import { bold } from "../templates.js";
+
 export function headlineValidator(team1Short, team2Short, format) {
   const team1 = normalizeTeamShort(team1Short);
   const team2 = normalizeTeamShort(team2Short);
@@ -7,8 +9,10 @@ export function headlineValidator(team1Short, team2Short, format) {
   const fmt = format && format !== "null" ? format : "";
 
   if (team1 && team2 && fmt) {
-    return `🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`;
+    // return `🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`;
+    return bold(`🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`);
   }
+  // return bold(`🚨 MATCH UPDATES 🚨`);
 
   return `🚨 MATCH UPDATES 🚨`;
 }

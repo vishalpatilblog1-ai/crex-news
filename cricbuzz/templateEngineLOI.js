@@ -3,7 +3,7 @@
 import { createLogger } from "../utils/logger.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { getFlagEmoji } from "./templates.js";
-import { premiumTemplateOne } from "./templates/premium-template-1.js";
+import { premiumTemplateSix } from "./templates/premium-template-6.js";
 import {
   buildHashtags,
   headlineValidator,
@@ -120,11 +120,35 @@ export async function buildLOITemplateTweet(matchContext, score = null) {
     event.type,
     event.series
   );
+  const team1Flag = getFlagEmoji(team1Short);
+  const team2Flag = getFlagEmoji(team2Short);
+  const currentRuns = event.runs;
+  const currentOvers = event.overs;
+  const currentWicket = event.wickets;
+  const targetRuns = event.targetInning.targetRuns;
+
+  let tweet = premiumTemplateSix(
+    team1Short,
+    team2Short,
+    format,
+    commentary,
+    team1Flag,
+    team2Flag,
+    currentRuns,
+    currentOvers,
+    currentWicket,
+    targetRuns,
+    safeStatus,
+    hashtags
+  );
+  // console.log("by template::");
+  // console.log(tweet);
 
   finalTweet += `${hashtags}`;
 
   // log("Final Tweet:::");
   // log(finalTweet.trim());
 
-  return finalTweet.trim();
+  // return finalTweet.trim();
+  return tweet.trim();
 }

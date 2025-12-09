@@ -110,16 +110,31 @@ export async function generateCommentaryTweet(
   =====================================================
   HEADLINE RULES (FIRST LINE)
   =====================================================
+  // - ALL CAPS
+  // - 3–6 words only
+  // - Must clearly include the event type:
+  //     SIX / FOUR / WICKET / PARTNERSHIP
+  // - Add EXACTLY ONE emoji at the end
+  // - Must be simple and emotional:
+  //   Example style:
+  //     BIG COVER DRIVE FOUR 💥
+  //     STRONG MID-WICKET SIX 🔥
+  //     SIMPLE, CLEAN WICKET 📛
+
   - ALL CAPS
-  - 3–6 words only
-  - Must clearly include the event type:
-      SIX / FOUR / WICKET / PARTNERSHIP
+  - EXACTLY 1 word only   ← (changed from 3–6 words)
+  - Word must be the event type:
+        SIX / FOUR / WICKET / PARTNERSHIP / FIFTY / HUNDRED
   - Add EXACTLY ONE emoji at the end
-  - Must be simple and emotional:
+  - Must be simple and emotional
     Example style:
-      BIG COVER DRIVE FOUR 🏏
-      STRONG MID-WICKET SIX 🔥
-      SIMPLE, CLEAN WICKET 🎯
+      FOUR 💥
+      SIX 🔥
+      WICKET 📛
+      PARTNERSHIP 🤝
+      FIFTY 🟡
+      HUNDRED 🟦
+      MAIDEN
   
   =====================================================
   BODY RULES (SECOND LINE)
