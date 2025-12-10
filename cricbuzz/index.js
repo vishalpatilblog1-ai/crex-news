@@ -69,6 +69,8 @@ async function startBot() {
 async function bootstrap() {
   global.STATE = await loadState();
   console.log("🌍 JSONBin state loaded:", global.STATE);
+  log("🌍 JSONBin state loaded:", true);
+  log(global.STATE, true);
 
   if (process.env.ENABLE_SCORE_POLLING === "true") {
     console.log("before startBot ....");
