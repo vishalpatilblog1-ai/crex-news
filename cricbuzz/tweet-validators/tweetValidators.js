@@ -28,7 +28,7 @@ export function normalizeTeamShort(code) {
 }
 
 export function buildHashtags(
-  match,
+  format,
   t1,
   t2,
   batsman,
@@ -45,7 +45,7 @@ export function buildHashtags(
   const h2 = `#${team2Short}v${team1Short}`;
 
   let fmt = "";
-  const format = (match?.format || "").toUpperCase();
+  // const format = (match?.format || "").toUpperCase();
 
   if (format.includes("T20")) fmt = "#T20I";
   else if (format.includes("ODI")) fmt = "#ODI";
@@ -74,13 +74,9 @@ export function buildHashtags(
   return [
     "#CricketTwitter",
     "#IndianCricket",
-    "#CSK",
-    "#IPLAuction",
-    "#IPL2026Auction ",
-    "@ChennaiIPL",
     h1,
     h2,
-    fmt,
+    // fmt,
     ashesTag,
     ...Array.from(playerTags),
   ]

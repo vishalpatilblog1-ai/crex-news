@@ -50,7 +50,7 @@ export function detectDefault(prev, curr) {
     bowlerWickets: bowler?.wickets || "",
     bowlerBalls: bowler?.balls || "",
     bowlerEconomy: bowler?.economy || "",
-    rawBowlerObject: bowler,
+    // rawBowlerObject: bowler,
   };
 }
 

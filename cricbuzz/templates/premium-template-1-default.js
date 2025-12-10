@@ -1,7 +1,7 @@
 import { splitCommentary } from "../match-events/tossAndResultHandler.js";
 import { bold, getFlagEmoji, italic } from "../templates.js";
 
-export function premiumTemplateTwo(
+export function premiumTemplateOne(
   isSecondInningRunning,
   team1Short,
   team2Short,
@@ -21,29 +21,27 @@ export function premiumTemplateTwo(
   const flagBat = getFlagEmoji(battingTeam) || "🏏";
   const flagTarget = getFlagEmoji(targetTeam) || "🎯";
 
-  const headline = bold(
-    `🚨 ${team1Short} vs ${team2Short} ${format} UPDATES 🚨`
-  );
+  const headline = `🚨 ${team1Short} vs ${team2Short} ${format} UPDATES 🚨`;
 
   let localTweet = `${headline}\n\n`;
 
   const { commLine1, commLine2 } = splitCommentary(commentary);
-  if (commLine1) localTweet += bold(`${commLine1}\n`);
+  if (commLine1) localTweet += `${commLine1}\n`;
   if (commLine2) localTweet += `${commLine2}\n\n`;
 
-  const currentInningLine = `${flagBat} ${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)\n`;
+  const currentInningLine = `${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)\n`;
 
   let targetInningLine = "";
   if (isSecondInningRunning && targetRuns) {
-    targetInningLine = `${flagTarget} ${targetTeam} – ${targetRuns} Runs (Target)`;
+    targetInningLine = `${targetTeam} – ${targetRuns} Runs (Target)`;
   }
 
-  localTweet += bold(`${currentInningLine}\n`);
-  if (targetInningLine) localTweet += bold(`${targetInningLine}\n\n`);
+  localTweet += `${currentInningLine}\n`;
+  if (targetInningLine) localTweet += `${targetInningLine}\n\n`;
 
-  if (isSecondInningRunning && safeStatus) {
-    localTweet += `📊 ${safeStatus}\n\n`;
-  }
+  // if (isSecondInningRunning && safeStatus) {
+  localTweet += `${safeStatus}\n\n`;
+  // }
 
   if (hashtags) localTweet += italic(`${hashtags}\n`);
 

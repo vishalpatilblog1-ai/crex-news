@@ -1,79 +1,49 @@
 //templateEngine.js
 
-import { createLogger } from "../utils/logger.js";
 import { generateCommentaryTweet } from "./ai/aiCommentaryTweet.js";
 import { getFlagEmoji } from "./templates.js";
+import { premiumTemplateOne } from "./templates/premium-template-1-default.js";
 import { premiumTemplateSix } from "./templates/premium-template-6.js";
+
 import {
   buildHashtags,
   headlineValidator,
-  normalizeTeamShort,
-  safeLine,
 } from "./tweet-validators/tweetValidators.js";
-// import { createLogger } from "./utils/logger.js";
 
-function cleanEventLog(event) {
-  if (!event) return event;
+export async function buildODITemplateTweet({ event }, score = null) {
+  const {
+    team1Short,
+    team2Short,
+    format,
+    scoreCardStatus,
+    batteamsname: battingTeam,
+  } = event;
 
-  const { batsman, bowler, ...rest } = event;
-  return rest;
-}
-const log = createLogger("prod");
+  console.log("Event ODI all::", event);
 
-export async function buildODITemplateTweet(matchContext, score = null) {
-  // console.log("matchContext:::", JSON.stringify(matchContext, null, 2));
-  const { match, event } = matchContext;
-  // const { team1Short, team2Short } = event;
-
-  log("Event ODI::", cleanEventLog(event));
-  log("Match ODI::", match);
-
-  const rawCommentary = matchContext?.event?.commentaryTexts?.[0];
+  const rawCommentary = event?.commentaryTexts?.[0];
   const isSecondInningRunning = event?.inningsid === 2;
-  const team1Short = matchContext?.match?.team1Short || "";
-  const team2Short = matchContext?.match?.team2Short || "";
-  const format = (match?.format || "").toUpperCase() || "";
 
   const universalHeader = headlineValidator(team1Short, team2Short, format);
 
-  if (!match || !event) return null;
-
-  if (!event?.type) return null;
+  if (!event || !event?.type) return null;
 
   globalThis.TWEET_COUNTER = (globalThis.TWEET_COUNTER || 0) + 1;
-
-  let targetLineShort = "";
-  if (event.type === "WICKET" && event?.targetInning?.targetRuns) {
-    targetLineShort = `Target (${event.targetInning.battingTeamShortName}): ${event.targetInning.targetRuns}`;
-  }
+  const targetTeam = event.targetInning?.battingTeamShortName;
 
   const firstInningFlag = getFlagEmoji(event.batteamsname);
-  const secondInningFlag = getFlagEmoji(
-    event.targetInning?.battingTeamShortName
-  );
+  const secondInningFlag = getFlagEmoji(targetTeam);
 
   const firstLine = `${
     firstInningFlag ? firstInningFlag + " " : ""
-  }${normalizeTeamShort(event.batteamsnameShort || event.batteamsname)} - ${
-    event.runs
-  }/${event.wickets} (${event.overs} Overs)`;
+  }${battingTeam} - ${event.runs}/${event.wickets} (${event.overs} Overs)`;
 
   let secondLine = "";
 
   if (isSecondInningRunning && event.targetInning) {
-    if (format === "TEST") {
-      secondLine = `${
-        secondInningFlag ? secondInningFlag + " " : ""
-      }${normalizeTeamShort(event.targetInning.battingTeamShortName)} - ${
-        event.targetInning.targetRuns
-      } Runs - first innings`;
-    } else {
-      secondLine = `${
-        secondInningFlag ? secondInningFlag + " " : ""
-      }${normalizeTeamShort(event.targetInning.battingTeamShortName)} - ${
-        event.targetInning.targetRuns
-      } Runs (Target)`;
-    }
+    secondLine = `${secondInningFlag ? secondInningFlag + " " : ""}${
+      event.targetInning.battingTeamShortName
+    } - ${event.targetInning.targetRuns} Runs (Target)`;
   }
 
   const baseScoreLine = secondLine
@@ -91,25 +61,14 @@ export async function buildODITemplateTweet(matchContext, score = null) {
 
   const commentary = commentaryTexts?.trim() ? commentaryTexts.trim() : "";
 
-  const scoreLine = `${baseScoreLine}`;
-  let safeStatus = safeLine(event?.scoreCardStatus);
-
-  const safeScore = safeLine(scoreLine);
-  if (commentary) {
-    finalTweet += `${commentary}\n\n`;
-  }
-
-  if (safeScore) {
-    finalTweet += `${safeScore}\n\n`;
-  }
-  if (safeStatus) {
-    finalTweet += `${safeStatus}\n\n`;
-  }
+  finalTweet += `${commentary}\n\n`;
+  finalTweet += `${baseScoreLine}\n\n`;
+  finalTweet += `${scoreCardStatus}\n\n`;
 
   const hashtags = buildHashtags(
-    match,
-    match.team1Short,
-    match.team2Short,
+    format,
+    team1Short,
+    team2Short,
     event.batterName,
     event.bowlerName,
     event.type,
@@ -134,14 +93,34 @@ export async function buildODITemplateTweet(matchContext, score = null) {
     currentOvers,
     currentWicket,
     targetRuns,
-    safeStatus,
+    scoreCardStatus,
     hashtags,
-    event
+    battingTeam,
+    targetTeam
   );
+
+  // let tweet1 = premiumTemplateOne(
+  //   isSecondInningRunning,
+  //   team1Short,
+  //   team2Short,
+  //   format,
+  //   commentary,
+  //   team1Flag,
+  //   team2Flag,
+  //   currentRuns,
+  //   currentOvers,
+  //   currentWicket,
+  //   targetRuns,
+  //   scoreCardStatus,
+  //   hashtags,
+  //   battingTeam,
+  //   targetTeam
+  // );
 
   finalTweet += `${hashtags}`;
 
   // log("Final Tweet:::");
+  // console.log(tweet.trim());
   // console.log(finalTweet.trim());
 
   // return finalTweet.trim();

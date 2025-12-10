@@ -1,6 +1,5 @@
 import { splitCommentary } from "../match-events/tossAndResultHandler.js";
-import { bold, italic } from "../templates.js";
-import { normalizeTeamShort } from "../tweet-validators/tweetValidators.js";
+import { bold, getFlagEmoji, italic } from "../templates.js";
 
 export function premiumTemplateSix(
   isSecondInningRunning,
@@ -16,15 +15,19 @@ export function premiumTemplateSix(
   targetRuns,
   safeStatus,
   hashtags,
-  event
+  battingTeam,
+  targetTeam
 ) {
-  const flag1 = team1Flag || "🚨";
-  const flag2 = team2Flag || "🚨";
+  // const flag1 = team1Flag || "🚨";
+  // const flag2 = team2Flag || "🚨";
+  const headerFlag1 = team1Flag || "🚨";
+  const headerFlag2 = team2Flag || "🚨";
+
+  const flagBat = getFlagEmoji(battingTeam) || "🏏";
+  const flagTarget = getFlagEmoji(targetTeam) || "🎯";
 
   const headline = bold(
-    `${flag1} ${normalizeTeamShort(team1Short)} vs ${normalizeTeamShort(
-      team2Short
-    )} ${format} UPDATES ${flag2}`
+    `${headerFlag1} ${team1Short} vs ${team2Short} ${format} UPDATES ${headerFlag2}`
   );
 
   let localTweet = `${headline}\n\n`;
@@ -33,29 +36,21 @@ export function premiumTemplateSix(
   if (commLine1) localTweet += bold(`${commLine1}\n`);
   if (commLine2) localTweet += `${commLine2}\n\n`;
 
-  const battingTeam = normalizeTeamShort(
-    event?.batteamsnameShort || event?.batteamsname
-  );
-
-  const targetTeam = normalizeTeamShort(
-    event?.targetInning?.battingTeamShortName
-  );
-
-  const currentInningLine = `🟩 ${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
+  const currentInningLine = `🟩 ${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers})`;
 
   let targetInningLine = "";
   if (isSecondInningRunning && targetRuns) {
-    targetInningLine = `🟧 ${targetTeam} – ${targetRuns} Runs (Target)`;
+    targetInningLine = `🟧 ${targetTeam} – ${targetRuns} (Target)`;
   }
 
   localTweet += bold(`${currentInningLine}\n`);
   if (targetInningLine) localTweet += bold(`${targetInningLine}\n\n`);
 
   if (isSecondInningRunning && safeStatus) {
-    localTweet += `📊 ${safeStatus}\n\n`;
+    localTweet += `🟦 ${safeStatus}\n\n`.toUpperCase();
   }
 
-  if (hashtags) localTweet += italic(`${hashtags}\n`);
+  if (hashtags) localTweet += `${hashtags}\n`;
 
   return localTweet.trim();
 }

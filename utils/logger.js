@@ -67,7 +67,7 @@ export function createLogger(type = "local") {
       fs.appendFileSync(filePath, line + "\n");
 
       // also print to console
-      console.log(line);
+      // console.log(line);
     } catch (err) {
       console.error("Logging Error:", err);
     }

@@ -118,7 +118,7 @@ export async function generateCommentaryTweet(
   - Must be simple and emotional
     Example style:
       FOUR 💥
-      SIX 🔥🔥
+      SIX 🔥
       WICKET 📛
       PARTNERSHIP 🤝
       FIFTY 🟡

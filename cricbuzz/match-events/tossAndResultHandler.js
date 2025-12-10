@@ -70,72 +70,72 @@ export async function handleTossEvent({
     console.log("⚠ Toss handler error:", err);
   }
 }
-export async function handleMatchResultEvent({
-  comm,
-  score,
-  STATE,
-  MATCH_ID,
-  USE_WEB_TWEET,
-  firstInnings,
-}) {
-  try {
-    if (!score?.ismatchcomplete || !score?.status) return;
+// export async function handleMatchResultEvent({
+//   comm,
+//   score,
+//   STATE,
+//   MATCH_ID,
+//   USE_WEB_TWEET,
+//   firstInnings,
+// }) {
+//   try {
+//     if (!score?.ismatchcomplete || !score?.status) return;
 
-    if (STATE[`result_${MATCH_ID}`]) return;
+//     if (STATE[`result_${MATCH_ID}`]) return;
 
-    STATE[`result_${MATCH_ID}`] = true;
-    saveState(STATE);
+//     STATE[`result_${MATCH_ID}`] = true;
+//     saveState(STATE);
 
-    const resultText = score.status;
+//     const resultText = score.status;
 
-    const syntheticEvent = {
-      type: "MATCH_RESULT",
-      resultText,
-    };
+//     const syntheticEvent = {
+//       type: "MATCH_RESULT",
+//       resultText,
+//     };
 
-    const matchContext = buildMatchContext({
-      comm,
-      currInnings: null,
-      event: syntheticEvent,
-      isMatchComplete: true,
-      firstInnings,
-    });
+//     const matchContext = buildMatchContext({
+//       comm,
+//       currInnings: null,
+//       event: syntheticEvent,
+//       isMatchComplete: true,
+//       firstInnings,
+//     });
 
-    const { match, event } = matchContext;
-    const team1Short = matchContext?.match?.team1Short || "";
-    const team2Short = matchContext?.match?.team2Short || "";
-    const format = (match?.format || "").toUpperCase() || "";
+//     const { match, event } = matchContext;
+//     const team1Short = matchContext?.match?.team1Short || "";
+//     const team2Short = matchContext?.match?.team2Short || "";
+//     const format = (match?.format || "").toUpperCase() || "";
 
-    const tweet = buildMatchResultTweet(
-      team1Short,
-      team2Short,
-      format,
-      resultText
-    );
+//     const tweet = buildMatchResultTweet(
+//       team1Short,
+//       team2Short,
+//       format,
+//       resultText
+//     );
 
-    await postTweet_console(tweet);
-    if (USE_WEB_TWEET) await postTweet_web(tweet);
+//     await postTweet_console(tweet);
+//     if (USE_WEB_TWEET) await postTweet_web(tweet);
 
-    console.log("🏆 Match result tweet sent!");
-    console.log(`🛑 Stopping all polling for match ${MATCH_ID}`);
-    process.exit(0);
-  } catch (err) {
-    console.log("⚠ Match result handler error:", err);
-  }
-}
+//     console.log("🏆 Match result tweet sent!");
+//     console.log(`🛑 Stopping all polling for match ${MATCH_ID}`);
+//     process.exit(0);
+//   } catch (err) {
+//     console.log("⚠ Match result handler error:", err);
+//   }
+// }
 
-export function extractTossInfo(comm) {
-  const t = comm?.matchheaders?.tossresults;
-  if (!t) return null;
+// export function extractTossInfo(comm) {
+//   const t = comm?.matchheaders?.tossresults;
+//   if (!t) return null;
 
-  return {
-    tossWinner: t.tosswinnername || "",
-    tossDecision: (t.decision || "").toLowerCase(), // batting / bowling
-    tossText: `${
-      t.tosswinnername
-    } won the toss and chose to ${t.decision.toLowerCase()}`,
-  };
-}
+//   return {
+//     tossWinner: t.tosswinnername || "",
+//     tossDecision: (t.decision || "").toLowerCase(), // batting / bowling
+//     tossText: `${
+//       t.tosswinnername
+//     } won the toss and chose to ${t.decision.toLowerCase()}`,
+//   };
+// }
 
 export function getCorrectInnings(scoreRes) {
   const card = scoreRes?.scorecard;

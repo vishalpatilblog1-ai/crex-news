@@ -3,20 +3,9 @@ import dotenv from "dotenv";
 dotenv.config();
 // import { createLogger } from "../../utils/logger.js";
 
-import {
-  fetchNewsPhotoGallery,
-  fetchNewsPhotos,
-  getCommentary,
-  getMatchScore,
-} from "../cricbuzzApi.js";
-import {
-  extractTossInfo,
-  getCorrectInnings,
-  getCorrectTestInnings,
-  getFirstInnings,
-  handleMatchResultEvent,
-  handleTossEvent,
-} from "../match-events/tossAndResultHandler.js";
+import { buildMatchContext } from "../buildMatchContext.js";
+import { getCommentary, getMatchScore } from "../cricbuzzApi.js";
+import { fetchCommentaryTextByOverNumber } from "../fetchCommentaryTextByOverNumber.js";
 import {
   detectBatsmanMilestone,
   detectDefault,
@@ -27,18 +16,22 @@ import {
   detectTeamMilestone,
   detectWicket,
 } from "../inningsDetector.js";
-import { fetchCommentaryTextByOverNumber } from "../fetchCommentaryTextByOverNumber.js";
-import { buildMatchContext } from "../buildMatchContext.js";
+import {
+  getCorrectInnings,
+  getCorrectTestInnings,
+  getFirstInnings,
+} from "../match-events/tossAndResultHandler.js";
 
 import { postTweet_console, postTweet_web } from "../../twitter.js";
-import generateTweet from "../ai/ai.js";
-import { loadState } from "../../utils/stateStoreCloud.js";
 import { createLogger } from "../../utils/logger.js";
+import { loadState } from "../../utils/stateStoreCloud.js";
+import generateTweet from "../ai/ai.js";
 
 const log = createLogger("prod");
 
-const POLL_WAIT_TIME = 10000;
+const POLL_WAIT_TIME = 6000;
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
+globalThis.IS_POSTING_TWEET = false;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 let STATE = loadState();
 
@@ -97,6 +90,12 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
     const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
+
+    if (isMatchComplete) {
+      console.log("🏆 Match completed — stopping bot.");
+      process.exit(0);
+    }
+
     try {
       comm = await getCommentary(MATCH_ID);
       log("comm::");
@@ -104,15 +103,15 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       // console.log("comm:::", comm);
 
       console.log("current running score over::", globalThis.LAST_OVER);
-      const toss = extractTossInfo(comm);
-      await handleTossEvent({
-        comm,
-        score,
-        toss,
-        MATCH_ID,
-        STATE,
-        USE_WEB_TWEET,
-      });
+      // const toss = extractTossInfo(comm);
+      // await handleTossEvent({
+      //   comm,
+      //   score,
+      //   toss,
+      //   MATCH_ID,
+      //   STATE,
+      //   USE_WEB_TWEET,
+      // });
     } catch (e) {
       log("⚠ Commentary API failed, continuing with scorecard only");
     }
@@ -120,14 +119,14 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     const playingTeam1 = comm?.matchheaders?.team1.teamname || "";
     const playingTeam2 = comm?.matchheaders?.team2.teamname || "";
 
-    await handleMatchResultEvent({
-      comm,
-      score,
-      STATE,
-      MATCH_ID,
-      USE_WEB_TWEET,
-      firstInnings,
-    });
+    // await handleMatchResultEvent({
+    //   comm,
+    //   score,
+    //   STATE,
+    //   MATCH_ID,
+    //   USE_WEB_TWEET,
+    //   firstInnings,
+    // });
 
     if (!score) {
       log("⚠ No score data… retrying");
@@ -287,12 +286,18 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     }
 
     for (const singleEvent of events) {
+      if (globalThis.IS_POSTING_TWEET) {
+        console.log("⏳ Tweet still posting — skipping iteration");
+        continue;
+      }
+      globalThis.IS_POSTING_TWEET = true;
       const eventType = singleEvent.type;
       const ballNbr = currInnings.ballnbr;
 
       if (eventType && ballNbr) {
         if (globalThis.LAST_EVENT_BALL[eventType] === ballNbr) {
           log(`⏩ Duplicate ${eventType} on ball ${ballNbr} — skipping`);
+          globalThis.IS_POSTING_TWEET = false; // ✅ FIX
           continue;
         }
         globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
@@ -317,6 +322,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
       log("matchContext:::");
       log(matchContext);
+      // console.log(matchContext);
       // console.log("matchContext::", JSON.stringify(matchContext, null, 2));
 
       const tweetContent = await generateTweet(matchContext, score);
@@ -324,17 +330,34 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
+        globalThis.IS_POSTING_TWEET = false; // ✅ FIX
         continue;
       }
-      let resp = null;
 
-      if (USE_WEB_TWEET) {
-        resp = await postTweet_web(tweetContent);
-        console.log("🌐 WEB Tweet Response:", resp);
-      } else {
-        await postTweet_console(tweetContent);
-        console.log("💻 Console mode active");
+      // if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
+      //   globalThis.IS_POSTING_TWEET = false;  // ✅ FIX
+      //   continue;
+      // }
+      let resp = null;
+      try {
+        if (USE_WEB_TWEET) {
+          resp = await postTweet_web(tweetContent);
+          console.log("🌐 WEB Tweet Response:", resp);
+        } else {
+          await postTweet_console(tweetContent);
+        }
+      } finally {
+        globalThis.IS_POSTING_TWEET = false;
       }
+
+      // if (USE_WEB_TWEET) {
+      //   resp = await postTweet_web(tweetContent);
+
+      //   console.log("🌐 WEB Tweet Response:", resp);
+      // } else {
+      //   await postTweet_console(tweetContent);
+      //   console.log("💻 Console mode active");
+      // }
 
       if (resp?.id) log(`🟢 WEB Tweet posted for event: ${singleEvent.type}!`);
 
