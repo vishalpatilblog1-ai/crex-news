@@ -1,5 +1,5 @@
 import { splitCommentary } from "../match-events/tossAndResultHandler.js";
-import { bold, italic } from "../templates.js";
+import { bold } from "../templates.js";
 import { normalizeTeamShort } from "../tweet-validators/tweetValidators.js";
 
 export function premiumTemplateSix(
@@ -41,21 +41,23 @@ export function premiumTemplateSix(
     event?.targetInning?.battingTeamShortName
   );
 
-  const currentInningLine = `🟩 ${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
+  const currentInningLine = `🟩 ${bold(
+    battingTeam
+  )} – ${currentRuns}/${currentWicket} (${currentOvers} Overs)`;
 
   let targetInningLine = "";
   if (isSecondInningRunning && targetRuns) {
-    targetInningLine = `🟧 ${targetTeam} – ${targetRuns} Runs (Target)`;
+    targetInningLine = `🟧 ${bold(targetTeam)} – ${targetRuns} Runs (Target)`;
   }
 
-  localTweet += bold(`${currentInningLine}\n`);
-  if (targetInningLine) localTweet += bold(`${targetInningLine}\n\n`);
+  localTweet += `${currentInningLine}\n`;
+  if (targetInningLine) localTweet += `${targetInningLine}\n\n`;
 
   if (isSecondInningRunning && safeStatus) {
     localTweet += `📊 ${safeStatus}\n\n`;
   }
 
-  if (hashtags) localTweet += italic(`${hashtags}\n`);
+  if (hashtags) localTweet += `${hashtags}\n`;
 
   return localTweet.trim();
 }

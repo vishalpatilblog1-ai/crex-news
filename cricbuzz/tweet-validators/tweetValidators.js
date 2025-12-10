@@ -41,8 +41,8 @@ export function buildHashtags(
 
   if (!team1Short || !team2Short) return "";
 
-  // const h1 = `#${team1Short}vs${team2Short}`;
-  const h2 = `#${team1Short}v${team2Short}`;
+  const h1 = `#${team1Short}v${team2Short}`;
+  const h2 = `#${team2Short}v${team1Short}`;
 
   let fmt = "";
   const format = (match?.format || "").toUpperCase();
@@ -71,7 +71,19 @@ export function buildHashtags(
 
   const blacklist = ["PSL", "BPL", "LPL", "KPL", "NCL"];
 
-  return ["#CricketTwitter", h2, fmt, ashesTag, ...Array.from(playerTags)]
+  return [
+    "#CricketTwitter",
+    "#IndianCricket",
+    "#CSK",
+    "#IPLAuction",
+    "#IPL2026Auction ",
+    "@ChennaiIPL",
+    h1,
+    h2,
+    fmt,
+    ashesTag,
+    ...Array.from(playerTags),
+  ]
     .filter(Boolean)
     .filter((tag) => !blacklist.some((x) => tag.toUpperCase().includes(x)))
     .join(" ");

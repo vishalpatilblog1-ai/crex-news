@@ -140,7 +140,7 @@ export function buildMatchContext({
   } else {
     correctBowlerName = mini?.bowlerstriker?.name || "";
   }
-
+  //vishal
   const enrichedEvent = {
     ...buildBaseMatchObject(headers),
     ...event,
@@ -158,6 +158,15 @@ export function buildMatchContext({
     series: headers?.seriesname || "",
     scoreCardStatus: currInnings?.scoreMeta?.status || "",
     isMatchComplete,
+    team1Short:
+      headers?.team1?.teamsname ||
+      shortTeamName(headers?.team1?.teamname || ""),
+
+    team2Short:
+      headers?.team2?.teamsname ||
+      shortTeamName(headers?.team2?.teamname || ""),
+    format: headers?.matchformat || "",
+    venue: headers?.venue || "",
   };
 
   return {

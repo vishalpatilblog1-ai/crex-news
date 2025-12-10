@@ -23,7 +23,6 @@ const log = createLogger("prod");
 export async function buildODITemplateTweet(matchContext, score = null) {
   // console.log("matchContext:::", JSON.stringify(matchContext, null, 2));
   const { match, event } = matchContext;
-  // const { team1Short, team2Short } = event;
 
   log("Event ODI::", cleanEventLog(event));
   log("Match ODI::", match);
@@ -117,10 +116,10 @@ export async function buildODITemplateTweet(matchContext, score = null) {
   );
   const team1Flag = getFlagEmoji(team1Short) || "";
   const team2Flag = getFlagEmoji(team2Short) || "";
-  const currentRuns = event.runs || 0;
-  const currentOvers = event.overs || 0.0;
+  const currentRuns = event.runs || "";
+  const currentOvers = event.overs || "";
   const currentWicket = event.wickets || 0;
-  const targetRuns = event.targetInning.targetRuns || 0;
+  const targetRuns = event.targetInning.targetRuns || "";
 
   let tweet = premiumTemplateSix(
     isSecondInningRunning,
@@ -138,6 +137,8 @@ export async function buildODITemplateTweet(matchContext, score = null) {
     hashtags,
     event
   );
+  // console.log("by template::");
+  // console.log(tweet);
 
   finalTweet += `${hashtags}`;
 
