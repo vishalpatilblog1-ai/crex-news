@@ -42,7 +42,7 @@ async function startBot() {
     return;
   }
 
-  log("🔎 Searching for LIVE India match...");
+  log("🔎 Searching for LIVE India match...", true);
 
   while (!MATCH_ID) {
     try {

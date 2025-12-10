@@ -1,7 +1,7 @@
 //scorePollingLoop.js
 import dotenv from "dotenv";
 dotenv.config();
-import { createLogger } from "../../utils/logger.js";
+// import { createLogger } from "../../utils/logger.js";
 
 import {
   fetchNewsPhotoGallery,
@@ -33,6 +33,7 @@ import { buildMatchContext } from "../buildMatchContext.js";
 import { postTweet_console, postTweet_web } from "../../twitter.js";
 import generateTweet from "../ai/ai.js";
 import { loadState } from "../../utils/stateStoreCloud.js";
+import { createLogger } from "../../utils/logger.js";
 
 const log = createLogger("prod");
 
@@ -88,8 +89,8 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
     const score = await getMatchScore(MATCH_ID);
 
-    log("score::");
-    log(score);
+    log("score::", true);
+    log(score, true);
 
     // console.log("score:::", score);
     let comm = null;
