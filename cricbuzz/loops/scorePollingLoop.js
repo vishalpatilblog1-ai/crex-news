@@ -257,7 +257,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       evWicket = detectWicket(prevInnings, currInnings);
       evBatsmanMilestone = detectBatsmanMilestone(prevInnings, currInnings);
       evSix = detectSix(prevInnings, currInnings);
-      // evFour = detectFour(prevInnings, currInnings);
+      evFour = detectFour(prevInnings, currInnings);
       evDefault = detectDefault(prevInnings, currInnings);
       evMaidenOver = detectMaidenOver(prevInnings, currInnings);
 
