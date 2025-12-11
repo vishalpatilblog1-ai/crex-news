@@ -9,10 +9,8 @@ export function headlineValidator(team1Short, team2Short, format) {
   const fmt = format && format !== "null" ? format : "";
 
   if (team1 && team2 && fmt) {
-    // return `🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`;
     return bold(`🚨 ${team1} vs ${team2} ${fmt} UPDATES 🚨`);
   }
-  // return bold(`🚨 MATCH UPDATES 🚨`);
 
   return `🚨 MATCH UPDATES 🚨`;
 }

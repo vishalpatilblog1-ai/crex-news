@@ -50,9 +50,9 @@ export function getTestInningsDisplay(scorecard, currentInningsId) {
     const labelSection =
       inn.inningsid === currentInningsId ? "" : ` (${labelText})`;
 
-    const line = `${flag ? flag + "  " : ""}${bold(
-      team
-    )} – ${scoreVal} ${overs}${labelSection}`.trim();
+    const line = `${
+      flag ? flag + "\u00A0\u00A0" : ""
+    }${team} – ${scoreVal} ${overs}${labelSection}`.trim();
 
     display.push({
       inningsid: inn.inningsid,
