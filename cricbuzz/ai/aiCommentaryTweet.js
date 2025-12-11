@@ -124,21 +124,22 @@ export async function generateCommentaryTweet(
       FIFTY 🟡
       HUNDRED 🟦
       MAIDEN
-  
-  =====================================================
-  BODY RULES (SECOND LINE)
-  =====================================================
-  - One single sentence (max 18 words)
-  - Very simple English
-  - No emojis
-  - Include batterName and bowlerName
-  - Must describe action with simple cricket words (cover, point, mid-wicket, long-on, straight, cut, pull, drive)
-  - Never mention:
-    - numbers
-    - fielders
-    - match situation
-    - dismissal method
-  
+=====================================================
+BODY RULES (SECOND LINE) — 5-6 WORD VERSION
+=====================================================
+- Must be 5-6 words only
+- Very simple English
+- Dont give full stop at the end
+- No emojis
+- Must include batterName and bowlerName
+- Describe the action using simple cricket words 
+  (drive, pull, cut, flick, straight, cover, point, mid-wicket, long-on)
+- Never mention:
+  - numbers
+  - fielders
+  - match situation
+  - dismissal method
+
   =====================================================
   WICKET SENTENCE RULES (BODY)
   =====================================================

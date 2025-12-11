@@ -26,6 +26,7 @@ import { postTweet_console, postTweet_web } from "../../twitter.js";
 import { createLogger } from "../../utils/logger.js";
 import { loadState } from "../../utils/stateStoreCloud.js";
 import generateTweet from "../ai/ai.js";
+import { bold } from "../templates.js";
 
 const log = createLogger("prod");
 
@@ -85,13 +86,22 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     log("score::", true);
     log(score, true);
 
-    // console.log("score:::", score);
     let comm = null;
 
     const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
 
     if (isMatchComplete) {
+      let matchResultTweet = bold(
+        `🚨 MATCH UPDATES 🚨 \n${bold(score?.status.toUpperCase())}`
+      );
+
+      if (USE_WEB_TWEET) {
+        await postTweet_web(matchResultTweet);
+      } else {
+        await postTweet_console(matchResultTweet);
+      }
+
       console.log("🏆 Match completed — stopping bot.");
       process.exit(0);
     }

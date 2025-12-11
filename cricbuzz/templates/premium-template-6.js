@@ -23,11 +23,11 @@ export function premiumTemplateSix(
   const headerFlag1 = team1Flag || "🚨";
   const headerFlag2 = team2Flag || "🚨";
 
-  const flagBat = getFlagEmoji(battingTeam) || "🏏";
-  const flagTarget = getFlagEmoji(targetTeam) || "🎯";
+  const flagBat = getFlagEmoji(battingTeam) || "🟩";
+  const flagTarget = getFlagEmoji(targetTeam) || "🟧";
 
   const headline = bold(
-    `${headerFlag1} ${team1Short} vs ${team2Short} ${format} UPDATES ${headerFlag2}`
+    `🚨 ${team1Short} vs ${team2Short} ${format} UPDATES 🚨`
   );
 
   let localTweet = `${headline}\n\n`;
@@ -36,18 +36,18 @@ export function premiumTemplateSix(
   if (commLine1) localTweet += bold(`${commLine1}\n`);
   if (commLine2) localTweet += `${commLine2}\n\n`;
 
-  const currentInningLine = `🟩 ${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers})`;
+  const currentInningLine = `${flagBat}  ${battingTeam} – ${currentRuns}/${currentWicket} (${currentOvers})`;
 
   let targetInningLine = "";
   if (isSecondInningRunning && targetRuns) {
-    targetInningLine = `🟧 ${targetTeam} – ${targetRuns} (Target)`;
+    targetInningLine = `${flagTarget} ${targetTeam} – ${targetRuns} (Target)`;
   }
 
   localTweet += bold(`${currentInningLine}\n`);
   if (targetInningLine) localTweet += bold(`${targetInningLine}\n\n`);
 
   if (isSecondInningRunning && safeStatus) {
-    localTweet += `🟦 ${safeStatus}\n\n`.toUpperCase();
+    localTweet += `🟥 ${safeStatus}\n\n`;
   }
 
   if (hashtags) localTweet += `${hashtags}\n`;
