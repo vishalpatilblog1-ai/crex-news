@@ -24,7 +24,7 @@ import {
 
 import { postTweet_console, postTweet_web } from "../../twitter.js";
 import { createLogger } from "../../utils/logger.js";
-import { loadState } from "../../utils/stateStoreCloud.js";
+import { loadState, saveState } from "../../utils/stateStoreCloud.js";
 import generateTweet from "../ai/ai.js";
 import { bold } from "../templates.js";
 
@@ -34,7 +34,7 @@ const POLL_WAIT_TIME = 6000;
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 globalThis.IS_POSTING_TWEET = false;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-let STATE = loadState();
+let STATE = await loadState();
 
 function formatTS() {
   const now = new Date();
@@ -275,7 +275,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       if (evTeamMilestone) events.push(evTeamMilestone);
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
       if (evSix) events.push(evSix);
-      // if (evFour) events.push(evFour);
+      if (evFour) events.push(evFour);
       // if (evMaidenOver) events.push(evMaidenOver);
 
       // if (evDefault) events.push(evDefault);
@@ -311,6 +311,14 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
           continue;
         }
         globalThis.LAST_EVENT_BALL[eventType] = ballNbr;
+      }
+
+      if (STATE.lastBall === ballNbr && STATE.lastType === eventType) {
+        console.log(
+          "🌍 Cloud dedupe → Skipping duplicate event across instances"
+        );
+        globalThis.IS_POSTING_TWEET = false;
+        continue;
       }
 
       const commentaryTexts = fetchCommentaryTextByOverNumber(
@@ -356,6 +364,11 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
         } else {
           await postTweet_console(tweetContent);
         }
+        await saveState({
+          lastBall: ballNbr,
+          lastType: eventType,
+          timestamp: Date.now(),
+        });
       } finally {
         globalThis.IS_POSTING_TWEET = false;
       }

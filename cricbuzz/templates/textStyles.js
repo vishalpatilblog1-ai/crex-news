@@ -105,8 +105,8 @@ export const FLAG_MAP = {
   MAS: "🇲🇾",
   MASW: "🇲🇾",
 
-  PHL: "🇵🇭",
-  PHLW: "🇵🇭",
+  PHI: "🇵🇭",
+  PHIW: "🇵🇭",
 
   SIN: "🇸🇬",
   SINW: "🇸🇬",

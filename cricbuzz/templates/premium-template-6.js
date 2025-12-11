@@ -47,10 +47,10 @@ export function premiumTemplateSix(
   if (targetInningLine) localTweet += bold(`${targetInningLine}\n\n`);
 
   if (isSecondInningRunning && safeStatus) {
-    localTweet += `🟥 ${safeStatus}\n\n`;
+    localTweet += `🟥 ${safeStatus}\n`;
   }
 
-  if (hashtags) localTweet += `${hashtags}\n`;
+  if (hashtags) localTweet += `\n${hashtags}\n`;
 
   return localTweet.trim();
 }
