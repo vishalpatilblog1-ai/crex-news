@@ -43,20 +43,21 @@ export function getTestInningsDisplay(scorecard, currentInningsId) {
     const scoreVal =
       inn.wickets != null ? `${inn.score}/${inn.wickets}` : `${inn.score}`;
 
-    const overs = inn.overs ? `(${inn.overs} Overs)` : "";
+    // const overs = inn.overs ? `(${inn.overs} Overs)` : "";
+    const overs = inn.overs ? `(${inn.overs})` : "";
 
     // ❗ DO NOT show innings label for current innings
     const labelSection =
       inn.inningsid === currentInningsId ? "" : ` (${labelText})`;
 
-    const line = `${flag ? flag + " " : ""}${bold(
+    const line = `${flag ? flag + "  " : ""}${bold(
       team
     )} – ${scoreVal} ${overs}${labelSection}`.trim();
 
     display.push({
       inningsid: inn.inningsid,
       isCurrent: inn.inningsid === currentInningsId,
-      text: line,
+      text: bold(line),
     });
   }
 
@@ -73,13 +74,15 @@ export function getTestInningsDisplay(scorecard, currentInningsId) {
 }
 
 export async function buildTestTemplateTweet(matchContext, scoreRes) {
-  console.log("buildTestTemplateTweet::::::");
-  const { match, event } = matchContext;
+  const { event } = matchContext;
+  const { team1Short, team2Short } = event;
+  console.log("buildTestTemplateTweet::::::", event);
 
-  if (!match || !event || !scoreRes) return null;
+  // if (!match || !event || !scoreRes) return null;
+  if (!event || !scoreRes) return null;
 
-  const team1Short = match.team1Short;
-  const team2Short = match.team2Short;
+  // const team1Short = match.team1Short;
+  // const team2Short = match.team2Short;
   const format = "TEST";
 
   const universalHeader = headlineValidator(team1Short, team2Short, format);
@@ -100,7 +103,8 @@ export async function buildTestTemplateTweet(matchContext, scoreRes) {
   const inningsLines = getTestInningsDisplay(scorecard, currentInnId);
   const scoreBlock = inningsLines.join("\n");
 
-  let statusLine = event?.scoreCardStatus || match.status || "";
+  // let statusLine = event?.scoreCardStatus || match.status || "";
+  let statusLine = event?.scoreCardStatus || "";
 
   let finalTweet = `${universalHeader}\n\n`;
 
@@ -111,10 +115,20 @@ export async function buildTestTemplateTweet(matchContext, scoreRes) {
   finalTweet += `${scoreBlock}\n\n`;
   finalTweet += `${statusLine}\n\n`;
 
+  // const hashtags = buildHashtags(
+  //   format,
+  //   team1Short,
+  //   team2Short,
+  //   event.batterName,
+  //   event.bowlerName,
+  //   event.type,
+  //   event.series
+  // );
+
   const hashtags = buildHashtags(
-    match,
-    match.team1Short,
-    match.team2Short,
+    format,
+    team1Short,
+    team2Short,
     event.batterName,
     event.bowlerName,
     event.type,

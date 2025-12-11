@@ -8,68 +8,68 @@ import {
   buildTossTweet,
 } from "../templates/toss-and-result-default-template.js";
 
-export async function handleTossEvent({
-  comm,
-  score,
-  toss,
-  MATCH_ID,
-  STATE,
-  USE_WEB_TWEET,
-}) {
-  try {
-    const ballNbrFromMini = comm?.miniscore?.ballnbr ?? null;
-    const inningsFromScore = score?.scorecard?.[0]?.ballnbr ?? null;
+// export async function handleTossEvent({
+//   comm,
+//   score,
+//   toss,
+//   MATCH_ID,
+//   STATE,
+//   USE_WEB_TWEET,
+// }) {
+//   try {
+//     const ballNbrFromMini = comm?.miniscore?.ballnbr ?? null;
+//     const inningsFromScore = score?.scorecard?.[0]?.ballnbr ?? null;
 
-    const matchStarted =
-      (ballNbrFromMini !== null && ballNbrFromMini > 0) ||
-      (inningsFromScore !== null && inningsFromScore > 0);
+//     const matchStarted =
+//       (ballNbrFromMini !== null && ballNbrFromMini > 0) ||
+//       (inningsFromScore !== null && inningsFromScore > 0);
 
-    if (!toss || STATE[`toss_${MATCH_ID}`] || matchStarted) return;
+//     if (!toss || STATE[`toss_${MATCH_ID}`] || matchStarted) return;
 
-    STATE[`toss_${MATCH_ID}`] = true;
-    saveState(STATE);
+//     STATE[`toss_${MATCH_ID}`] = true;
+//     saveState(STATE);
 
-    const syntheticEvent = {
-      type: "TOSS",
-      ...toss,
-    };
+//     const syntheticEvent = {
+//       type: "TOSS",
+//       ...toss,
+//     };
 
-    const matchContext = buildMatchContext({
-      comm,
-      currInnings: null,
-      event: syntheticEvent,
-      isMatchComplete: false,
-      firstInnings: null,
-    });
+//     const matchContext = buildMatchContext({
+//       comm,
+//       currInnings: null,
+//       event: syntheticEvent,
+//       isMatchComplete: false,
+//       firstInnings: null,
+//     });
 
-    const { match, event } = matchContext;
-    const team1Short = matchContext?.match?.team1Short || "";
-    const team2Short = matchContext?.match?.team2Short || "";
-    const tossWinnerShortName = event?.tossWinnerShortName;
-    const format = (match?.format || "").toUpperCase() || "";
+//     const { match, event } = matchContext;
+//     const team1Short = matchContext?.match?.team1Short || "";
+//     const team2Short = matchContext?.match?.team2Short || "";
+//     const tossWinnerShortName = event?.tossWinnerShortName;
+//     const format = (match?.format || "").toUpperCase() || "";
 
-    const tweet = buildTossTweet(
-      match,
-      event,
-      team1Short,
-      team2Short,
-      tossWinnerShortName,
-      format
-    );
+//     const tweet = buildTossTweet(
+//       match,
+//       event,
+//       team1Short,
+//       team2Short,
+//       tossWinnerShortName,
+//       format
+//     );
 
-    if (!tweet || tweet === "SKIP") {
-      console.log("⏭️ Toss not ready yet. Skipping...");
-      return;
-    }
+//     if (!tweet || tweet === "SKIP") {
+//       console.log("⏭️ Toss not ready yet. Skipping...");
+//       return;
+//     }
 
-    await postTweet_console(tweet);
-    if (USE_WEB_TWEET) await postTweet_web(tweet);
+//     await postTweet_console(tweet);
+//     if (USE_WEB_TWEET) await postTweet_web(tweet);
 
-    console.log(`🪙 Toss tweet sent! -> ${toss.tossText}`);
-  } catch (err) {
-    console.log("⚠ Toss handler error:", err);
-  }
-}
+//     console.log(`🪙 Toss tweet sent! -> ${toss.tossText}`);
+//   } catch (err) {
+//     console.log("⚠ Toss handler error:", err);
+//   }
+// }
 // export async function handleMatchResultEvent({
 //   comm,
 //   score,
