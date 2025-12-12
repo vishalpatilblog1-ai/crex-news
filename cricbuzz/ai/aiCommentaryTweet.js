@@ -144,7 +144,6 @@ BODY RULES (SECOND LINE) — 5-6 WORD VERSION
   WICKET SENTENCE RULES (BODY)
   =====================================================
   If bowlerName exists, choose ONE:
-    "<batterName> falls! <bowlerName> strikes again."
     "<batterName> falls! <bowlerName> breaks the stand."
     "<batterName> falls! <bowlerName> delivers the breakthrough."
     "<batterName> falls! <bowlerName> ends the resistance."

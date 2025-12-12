@@ -32,29 +32,3 @@ export function boldItalic(text = "") {
     .map((ch) => BOLD_ITALIC_MAP[ch] || ch)
     .join("");
 }
-
-// export async function buildMatchResultTemplate(match, resultText) {
-//   const { team1Short, team2Short, format } = match;
-
-//   const headlines = [
-//     "🏆 Match Result",
-//     "🏁 Full Time",
-//     "🎉 Final Result",
-//     "📢 Match Over",
-//     "✨ Full-Time Update",
-//     "🔔 Final Whistle",
-//   ];
-
-//   const headline = headlines[Math.floor(Math.random() * headlines.length)];
-
-//   const emojis = ["🔥", "⭐", "💥", "👏", "🏏"];
-//   const symbol = emojis[Math.floor(Math.random() * emojis.length)];
-
-//   return `
-//   ${headline} ${symbol}
-
-//   ${resultText}
-
-//   #${match.team1Short} #${match.team2Short} #${match.format}
-//   `.trim();
-// }

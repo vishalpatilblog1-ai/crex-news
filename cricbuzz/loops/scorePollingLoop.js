@@ -93,7 +93,9 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
     if (isMatchComplete) {
       let matchResultTweet = bold(
-        `🚨 MATCH UPDATES 🚨 \n\n${bold(score?.status.toUpperCase())}`
+        `🚨 MATCH UPDATES 🚨 \n\n${bold(
+          score?.status.toUpperCase()
+        )}\n\n#CricketTwitter #IndianCricket`
       );
 
       if (USE_WEB_TWEET) {

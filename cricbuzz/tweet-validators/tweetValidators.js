@@ -44,13 +44,6 @@ export function buildHashtags(
   const h1 = `#${team1Short}v${team2Short}`;
   const h2 = `#${team2Short}v${team1Short}`;
 
-  let fmt = "";
-  // const format = (match?.format || "").toUpperCase();
-
-  if (format.includes("T20")) fmt = "#T20I";
-  else if (format.includes("ODI")) fmt = "#ODI";
-  else if (format.includes("TEST")) fmt = "#Test";
-
   const playerTags = new Set();
 
   const makeTag = (name) => "#" + name.replace(/[^a-zA-Z]/g, "").trim();
@@ -76,7 +69,6 @@ export function buildHashtags(
     "#IndianCricket",
     h1,
     h2,
-    // fmt,
     ashesTag,
     ...Array.from(playerTags),
   ]
