@@ -19,6 +19,7 @@ globalThis.LAST_EVENT_BALL = {};
 globalThis.PREV_INNINGS_ID = null;
 globalThis.PREV_BATTEAM = null;
 globalThis.PREV_SNAPSHOT = null;
+global.BBC_STATE_READY = false;
 
 const FORCE_MATCH_ID = process.env.FORCE_MATCH_ID
   ? Number(process.env.FORCE_MATCH_ID)
@@ -69,6 +70,7 @@ async function startBot() {
 
 async function bootstrap() {
   global.STATE = await loadState();
+  global.BBC_STATE_READY = true;
   // console.log("🌍 JSONBin state loaded:", global.STATE);
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
@@ -84,7 +86,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
     console.log("📰 BBC news polling enabled");
-    setInterval(bbcNewsPollingLoop, 1000 * 60 * 15);
+    setInterval(bbcNewsPollingLoop, 1000 * 60 * 2);
   }
 
   // if (process.env.ENABLE_AUTO_REPLY === "true") {

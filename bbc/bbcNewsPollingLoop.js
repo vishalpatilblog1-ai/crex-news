@@ -2,11 +2,13 @@
 
 import { runBBCNewsPipeline } from "./bbcNewsPipeline.js";
 
-// import { runBBCNewsPipeline } from "../bbcNewsPipeline.js";
-
 let isRunning = false;
 
 export async function bbcNewsPollingLoop() {
+  if (!global.BBC_STATE_READY) {
+    console.log("⏳ BBC polling skipped — state not ready yet");
+    return;
+  }
   if (isRunning) {
     console.log("⏳ BBC news pipeline already running, skipping this tick");
     return;

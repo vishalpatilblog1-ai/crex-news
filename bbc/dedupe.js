@@ -1,32 +1,5 @@
 // dedupe.js
 
-// import { loadFullState, saveFullState } from "../utils/stateStoreCloud.js";
-
-// const BBC_KEY = "bbc_news";
-// let cache = null;
-
-// async function getState() {
-//   if (!cache) {
-//     cache = await loadFullState();
-//     if (!cache[BBC_KEY]) cache[BBC_KEY] = {};
-//   }
-//   return cache;
-// }
-
-// export async function isDuplicateBBC(guid) {
-//   const state = await getState();
-//   return Boolean(state[BBC_KEY][guid]);
-// }
-
-// export async function markBBCPosted(guid) {
-//   const state = await getState();
-//   state[BBC_KEY][guid] = {
-//     postedAt: new Date().toISOString(),
-//     source: "bbc",
-//   };
-//   await saveFullState(state);
-// }
-// src/news/bbc/dedupe.js
 import { loadFullState, saveFullState } from "../utils/stateStoreCloud.js";
 
 const BBC_KEY = "bbc_news";

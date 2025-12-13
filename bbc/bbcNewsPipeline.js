@@ -6,7 +6,12 @@ import { parseBBCArticle } from "./parseBBCArticle.js";
 import { fetchBBCArticle } from "./fetchBBCArticle.js";
 import { generateBBCNewsTweet } from "./ai/generateBBCNewsTweet.js";
 
-import { isDuplicateBBC, lockPosting, markBBCPosted } from "./dedupe.js";
+import {
+  isDuplicateBBC,
+  lockPosting,
+  markBBCPosted,
+  unlockPosting,
+} from "./dedupe.js";
 
 export async function runBBCNewsPipeline() {
   const items = await fetchBBCCricketRSS();
@@ -25,7 +30,9 @@ export async function runBBCNewsPipeline() {
       continue;
     }
 
-    await lockPosting(guid);
+    // await lockPosting(guid);
+    const locked = await lockPosting(guid);
+    if (!locked) continue;
 
     try {
       const html = await fetchBBCArticle(item.link);
@@ -58,6 +65,7 @@ export async function runBBCNewsPipeline() {
       break;
     } catch (err) {
       console.error("❌ Error while processing BBC item:", guid, err);
+      await unlockPosting(guid);
     }
   }
 }
