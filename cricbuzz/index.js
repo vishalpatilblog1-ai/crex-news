@@ -86,7 +86,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
     console.log("📰 BBC news polling enabled");
-    setInterval(bbcNewsPollingLoop, 1000 * 60 * 2);
+    setInterval(bbcNewsPollingLoop, 1000 * 60 * 5);
   }
 
   // if (process.env.ENABLE_AUTO_REPLY === "true") {
