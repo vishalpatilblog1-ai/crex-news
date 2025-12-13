@@ -10,6 +10,7 @@ import { startAutoReplyV5 } from "../auto-reply/autoReplyV5.js";
 import { findIndiaMatch } from "./cricbuzzApi.js";
 import { newsPollingLoop } from "./loops/newsPollingLoop.js";
 import { scorePollingLoop } from "./loops/scorePollingLoop.js";
+import { bbcNewsPollingLoop } from "../bbc/bbcNewsPollingLoop.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
@@ -68,7 +69,7 @@ async function startBot() {
 
 async function bootstrap() {
   global.STATE = await loadState();
-  console.log("🌍 JSONBin state loaded:", global.STATE);
+  // console.log("🌍 JSONBin state loaded:", global.STATE);
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
 
@@ -81,11 +82,12 @@ async function bootstrap() {
     setInterval(newsPollingLoop, 1000 * 60 * 10);
   }
 
-  if (process.env.ENABLE_SCORE_POLLING === "true") {
-    console.log(
-      "⚠️ Score polling is active → Auto-reply disabled to avoid rate limits."
-    );
-  } else if (process.env.ENABLE_AUTO_REPLY === "true") {
+  if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
+    console.log("📰 BBC news polling enabled");
+    setInterval(bbcNewsPollingLoop, 1000 * 60 * 1);
+  }
+
+  if (process.env.ENABLE_AUTO_REPLY === "true") {
     console.log("💬 AUTO-REPLY BOT ACTIVATED (safe mode)...");
     startAutoReplyV5();
   }
