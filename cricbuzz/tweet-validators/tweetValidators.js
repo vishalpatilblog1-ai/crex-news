@@ -57,19 +57,47 @@ export function buildHashtags(
   }
 
   let ashesTag = "";
+  let bblwTag = "";
+  let indTag = "";
+
   const seriesName = series?.toLowerCase();
   if (seriesName && seriesName.includes("ashes")) {
     ashesTag = "#Ashes";
   }
+  if (seriesName && seriesName.includes("womens big bash league")) {
+    bblwTag = "#WBBL #BBLW";
+  }
+
+  if (seriesName && seriesName.includes("india")) {
+    indTag = "#IndianCricket";
+  }
 
   const blacklist = ["PSL", "BPL", "LPL", "KPL", "NCL"];
 
+  console.log(
+    "new tags::",
+    [
+      "#CricketTwitter",
+      h1,
+      h2,
+      ashesTag,
+      indTag,
+      ,
+      bblwTag,
+      ...Array.from(playerTags),
+    ]
+      .filter(Boolean)
+      .filter((tag) => !blacklist.some((x) => tag.toUpperCase().includes(x)))
+      .join(" ")
+  );
+
   return [
     "#CricketTwitter",
-    "#IndianCricket",
     h1,
     h2,
     ashesTag,
+    indTag,
+    bblwTag,
     ...Array.from(playerTags),
   ]
     .filter(Boolean)
