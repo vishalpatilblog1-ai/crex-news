@@ -1,4 +1,3 @@
-//scorePollingLoop.js
 import dotenv from "dotenv";
 dotenv.config();
 // import { createLogger } from "../../utils/logger.js";
@@ -87,6 +86,9 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     log(score, true);
 
     let comm = null;
+
+    // console.log("scoree::", score);
+    // console.log("comm::", comm);
 
     const firstInnings = getFirstInnings(score);
     const isMatchComplete = score?.ismatchcomplete;
@@ -230,6 +232,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       currBall === globalThis.LAST_BALL
     ) {
       await wait(POLL_WAIT_TIME);
+      //   return pollingLoop();
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
 
@@ -239,6 +242,7 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       oversNow < globalThis.LAST_OVER
     ) {
       await wait(POLL_WAIT_TIME);
+      //   return pollingLoop();
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
 
@@ -286,12 +290,15 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
     if (evPartnership && evPartnership.type === "PARTNERSHIP_MILESTONE") {
       events.push(evPartnership);
     }
+    globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
+    globalThis.LAST_OVER = oversNow;
+    globalThis.LAST_BALL = currBall;
 
     if (events.length === 0) {
       await wait(POLL_WAIT_TIME);
       return scorePollingLoop(MATCH_ID, MATCH_NAME);
     }
-    let didEmit = false;
+
     for (const singleEvent of events) {
       if (globalThis.IS_POSTING_TWEET) {
         console.log("⏳ Tweet still posting — skipping iteration");
@@ -337,8 +344,11 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
 
       log("matchContext:::");
       log(matchContext);
+      // console.log(matchContext);
+      // console.log("matchContext::", JSON.stringify(matchContext, null, 2));
 
       const tweetContent = await generateTweet(matchContext, score);
+      // log("tweetContent:::", tweetContent);
 
       if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
         log(`ℹ AI skipped event: ${singleEvent.type}`);
@@ -346,6 +356,10 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
         continue;
       }
 
+      // if (!tweetContent || tweetContent.trim().toUpperCase() === "SKIP") {
+      //   globalThis.IS_POSTING_TWEET = false;  // ✅ FIX
+      //   continue;
+      // }
       let resp = null;
       try {
         if (USE_WEB_TWEET) {
@@ -354,7 +368,6 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
         } else {
           await postTweet_console(tweetContent);
         }
-        didEmit = true;
         await saveState({
           lastBall: ballNbr,
           lastType: eventType,
@@ -363,12 +376,20 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       } finally {
         globalThis.IS_POSTING_TWEET = false;
       }
-    }
 
-    if (didEmit) {
-      globalThis.LAST_INNINGS = JSON.parse(JSON.stringify(currInnings));
-      globalThis.LAST_OVER = oversNow;
-      globalThis.LAST_BALL = currBall;
+      // if (USE_WEB_TWEET) {
+      //   resp = await postTweet_web(tweetContent);
+
+      //   console.log("🌐 WEB Tweet Response:", resp);
+      // } else {
+      //   await postTweet_console(tweetContent);
+      //   console.log("💻 Console mode active");
+      // }
+
+      if (resp?.id) log(`🟢 WEB Tweet posted for event: ${singleEvent.type}!`);
+
+      if (resp?.id) log(`🟢 Tweet posted for event: ${singleEvent.type}!`);
+      else log(`⚠ Tweet NOT posted for event: ${singleEvent.type}`);
     }
   } catch (err) {
     console.error("❌ ERROR in pollingLoop:", err);
