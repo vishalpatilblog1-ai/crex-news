@@ -1,17 +1,12 @@
 import { createLogger } from "../../utils/logger.js";
 import { saveState } from "../../utils/stateStoreCloud.js";
-import { generateNewsTweet } from "../ai/aiNewsTweet.js";
-import {
-  fetchNewsPhotos,
-  getLiveNewsList,
-  getNewsDetailsByNewsId,
-} from "../cricbuzzApi.js";
+import { generateCrickBuzzNewsTweet } from "../ai/generateCrickBuzzNewsTweet.js";
+import { getLiveNewsList, getNewsDetailsByNewsId } from "../cricbuzzApi.js";
 import { tweetNewsWithImage } from "../tweetNewsWithImage.js";
 const BASE_URL = "https://static.cricbuzz.com";
 
 const log = createLogger("prod");
 export async function newsPollingLoop() {
-  // const STATE = global.STATE;
   if (!global.STATE) {
     console.log("⚠️ global.STATE not ready yet. Skipping news polling.");
     return;
@@ -53,7 +48,7 @@ export async function newsPollingLoop() {
 
     const fullText = buildFullArticleText(detailNews);
 
-    const tweetText = await generateNewsTweet(
+    const tweetText = await generateCrickBuzzNewsTweet(
       latestNews.hline,
       latestNews.intro,
       fullText
