@@ -78,8 +78,8 @@ async function bootstrap() {
     await startBot();
   }
 
-  if (process.env.ENABLE_NEWS_POLLING === "true") {
-    setInterval(newsPollingLoop, 1000 * 60 * 10);
+  if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
+    setInterval(newsPollingLoop, 1000 * 60 * 15);
   }
 
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
@@ -87,10 +87,10 @@ async function bootstrap() {
     setInterval(bbcNewsPollingLoop, 1000 * 60 * 15);
   }
 
-  if (process.env.ENABLE_AUTO_REPLY === "true") {
-    console.log("💬 AUTO-REPLY BOT ACTIVATED (safe mode)...");
-    startAutoReplyV5();
-  }
+  // if (process.env.ENABLE_AUTO_REPLY === "true") {
+  //   console.log("💬 AUTO-REPLY BOT ACTIVATED (safe mode)...");
+  //   startAutoReplyV5();
+  // }
 }
 
 bootstrap();
