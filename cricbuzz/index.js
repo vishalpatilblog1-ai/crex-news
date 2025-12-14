@@ -74,10 +74,10 @@ async function bootstrap() {
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
 
-  if (process.env.ENABLE_SCORE_POLLING === "true") {
-    console.log("before startBot ....");
-    await startBot();
-  }
+  // if (process.env.ENABLE_SCORE_POLLING === "true") {
+  //   console.log("before startBot ....");
+  //   await startBot();
+  // }
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
@@ -86,14 +86,8 @@ async function bootstrap() {
 
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
     console.log("📰 BBC news polling enabled");
-    // setInterval(bbcNewsPollingLoop, 1000 * 60 * 1);
-    setInterval(bbcV2NewsPollingLoop, 1000 * 60 * 2);
+    setInterval(bbcV2NewsPollingLoop, 1000 * 60 * 1);
   }
-
-  // if (process.env.ENABLE_AUTO_REPLY === "true") {
-  //   console.log("💬 AUTO-REPLY BOT ACTIVATED (safe mode)...");
-  //   startAutoReplyV5();
-  // }
 }
 
 bootstrap();
