@@ -1,22 +1,11 @@
 //scorePollingLoop.js
 import dotenv from "dotenv";
-dotenv.config();
 import { createLogger } from "../../utils/logger.js";
+dotenv.config();
 
-import {
-  fetchNewsPhotoGallery,
-  fetchNewsPhotos,
-  getCommentary,
-  getMatchScore,
-} from "../cricbuzzApi.js";
-import {
-  extractTossInfo,
-  getCorrectInnings,
-  getCorrectTestInnings,
-  getFirstInnings,
-  handleMatchResultEvent,
-  handleTossEvent,
-} from "../match-events/tossAndResultHandler.js";
+import { buildMatchContext } from "../buildMatchContext.js";
+import { getCommentary, getMatchScore } from "../cricbuzzApi.js";
+import { fetchCommentaryTextByOverNumber } from "../fetchCommentaryTextByOverNumber.js";
 import {
   detectBatsmanMilestone,
   detectDefault,
@@ -27,12 +16,18 @@ import {
   detectTeamMilestone,
   detectWicket,
 } from "../inningsDetector.js";
-import { fetchCommentaryTextByOverNumber } from "../fetchCommentaryTextByOverNumber.js";
-import { buildMatchContext } from "../buildMatchContext.js";
+import {
+  extractTossInfo,
+  getCorrectInnings,
+  getCorrectTestInnings,
+  getFirstInnings,
+  handleMatchResultEvent,
+  handleTossEvent,
+} from "../match-events/tossAndResultHandler.js";
 
 import { postTweet_console, postTweet_web } from "../../twitter.js";
-import generateTweet from "../ai/ai.js";
 import { loadState } from "../../utils/stateStoreCloud.js";
+import generateTweet from "../ai/ai.js";
 
 const log = createLogger("prod");
 

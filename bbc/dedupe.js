@@ -33,13 +33,6 @@ function isExpiredLock(entry) {
   return Date.now() - lockedAtMs > BBC_LOCK_TTL_MS;
 }
 
-/**
- * Treat as duplicate if:
- * - already posted
- * - locked recently (prevents double-post on restart/parallel runner)
- *
- * If lock is old (TTL), allow retry.
- */
 export async function isDuplicateBBC(guid) {
   const state = await getState();
   const entry = state[BBC_KEY][guid];
@@ -49,26 +42,20 @@ export async function isDuplicateBBC(guid) {
   if (entry.status === "posted") return true;
 
   if (entry.status === "locked") {
-    return !isExpiredLock(entry); // duplicate if not expired
+    return !isExpiredLock(entry);
   }
 
-  // backward compat if you stored {postedAt, source} only
   if (entry.postedAt) return true;
 
   return false;
 }
 
-/**
- * Lock immediately before heavy work (fetch article, OpenAI, image).
- * If another runner sees this lock, it will skip.
- */
 export async function lockPosting(guid) {
   const state = await getState();
 
   const existing = state[BBC_KEY][guid];
-  if (existing && existing.status === "posted") return;
-  if (existing && existing.status === "locked" && !isExpiredLock(existing))
-    return;
+  if (existing?.status === "posted") return false;
+  if (existing?.status === "locked" && !isExpiredLock(existing)) return false;
 
   state[BBC_KEY][guid] = {
     status: "locked",
@@ -77,7 +64,42 @@ export async function lockPosting(guid) {
   };
 
   await saveFullState(state);
+  return true; // 🔥 THIS WAS MISSING
 }
+
+// export async function lockPosting(guid) {
+//   const state = await getState();
+//   const existing = state[BBC_KEY][guid];
+
+//   if (existing?.status === "posted") return false;
+//   if (existing?.status === "locked" && !isExpiredLock(existing)) return false;
+
+//   state[BBC_KEY][guid] = {
+//     status: "locked",
+//     lockedAt: nowIso(),
+//     source: "bbc",
+//   };
+
+//   await saveFullState(state);
+//   return true; // ✅ IMPORTANT
+// }
+
+// export async function lockPosting(guid) {
+//   const state = await getState();
+
+//   const existing = state[BBC_KEY][guid];
+//   if (existing && existing.status === "posted") return;
+//   if (existing && existing.status === "locked" && !isExpiredLock(existing))
+//     return;
+
+//   state[BBC_KEY][guid] = {
+//     status: "locked",
+//     lockedAt: nowIso(),
+//     source: "bbc",
+//   };
+
+//   await saveFullState(state);
+// }
 
 /**
  * Finalize after tweet is actually posted.

@@ -38,8 +38,14 @@ export async function runBBCNewsPipeline() {
       const html = await fetchBBCArticle(item.link);
       const article = parseBBCArticle(html);
 
+      // if (!article?.body) {
+      //   console.log("⚠ Empty article body, skipping");
+      //   continue;
+      // }
+
       if (!article?.body) {
         console.log("⚠ Empty article body, skipping");
+        await unlockPosting(guid);
         continue;
       }
 
@@ -60,6 +66,7 @@ export async function runBBCNewsPipeline() {
         console.log("⚠ Duplicate content on X, marking as posted:", guid);
       } else {
         console.log("❌ Tweet failed, lock retained");
+        await unlockPosting(guid);
       }
 
       break;
