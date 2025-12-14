@@ -42,15 +42,14 @@ function rotateLogs(filePath) {
 }
 
 export function createLogger(type = "local") {
-  // Detect Railway environment
   const isRailway = !!process.env.RAILWAY_ENVIRONMENT;
 
   const baseDir = isRailway ? "/tmp" : "logs";
 
   const filePath =
     type === "prod"
-      ? path.join(baseDir, "prod.log")
-      : path.join(baseDir, "local.log");
+      ? path.join(baseDir, "prod-crex-news.log")
+      : path.join(baseDir, "local-crex-news.log");
 
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 

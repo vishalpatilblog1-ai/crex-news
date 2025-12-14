@@ -1,17 +1,21 @@
 {
-  "name": "crex-news",
+  "name": "sports-ai-auto-tweet-bot",
   "version": "1.0.0",
-  "description": "CREX News service – BBC & Cricbuzz cricket news polling and auto-tweeting",
+  "description": "Automated sports tweet generator using AI + X(Twitter) API + Node.js",
+  "main": "cricbuzz/index.js",
   "type": "module",
-  "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node server.js",
+    "dev": "nodemon cricbuzz/index.js",
+    "test-fake": "node testFakeEvent.js",
+    "local": "node localBot.js"
   },
   "dependencies": {
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
     "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "fs": "^0.0.1-security",
     "http2-wrapper": "^2.2.1",
     "image-size": "^2.0.2",
     "node-fetch": "^3.3.2",
@@ -24,8 +28,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
-  },
-  "engines": {
-    "node": ">=18"
   }
 }

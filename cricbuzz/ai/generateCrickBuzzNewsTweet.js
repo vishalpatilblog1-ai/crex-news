@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { bold } from "../templates.js";
+import { bold } from "../../templates/templates.js";
+
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -10,20 +11,9 @@ export async function generateCrickBuzzNewsTweet(
   intro,
   fullArticleText
 ) {
-  // const isQuotedHeadline =
-  //   headline.trim().startsWith("'") ||
-  //   headline.trim().startsWith("“") ||
-  //   headline.includes('"');
 
-  // const isControversy =
-  //   /dictator|assault|alleged|accused|controversy|dressing room|feud|clash|fight|criticism/i.test(
-  //     fullArticleText
-  //   );
 
   let mode = "normal";
-
-  // if (isQuotedHeadline) mode = "quoted";
-  // else if (isControversy) mode = "controversy";
 
   const prompt = `
 You are an expert cricket journalist writing for X (Twitter).
