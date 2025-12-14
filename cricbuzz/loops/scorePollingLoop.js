@@ -283,10 +283,9 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       if (evWicket) events.push(evWicket);
       if (evTeamMilestone) events.push(evTeamMilestone);
       if (evBatsmanMilestone) events.push(evBatsmanMilestone);
-      if (evSix) events.push(evSix);
+      // if (evSix) events.push(evSix);
       // if (evFour) events.push(evFour);
       // if (evMaidenOver) events.push(evMaidenOver);
-
       // if (evDefault) events.push(evDefault);
     }
 
