@@ -12,8 +12,6 @@ export async function newsPollingLoop() {
     return;
   }
   const STATE = global.STATE;
-  log("newsPollingLoop:::::");
-  console.log("newsPollingLoop:::::");
 
   try {
     const news = await getLiveNewsList();

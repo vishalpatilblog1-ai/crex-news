@@ -20,7 +20,7 @@ export async function generateCrickBuzzNewsTweet(
   //     fullArticleText
   //   );
 
-  // let mode = "normal";
+  let mode = "normal";
 
   // if (isQuotedHeadline) mode = "quoted";
   // else if (isControversy) mode = "controversy";

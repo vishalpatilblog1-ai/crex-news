@@ -6,11 +6,10 @@ import { createLogger } from "../utils/logger.js";
 
 import { loadState } from "../utils/stateStoreCloud.js";
 
-import { startAutoReplyV5 } from "../auto-reply/autoReplyV5.js";
+import { bbcNewsPollingLoop } from "../bbc/bbcNewsPollingLoop.js";
 import { findIndiaMatch } from "./cricbuzzApi.js";
 import { newsPollingLoop } from "./loops/newsPollingLoop.js";
 import { scorePollingLoop } from "./loops/scorePollingLoop.js";
-import { bbcNewsPollingLoop } from "../bbc/bbcNewsPollingLoop.js";
 
 globalThis.LAST_INNINGS = null;
 globalThis.LAST_OVER = null;
@@ -81,7 +80,8 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
-    setInterval(newsPollingLoop, 1000 * 60 * 15);
+    console.log("📰 Cricbuzz news polling enabled");
+    setInterval(newsPollingLoop, 1000 * 60 * 2);
   }
 
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
