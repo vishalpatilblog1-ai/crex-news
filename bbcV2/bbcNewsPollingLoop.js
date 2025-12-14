@@ -1,13 +1,13 @@
-import { fetchBBCCricketRSS } from "../bbc/bbcRssFetcher.js";
-import { isBBCArticle } from "../bbc//bbcFilters.js";
-import { fetchBBCArticle } from "../bbc/fetchBBCArticle.js";
-// import { parseBBCArticle } from "./parseBBCArticle.js";
-// import { generateBBCNewsTweet } from "./ai/generateBBCNewsTweet.js";
-import { postTweet_console_bbc, postTweet_web_bcci } from "../twitter.js";
-// import { saveState } from "../../utils/stateStoreCloud.js";
-import { generateBBCNewsTweet } from "../bbc/ai/generateBBCNewsTweet.js";
-import { parseBBCArticle } from "../bbc/parseBBCArticle.js";
+// import { fetchBBCArticle } from "../bbc/fetchBBCArticle.js";
+// import { generateBBCNewsTweet } from "../bbc/ai/generateBBCNewsTweet.js";
+// import { parseBBCArticle } from "../bbc/parseBBCArticle.js";
+import { postTweet_web_bcci } from "../twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { generateBBCNewsTweet } from "./ai/generateBBCNewsTweet.js";
+import { isBBCArticle } from "./bbcFilters.js";
+import { fetchBBCCricketRSS } from "./bbcRssFetcher.js";
+import { fetchBBCArticle } from "./fetchBBCArticle.js";
+import { parseBBCArticle } from "./parseBBCArticle.js";
 
 export async function bbcV2NewsPollingLoop() {
   if (!global.STATE) {
@@ -24,7 +24,13 @@ export async function bbcV2NewsPollingLoop() {
       return;
     }
 
-    const item = items.find(isBBCArticle);
+    // const item = items.find(isBBCArticle);
+    const articleItems = items
+      .filter(isBBCArticle)
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+    const item = articleItems[0];
+
     if (!item) {
       console.log("ℹ️ No valid BBC cricket article found");
       return;
