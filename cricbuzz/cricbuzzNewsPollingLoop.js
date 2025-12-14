@@ -1,3 +1,4 @@
+import { tweetNewsWithImage } from "../twitter/tweetNewsWithImage.js";
 import { createLogger } from "../utils/logger.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { generateCrickBuzzNewsTweet } from "./ai/generateCrickBuzzNewsTweet.js";
@@ -21,7 +22,6 @@ export async function cricbuzzNewsPollingLoop() {
 
     const latestNewsId = latestNews.id;
 
-    console.log("latestNews:::", latestNews);
     log("latestNews:::", latestNews);
 
     const imageId = latestNews?.imageId || latestNews?.coverImage?.id;
@@ -31,7 +31,7 @@ export async function cricbuzzNewsPollingLoop() {
     const newsKey = `news_${latestNewsId}`;
 
     if (STATE[newsKey]) {
-      console.log(`🟡 News already tweeted: ${latestNewsId}`);
+      console.log(`🟡 Cricbuzz already tweeted: ${latestNewsId}`);
       return;
     }
 
