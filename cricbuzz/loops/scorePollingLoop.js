@@ -30,6 +30,8 @@ import { bold } from "../templates.js";
 const log = createLogger("prod");
 
 const POLL_WAIT_TIME = 6000;
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 globalThis.IS_POSTING_TWEET = false;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -107,7 +109,10 @@ export async function scorePollingLoop(MATCH_ID, MATCH_NAME) {
       }
 
       console.log("🏆 Match completed — stopping bot.");
-      process.exit(0);
+      return;
+      // process.exit(0);
+      // await sleep(60 * 60 * 1000);
+      // continue;
     }
 
     try {
