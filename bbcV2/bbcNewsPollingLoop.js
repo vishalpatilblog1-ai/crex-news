@@ -24,13 +24,7 @@ export async function bbcV2NewsPollingLoop() {
       return;
     }
 
-    // const item = items.find(isBBCArticle);
-    const articleItems = items
-      .filter(isBBCArticle)
-      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-    const item = articleItems[0];
-
+    const item = items.find(isBBCArticle);
     if (!item) {
       console.log("ℹ️ No valid BBC cricket article found");
       return;
