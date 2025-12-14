@@ -64,8 +64,8 @@ export function buildHashtags(
   if (seriesName && seriesName.includes("ashes")) {
     ashesTag = "#Ashes";
   }
-  if (seriesName && seriesName.includes("womens big bash league")) {
-    bblwTag = "#WBBL #BBLW";
+  if (seriesName && seriesName.includes("Big Bash League")) {
+    bblwTag = "#BBL15";
   }
 
   if (seriesName && seriesName.includes("india")) {
