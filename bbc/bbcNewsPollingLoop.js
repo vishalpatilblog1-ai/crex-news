@@ -30,7 +30,6 @@ export async function bbcNewsPollingLoop() {
       return;
     }
 
-    // ✅ watermark (default = 0 for first run)
     const lastPubMs = STATE.bbc.lastPubMs || 0;
 
     // 1️⃣ Filter + sort newest first
