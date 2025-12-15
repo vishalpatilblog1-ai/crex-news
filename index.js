@@ -21,12 +21,12 @@ async function bootstrap() {
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 0.2); // temp fast poll
+    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 15);
   }
 
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
     console.log("📰 BBC news polling enabled");
-    setInterval(bbcNewsPollingLoop, 1000 * 60 * 0.2); // temp fast poll
+    setInterval(bbcNewsPollingLoop, 1000 * 60 * 2);
   }
 }
 
