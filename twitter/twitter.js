@@ -13,7 +13,7 @@ const twitterClient = new TwitterApi({
   accessSecret: process.env.X_ACCESS_SECRET,
 });
 
-export async function postTweet_console_bbc(payload) {
+export async function postTweet_bbc_console(payload) {
   const text = typeof payload === "string" ? payload : payload?.text;
 
   if (typeof text !== "string") {
@@ -58,7 +58,7 @@ ${text}
   return { status: "console_ok", text };
 }
 
-export async function postTweet_web_bcci(payload) {
+export async function postTweet_bbc_web(payload) {
   try {
     const text = typeof payload === "string" ? payload : payload?.text;
     const media_ids = payload?.media_ids;
