@@ -1,4 +1,7 @@
-import { postTweet_bbc_web, postTweet_bbc_web } from "../twitter/twitter.js";
+import {
+  postTweet_bbc_console,
+  postTweet_bbc_web,
+} from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { generateBBCNewsTweet } from "./ai/generateBBCNewsTweet.js";
 import { isBBCArticle } from "./bbcFilters.js";
@@ -8,63 +11,96 @@ import { parseBBCArticle } from "./parseBBCArticle.js";
 
 export async function bbcNewsPollingLoop() {
   if (!global.STATE) {
-    console.log("⚠️ global.STATE not ready. Skipping BBC V2 polling.");
+    console.log("⚠️ global.STATE not ready. Skipping BBC polling.");
     return;
   }
 
   const STATE = global.STATE;
 
+  // ✅ ensure BBC namespace exists (backward-safe)
+  if (!STATE.bbc) {
+    STATE.bbc = {};
+  }
+
   try {
     const items = await fetchBBCCricketRSS();
+
     if (!Array.isArray(items) || items.length === 0) {
       console.log("ℹ️ No BBC RSS items found");
       return;
     }
 
-    const item = items.find(isBBCArticle);
-    if (!item) {
-      console.log("ℹ️ No valid BBC cricket article found");
+    // ✅ watermark (default = 0 for first run)
+    const lastPubMs = STATE.bbc.lastPubMs || 0;
+
+    // 1️⃣ Filter + sort newest first
+    const sortedArticles = items
+      .filter(isBBCArticle)
+      .sort((a, b) => getPubDate(b) - getPubDate(a));
+
+    let selected = null;
+
+    // 2️⃣ Pick first article newer than watermark
+    for (const article of sortedArticles) {
+      const pubMs = getPubDate(article);
+      if (!pubMs) continue;
+
+      if (pubMs > lastPubMs) {
+        selected = article;
+        break;
+      }
+    }
+
+    if (!selected) {
+      console.log("🟡 No newer BBC articles since last poll");
       return;
     }
 
-    const guid = item?.guid?._;
-    if (!guid) {
-      console.log("⚠️ BBC item missing GUID, skipping");
-      return;
-    }
+    console.log(
+      "🆕 BBC news detected:",
+      selected.title,
+      "| pubDate:",
+      selected.pubDate
+    );
 
-    const newsKey = `news_${guid}`;
+    // 3️⃣ Fetch & parse article
+    const html = await fetchBBCArticle(selected.link);
+    const parsed = parseBBCArticle(html);
 
-    if (STATE[newsKey]) {
-      console.log("🟡 BBC news already tweeted:", guid);
-      return;
-    }
-
-    STATE[newsKey] = true;
-    await saveState(STATE);
-
-    console.log("🆕 BBC news detected:", item.title);
-
-    const html = await fetchBBCArticle(item.link);
-    const article = parseBBCArticle(html);
-
-    if (!article?.body) {
+    if (!parsed?.body) {
       console.log("⚠️ Empty BBC article body, skipping");
       return;
     }
 
-    const tweetBody = await generateBBCNewsTweet(article.body);
-    const cleanUrl = item.link.split("?")[0];
+    const tweetBody = await generateBBCNewsTweet(parsed.body);
+    const cleanUrl = selected.link.split("?")[0];
 
     const tweetText = `${tweetBody}
-  
-  📰 BBC Sport 🔗 ${cleanUrl}`;
 
+📰 BBC Sport 🔗 ${cleanUrl}`;
+
+    await postTweet_bbc_console({ text: tweetText });
     await postTweet_bbc_web({ text: tweetText });
-    // await postTweet_bbc_web({ text: tweetText });
 
-    console.log("🟢 BBC news tweeted successfully:", guid);
+    // 4️⃣ Update BBC state AFTER successful tweet
+    STATE.bbc.lastPubMs = getPubDate(selected);
+    STATE.bbc.lastLink = cleanUrl;
+    STATE.bbc.lastTitle = selected.title;
+
+    await saveState(STATE);
+
+    console.log(
+      "🟢 BBC news tweeted successfully. Watermark updated:",
+      STATE.bbc.lastPubMs
+    );
   } catch (err) {
-    console.error("❌ ERROR in BBC V2 polling:", err);
+    console.error("❌ ERROR in BBC polling:", err);
   }
+}
+
+// ---------- helpers ----------
+
+function getPubDate(item) {
+  const raw = item?.pubDate;
+  return raw ? new Date(raw).getTime() : 0;
 }
