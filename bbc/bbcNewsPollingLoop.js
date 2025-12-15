@@ -79,7 +79,7 @@ export async function bbcNewsPollingLoop() {
 
 📰 BBC Sport 🔗 ${cleanUrl}`;
 
-    // await postTweet_bbc_console({ text: tweetText });
+    await postTweet_bbc_console({ text: tweetText });
     await postTweet_bbc_web({ text: tweetText });
 
     // 4️⃣ Update BBC state AFTER successful tweet
