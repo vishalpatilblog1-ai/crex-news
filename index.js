@@ -11,6 +11,7 @@ import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
 global.BBC_STATE_READY = false;
 
 const log = createLogger("prod");
+console.log("BBC polling started v2");
 
 async function bootstrap() {
   global.STATE = await loadState();
