@@ -1,65 +1,40 @@
 import OpenAI from "openai";
-import { bold } from "../../templates/templates.js";
-
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function generateCrickBuzzNewsTweet(
-  headline,
-  intro,
-  fullArticleText
-) {
-
-
-  let mode = "normal";
-
+export async function generateCrickBuzzNewsTweet(articleText) {
   const prompt = `
-You are an expert cricket journalist writing for X (Twitter).
-Write ONE tweet within 280 characters.
+You are a professional sports news editor.
 
-MODE: ${mode}
+Rewrite the following cricket news into a neutral tweet.
 
-GUIDELINES:
-- Output must be multi-line.
-- Use short paragraphs (1–2 sentences per paragraph).
-- Use simple English that a 5th grade student can understand.
-- Add 1–2 relevant emojis based on context — but DO NOT use 🚨 siren emoji.
-- Add 1-2 relevant cricket-related hashtags.
-- Maintain a neutral, factual tone (no hype, no opinions).
-- The tweet body must NOT repeat or mimic the header.
-- Do NOT use words like “BREAKING NEWS”, “LIVE UPDATE” inside the tweet body.
-- Do NOT use Pakistan flag emojis or Pakistan-related flag symbols.
+Rules:
+- Max 240 characters 
+- Simple English
+- No emojis
+- No hashtags
+- No "Breaking News"
+- No exaggeration
+- Neutral, factual tone
+- Mention only the main update
+- Do NOT mention BBC
 
-MODE RULES:
-- If MODE = "quoted":
-  - Include ONE key quote from the article or headline.
-  - The quote must be on its own line.
-- If MODE = "controversy":
-  - Be strictly neutral.
-  - Avoid emotional words, judgments, or speculation.
-
-CONTENT:
-HEADLINE: ${headline}
-INTRO: ${intro}
-FULL ARTICLE: ${fullArticleText}
+ARTICLE:
+${articleText}
 
 Write ONLY the tweet text.
-Do NOT add explanations, titles, or system messages.
 `;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You write clear, factual cricket updates." },
+      { role: "system", content: "You write neutral cricket news updates." },
       { role: "user", content: prompt },
     ],
+    temperature: 0.2,
   });
 
-  return `
-
-${bold("🚨 BREAKING NEWS 🚨")}
-
-${response.choices[0].message.content.trim()}`;
+  return response.choices[0].message.content.trim();
 }

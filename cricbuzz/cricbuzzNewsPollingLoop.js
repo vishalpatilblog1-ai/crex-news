@@ -22,7 +22,7 @@ export async function cricbuzzNewsPollingLoop() {
 
     const latestNewsId = latestNews.id;
 
-    log("latestNews:::", latestNews);
+    log("crickBuzzNews:::", latestNews);
 
     const imageId = latestNews?.imageId || latestNews?.coverImage?.id;
 
@@ -46,11 +46,13 @@ export async function cricbuzzNewsPollingLoop() {
 
     const fullText = buildFullArticleText(detailNews);
 
-    const tweetText = await generateCrickBuzzNewsTweet(
-      latestNews.hline,
-      latestNews.intro,
-      fullText
-    );
+    // const tweetText = await generateCrickBuzzNewsTweet(
+    //   latestNews.hline,
+    //   latestNews.intro,
+    //   fullText
+    // );
+
+    const tweetText = await generateCrickBuzzNewsTweet(fullText);
 
     console.log("📝 News Tweet Preview:\n", tweetText);
 
