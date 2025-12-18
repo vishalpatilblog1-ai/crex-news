@@ -142,7 +142,7 @@ export async function bbcNewsPollingLoop() {
 
     const tweetText = `${tweetBody}
 
-📰 BBC Sport 🔗 ${cleanUrl}`;
+BBC Sport 🔗 ${cleanUrl}`;
 
     // ---------------------------------------------------
     // POST
