@@ -21,7 +21,6 @@ Rules:
 - No exaggeration
 - Neutral, factual tone
 - Mention only the main update
-- Do NOT mention BBC
 
 ARTICLE:
 ${articleText}
