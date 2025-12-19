@@ -1,10 +1,13 @@
 // import { postTweet_ie_web } from "../twitter/twitter.js";
+import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
 import { generateIENewsTweet } from "./ai/generateIENewsTweet.js";
+import { fetchIEArticle } from "./fetchIEArticle.js";
 // import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
 import { isIEArticle, normalizeIELink } from "./ieFilters.js";
 import { fetchIECricketRSS } from "./ieRssFetcher.js";
+import { parseIEArticle } from "./parseIEArticle.js";
 
 export async function ieNewsPollingLoop() {
   if (!global.STATE) return;
@@ -43,16 +46,28 @@ export async function ieNewsPollingLoop() {
       return;
     }
 
-    console.log("🆕 IE news detected:", selected.title);
+    // console.log("🆕 IE news detected:", selected, selected.title);
 
     let tweetBody;
+    const html = await fetchIEArticle(selected.link);
+    const parsed = parseIEArticle(html);
 
+    if (!parsed?.body || parsed.body.length < 80) {
+      throw new Error("IE article body missing / too short");
+    }
+
+    // console.log("parsed.body::", parsed.body);
     try {
-      tweetBody = await generateIENewsTweet(selected.title);
+      tweetBody = await generateIENewsTweet(parsed.body);
+
+      console.log("tweetBody::", tweetBody);
+
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }
-    } catch {
+    } catch (err) {
+      //   tweetBody = generateIEFallbackTweet(selected);
+      console.warn("⚠️ IE AI failed:", err?.message || err);
       tweetBody = generateIEFallbackTweet(selected);
     }
 

@@ -4,5 +4,5 @@ export function generateIEFallbackTweet(article) {
 
   return `${title}
     
-    More details to follow from BBC Sport.`;
+    More details to follow from IE Sport.`;
 }

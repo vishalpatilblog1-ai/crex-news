@@ -33,7 +33,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 0.2);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 2);
   }
 }
 
