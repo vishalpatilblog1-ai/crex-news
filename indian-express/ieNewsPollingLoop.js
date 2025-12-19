@@ -78,7 +78,7 @@ export async function ieNewsPollingLoop() {
 Indian Express 🔗 ${cleanUrl}`;
     console.log("tweetText::", tweetText);
 
-    // await postTweet_ie_web({ text: tweetText });
+    await postTweet_ie_web({ text: tweetText });
 
     STATE.ie.seen[cleanUrl] = Date.now();
     STATE.ie.lastLink = cleanUrl;
