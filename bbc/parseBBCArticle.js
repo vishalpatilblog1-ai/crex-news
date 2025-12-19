@@ -1,4 +1,4 @@
-// import cheerio from "cheerio";
+// parseBBCArticle.js
 import * as cheerio from "cheerio";
 
 export function parseBBCArticle(html) {

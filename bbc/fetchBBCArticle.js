@@ -1,5 +1,5 @@
+//fetchBBCArticle.js
 import fetch from "node-fetch";
-// import * as cheerio from "cheerio";
 
 export async function fetchBBCArticle(url) {
   const res = await fetch(url, {

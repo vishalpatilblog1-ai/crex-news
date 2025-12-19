@@ -7,6 +7,7 @@ import { createLogger } from "./utils/logger.js";
 
 import { bbcNewsPollingLoop } from "./bbc/bbcNewsPollingLoop.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
+import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 
 global.BBC_STATE_READY = false;
 
@@ -28,6 +29,11 @@ async function bootstrap() {
   if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
     console.log("📰 BBC news polling enabled");
     setInterval(bbcNewsPollingLoop, 1000 * 60 * 2);
+  }
+
+  if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
+    console.log("📰 Indian Express news polling enabled");
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 0.2);
   }
 }
 
