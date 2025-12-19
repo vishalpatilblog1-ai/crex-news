@@ -67,10 +67,6 @@ export async function ieNewsPollingLoop() {
 
     const cleanUrl = normalizeIELink(selected.link);
 
-    //     const tweetText = `${tweetBody}
-
-    // Indian Express 🔗 ${cleanUrl}`;
-
     const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
 
     console.log("tweetText::", tweetText);
