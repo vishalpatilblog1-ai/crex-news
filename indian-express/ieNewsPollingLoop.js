@@ -46,8 +46,6 @@ export async function ieNewsPollingLoop() {
       return;
     }
 
-    // console.log("🆕 IE news detected:", selected, selected.title);
-
     let tweetBody;
     const html = await fetchIEArticle(selected.link);
     const parsed = parseIEArticle(html);
@@ -56,17 +54,13 @@ export async function ieNewsPollingLoop() {
       throw new Error("IE article body missing / too short");
     }
 
-    // console.log("parsed.body::", parsed.body);
     try {
       tweetBody = await generateIENewsTweet(parsed.body);
-
-      console.log("tweetBody::", tweetBody);
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }
     } catch (err) {
-      //   tweetBody = generateIEFallbackTweet(selected);
       console.warn("⚠️ IE AI failed:", err?.message || err);
       tweetBody = generateIEFallbackTweet(selected);
     }
