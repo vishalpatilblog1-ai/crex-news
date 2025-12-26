@@ -9,74 +9,86 @@ const client = new OpenAI({
 
 export async function generateIENewsTweet(articleText) {
   const prompt = `
-  You are writing for a sharp, opinion-aware cricket account (GP style).
-  The account values credibility, but also wants to spark discussion.
+  You are writing for a credible, editorial-style cricket account (GP).
+  The account values accuracy, balance, and long-term trust over virality.
   
-  Your task has TWO steps:
+  Your task has THREE internal steps:
   
-  STEP 1 — Internally classify the news into ONE category:
-  - LIGHT: routine or domestic updates, contracts, commentary
-  - MEDIUM: India-related relevance, squad signals, selection movement
-  - HEAVY: major match results, debuts, records, turning points, big decisions
+  STEP 1 — Classify the article into ONE importance category:
+  - LIGHT: routine updates, domestic cricket, commentary, minor developments
+  - MEDIUM: India relevance, squad signals, selection movement, form narratives
+  - HEAVY: major Test matches, turning points, records, debuts, big decisions
   
-  STEP 2 — Write the tweet STRICTLY according to the category,
-  using OPINION-ADJACENT FRAMING (not pure news).
+  STEP 2 — Select ONE tone (editorial intent):
+  - NEWS: factual, descriptive, attribution-based
+  - ANALYSIS: implication-focused, balanced explanation
+  - CONTEXT: historical or broader framing to reduce heat or repetition
+  Use ONLY ONE tone.
   
-  CRITICAL ANCHORING RULES (MUST FOLLOW):
-  - The framing MUST directly reflect the headline outcome.
-  - Avoid transition words like "meanwhile" unless strictly required.
-  - If the headline mentions a dismissal, failure, or setback, the tweet MUST acknowledge it explicitly.
-  - The tweet MUST stay centered on the headline event.
-  - Avoid future-oriented phrases like "will be", "aims to", "set to".
+  STEP 3 — Write the tweet according to BOTH the category and the tone.
+  
+  ────────────────────────
+  ANCHORING RULES (MUST FOLLOW)
+  ────────────────────────
+  - The tweet MUST directly reflect the headline outcome.
+  - Stay centered on the main event only.
+  - If the headline mentions a setback, failure, or dismissal, acknowledge it clearly.
+  - If a player or team is mentioned in the headline, they MUST appear in the tweet.
   - Do NOT shift focus to secondary players or unrelated storylines.
-  - If the headline mentions a player or team, they MUST appear in the tweet.
   - Do NOT invent pressure, form issues, or future scenarios not implied by the article.
+  - Avoid future-oriented phrases like “will be”, “aims to”, “set to”.
   
-  Tone & framing rules (VERY IMPORTANT):
-  - If the headline describes a negative or contrasting outcome, the framing MUST reflect that contrast.
-  - Do NOT exaggerate
-  - Do NOT accuse or abuse
-  - Do NOT speculate wildly
-  - Add ONLY ONE subtle angle such as:
-    - timing
-    - contrast
-    - implication
-    - consequence
-  - Let the reader complete the thought
-  - Sound human, not like a press release
+  ────────────────────────
+  TONE CONSTRAINTS (VERY IMPORTANT)
+  ────────────────────────
+  - NEWS:
+    - Strictly factual
+    - No interpretation or implication language
+    - Attribute opinions to sources if present
+  - ANALYSIS:
+    - Add ONE implication, contrast, or shift
+    - No judgement, blame, or exaggeration
+  - CONTEXT:
+    - Add historical or broader perspective
+    - Frame as part of a wider discussion or pattern
+    - Soften repetition or controversy
   
-  Category rules:
+  Opinion-adjacent framing is allowed ONLY in ANALYSIS or CONTEXT.
+  NEWS must remain neutral and descriptive.
   
+  ────────────────────────
+  CATEGORY RULES (LENGTH & STRUCTURE)
+  ────────────────────────
   - LIGHT:
     - Max 140 characters
-    - One sentence only
-    - Slight framing allowed (timing or context)
-  
+    - One sentence
+    - Minimal framing
   - MEDIUM:
     - 140–200 characters
     - Up to two sentences
-    - One implication or contrast is mandatory
-  
+    - One implication or contrast allowed
   - HEAVY:
     - 200–256 characters
     - Two sentences
-    - Frame the significance or shift in narrative without emotion
+    - Frame significance calmly, without emotion
   
-  Global rules (must not break):
-  - Simple English
+  ────────────────────────
+  GLOBAL RULES (MUST NOT BREAK)
+  ────────────────────────
+  - Simple, clear English
   - No emojis
   - No hashtags
-  - No "Breaking News"
-  - No sensational words
-  - No direct opinions like "right/wrong"
   - No questions
+  - No sensational language
+  - No direct opinions like “right” or “wrong”
   - No mention of the source
-  - Do NOT reveal the category
+  - Do NOT reveal category or tone
   
   ARTICLE:
   ${articleText}
   
   Write ONLY the tweet text.
+  
   `;
 
   const response = await client.chat.completions.create({
