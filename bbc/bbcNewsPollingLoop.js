@@ -37,7 +37,7 @@ export async function bbcNewsPollingLoop() {
   const SEEN_RETENTION_HOURS = Number(
     process.env.BBC_SEEN_RETENTION_HOURS || 48
   );
-  const CONSOLE_ONLY = process.env.BBC_CONSOLE_ONLY === "true";
+  const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
   const TWEET_MAX_AGE_MS = TWEET_MAX_AGE_HOURS * 60 * 60 * 1000;
   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
