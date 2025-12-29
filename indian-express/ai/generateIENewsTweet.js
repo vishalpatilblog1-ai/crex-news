@@ -16,7 +16,7 @@ ________________________
 HARD CONSTRAINT:
 ________________________
 
-  Write a factual cricket news tweet in STRICTLY 220–256 characters.
+  Write a factual cricket news tweet in STRICTLY 220–240 characters.
 ________________________
 RULES:
 ________________________
