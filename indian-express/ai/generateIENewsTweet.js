@@ -9,10 +9,17 @@ const client = new OpenAI({
 
 export async function generateIENewsTweet(articleText) {
   const prompt = `
-  HARD CONSTRAINT:
-Write a factual cricket news tweet in STRICTLY 220–256 characters.
 
+  You are writing for a credible, editorial-style cricket account (GP).
+  The account values accuracy, balance, and long-term trust over virality.
+________________________
+HARD CONSTRAINT:
+________________________
+
+  Write a factual cricket news tweet in STRICTLY 220–256 characters.
+________________________
 RULES:
+________________________
 - Focus only on the main headline outcome
 - Simple, clear English
 - Calm, neutral tone
@@ -25,8 +32,6 @@ ARTICLE:
 ${articleText}
 
 Write ONLY the tweet text.
-
-  
   `;
 
   const response = await client.chat.completions.create({
