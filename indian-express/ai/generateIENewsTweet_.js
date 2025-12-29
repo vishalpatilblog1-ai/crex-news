@@ -9,64 +9,98 @@ const client = new OpenAI({
 
 export async function generateIENewsTweet_(articleText) {
   const prompt = `
-  You are a professional cricket news editor working at a serious sports desk.
+  You are writing for a credible, editorial-style cricket account (GP).
+  The account values accuracy, balance, and long-term trust over virality.
   
-  Your task has TWO steps:
+  Your task has THREE internal steps:
   
-  STEP 1 — Internally classify the news into ONE category:
-  - LIGHT: routine or domestic updates, contracts, commentary
-  - MEDIUM: India-related relevance, squad signals, series context
-  - HEAVY: major match results, records, ICC tournaments, turning points
+  STEP 1 — Classify the article into ONE importance category:
+  - LIGHT: routine updates, domestic cricket, commentary, minor developments
+  - MEDIUM: India relevance, squad signals, selection movement, form narratives
+  - HEAVY: major Test matches, turning points, records, debuts, big decisions
   
-  STEP 2 — Write the tweet STRICTLY according to the category.
+  STEP 2 — Select ONE tone (editorial intent):
+  - NEWS: factual, descriptive, attribution-based
+  - ANALYSIS: implication-focused, balanced explanation
+  - CONTEXT: historical or broader framing to reduce heat or repetition
+  Use ONLY ONE tone.
   
-  CRITICAL ANCHORING RULES (MUST FOLLOW):
-  - If multiple players are mentioned, prioritize the headline event over secondary updates.
-  - Avoid transition words like "meanwhile" or forward-looking phrasing unless essential.
-  - Focus ONLY on the main event described in the headline and opening context.
-  - Do NOT introduce side stories, background analysis, or secondary players.
-  - If a player or team appears in the headline, they MUST appear in the tweet.
-  - Prefer the most newsworthy update (e.g. result, dismissal, selection change).
+  STEP 3 — Write the tweet according to BOTH the category and the tone.
   
-  Category rules:
+  ────────────────────────
+  ANCHORING RULES (MUST FOLLOW)
+  ────────────────────────
+  - The tweet MUST directly reflect the headline outcome.
+  - Stay centered on the main event only.
+  - If the headline mentions a setback, failure, or dismissal, acknowledge it clearly.
+  - If a player or team is mentioned in the headline, they MUST appear in the tweet.
+  - Do NOT shift focus to secondary players or unrelated storylines.
+  - Do NOT invent pressure, form issues, or future scenarios not implied by the article.
+  - Avoid future-oriented phrases like “will be”, “aims to”, “set to”.
   
+  ────────────────────────
+  TONE CONSTRAINTS (VERY IMPORTANT)
+  ────────────────────────
+  - NEWS:
+    - Strictly factual
+    - No interpretation or implication language
+    - Attribute opinions to sources if present
+  - ANALYSIS:
+    - Add ONE implication, contrast, or shift
+    - No judgement, blame, or exaggeration
+  - CONTEXT:
+    - Add historical or broader perspective
+    - Frame as part of a wider discussion or pattern
+    - Soften repetition or controversy
+  
+  Opinion-adjacent framing is allowed ONLY in ANALYSIS or CONTEXT.
+  NEWS must remain neutral and descriptive.
+  
+  ────────────────────────
+  CATEGORY RULES (LENGTH & STRUCTURE)
+  ────────────────────────
   - LIGHT:
     - Max 140 characters
-    - One sentence only
-    - No extra context
-  
+    - One sentence
+    - Minimal framing
   - MEDIUM:
     - 140–200 characters
     - Up to two sentences
-    - One short factual context phrase allowed
-  
+    - One implication or contrast allowed
   - HEAVY:
     - 200–256 characters
     - Two sentences
-    - Clear factual context, still neutral
+    - Frame significance calmly, without emotion
   
-  Global rules (must not break):
-  - Simple English
+  ────────────────────────
+  GLOBAL RULES (MUST NOT BREAK)
+  ────────────────────────
+  - Simple, clear English
   - No emojis
   - No hashtags
-  - No "Breaking News"
-  - No exaggeration
-  - No opinion or judgement
-  - Neutral, factual tone
-  - Mention only the main update
-  - Do NOT mention the source
-  - Do NOT reveal the category
+  - No questions
+  - No sensational language
+  - No direct opinions like “right” or “wrong”
+  - No mention of the source
+  - Do NOT reveal category or tone
   
   ARTICLE:
   ${articleText}
   
   Write ONLY the tweet text.
+  
   `;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You write neutral cricket news updates." },
+      // { role: "system", content: "You write neutral cricket news updates." },
+      {
+        role: "system",
+        content:
+          "You write grounded, opinion-adjacent cricket updates without speculation.",
+      },
+
       { role: "user", content: prompt },
     ],
     temperature: 0.2,

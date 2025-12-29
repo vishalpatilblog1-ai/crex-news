@@ -12,14 +12,14 @@ async function runTest() {
   try {
     // const tweet = await generateViralTweet(SAMPLE_BODY, 240);
     const testLink =
-      "https://indianexpress.com/article/sports/cricket/australia-xii-melbourne-ashes-test-steve-smith-jhye-richardson-10439042/";
+      "https://www.thehindu.com/sport/cricket/smriti-mandhana-becomes-second-indian-fourth-player-overall-to-reach-10000-international-runs-in-womens-cricket/article70447324.ece";
     const html = await fetchIEArticle(testLink);
     const parsed = parseIEArticle(html);
-    console.log("parsed::", parsed);
+    // console.log("parsed::", parsed);
 
-    const tweet_news = await generateIENewsTweet_(parsed.body);
-    console.log("✅ AI news Tweet Output:");
-    console.log(tweet_news);
+    // const tweet_news = await generateIENewsTweet_(parsed.body);
+    // console.log("✅ AI news Tweet Output:");
+    // console.log(tweet_news);
 
     const tweet_spice = await generateIENewsTweet(parsed.body);
     console.log("✅ AI spice Tweet Output:");
