@@ -9,8 +9,6 @@ import { parseHinduArticle } from "./parseHinduArticle.js";
 import { generateHinduNewsTweet } from "./ai/generateHinduNewsTweet.js";
 import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
-import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
-import { getHinduImageUrl } from "./getHinduImage.js";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) return;
@@ -126,39 +124,14 @@ export async function hinduNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeHinduLink(selected.link);
-    // const tweetText = `${tweetBody}\n\nThe Hindu 🔗 ${cleanUrl}`;
-    const tweetText = `${tweetBody}\n\n[The Hindu]`;
-    const imageUrl = getHinduImageUrl(selected);
+    const tweetText = `${tweetBody}\n\nThe Hindu 🔗 ${cleanUrl}`;
 
     if (CONSOLE_ONLY) {
       console.log("🟡 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);
     } else {
-      try {
-        if (imageUrl) {
-          await tweetWithNativeImage({
-            text: tweetText,
-            imageUrl,
-          });
-        } else {
-          // rare edge case: no image
-          await postTweet_ie_web({ text: tweetText });
-        }
-      } catch (err) {
-        console.warn(
-          "⚠️ Hindu image tweet failed, falling back to text-only:",
-          err.message
-        );
-        await postTweet_ie_web({ text: tweetText });
-      }
+      await postTweet_ie_web({ text: tweetText });
     }
-
-    // if (CONSOLE_ONLY) {
-    //   console.log("🟡 CONSOLE MODE — Tweet skipped");
-    //   console.log(tweetText);
-    // } else {
-    //   await postTweet_ie_web({ text: tweetText });
-    // }
 
     // 💾 Save state
     STATE.hindu.seen[cleanUrl] = Date.now();
