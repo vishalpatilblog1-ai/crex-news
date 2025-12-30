@@ -1,5 +1,6 @@
 // ieNewsPollingLoop.js
 
+import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
@@ -8,6 +9,7 @@ import { generateIENewsTweet } from "./ai/generateIENewsTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 
 import { fetchIEArticle } from "./fetchIEArticle.js";
+import { getIEImageUrl } from "./getIEImageUrl.js";
 import { isIEArticle, normalizeIELink } from "./ieFilters.js";
 import { fetchIECricketRSS } from "./ieRssFetcher.js";
 import { parseIEArticle } from "./parseIEArticle.js";
@@ -148,13 +150,30 @@ export async function ieNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeIELink(selected.link);
-    const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
+    // const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
+    const tweetText = `${tweetBody}\n\n[Indian Express]`;
+    const imageUrl = getIEImageUrl(selected);
+    console.log("imageUrl::", imageUrl);
 
     if (CONSOLE_ONLY) {
       console.log("🟡 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);
     } else {
-      await postTweet_ie_web({ text: tweetText });
+      // await postTweet_ie_web({ text: tweetText });
+      try {
+        if (imageUrl) {
+          await tweetWithNativeImage({ text: tweetText, imageUrl });
+        } else {
+          // fallback: no image available in RSS
+          await postTweet_ie_web({ text: tweetText });
+        }
+      } catch (err) {
+        console.warn(
+          "⚠️ IE native image tweet failed, fallback to text-only:",
+          err.message
+        );
+        await postTweet_ie_web({ text: tweetText });
+      }
     }
 
     // 💾 Update state
