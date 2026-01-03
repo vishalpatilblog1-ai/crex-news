@@ -54,7 +54,7 @@ async function bootstrap() {
   }
   if (process.env.ENABLE_PROBATSMAN_NEWS_POLLING === "true") {
     console.log("📰 ProBatsman news polling enabled");
-    setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 2);
+    setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 4);
   }
 }
 
