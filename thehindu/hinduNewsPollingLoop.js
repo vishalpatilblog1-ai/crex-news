@@ -19,6 +19,16 @@ export async function hinduNewsPollingLoop() {
 
   if (!STATE.hindu) STATE.hindu = {};
   if (!STATE.hindu.seen) STATE.hindu.seen = {};
+  if (!STATE.hindu.lastPubMs) STATE.hindu.lastPubMs = 0;
+
+  const TWEET_MAX_AGE_HOURS = Number(process.env.BBC_MAX_AGE_HOURS || 24);
+  const SEEN_RETENTION_HOURS = Number(
+    process.env.BBC_SEEN_RETENTION_HOURS || 48
+  );
+  const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
+  const TWEET_MAX_AGE_MS = TWEET_MAX_AGE_HOURS * 60 * 60 * 1000;
+  const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
 
   // 🔒 Fail-safe dailyContext (index.js owns reset)
   if (!STATE.dailyContext || !Array.isArray(STATE.dailyContext.contexts)) {
@@ -28,17 +38,7 @@ export async function hinduNewsPollingLoop() {
     };
   }
 
-  const MAX_AGE_HOURS = Number(process.env.HINDU_MAX_AGE_HOURS || 24);
-  const SEEN_RETENTION_HOURS = Number(
-    process.env.HINDU_SEEN_RETENTION_HOURS || 48
-  );
-  const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-
-  const MAX_AGE_MS = MAX_AGE_HOURS * 60 * 60 * 1000;
-  const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
-
   try {
-    // 🧹 Prune old seen entries (same as BBC / IE)
     const now = Date.now();
     let pruned = 0;
 
@@ -52,7 +52,6 @@ export async function hinduNewsPollingLoop() {
     if (pruned > 0) {
       console.log(`🧹 Pruned ${pruned} old Hindu seen entries`);
     }
-
     // 📰 Fetch RSS
     const items = await fetchHinduCricketRSS();
     if (!Array.isArray(items) || items.length === 0) {
@@ -69,7 +68,7 @@ export async function hinduNewsPollingLoop() {
     for (const item of sorted) {
       const pubMs = getPubDate(item);
       if (!pubMs) continue;
-      if (Date.now() - pubMs > MAX_AGE_MS) continue;
+      if (Date.now() - pubMs > TWEET_MAX_AGE_MS) continue;
 
       const cleanLink = normalizeHinduLink(item.link);
       if (STATE.hindu.seen[cleanLink]) continue;
@@ -83,7 +82,6 @@ export async function hinduNewsPollingLoop() {
       return;
     }
 
-    // 📄 Fetch + parse
     const html = await fetchHinduArticle(selected.link);
     const parsed = parseHinduArticle(html);
 
@@ -130,7 +128,7 @@ export async function hinduNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeHinduLink(selected.link);
-    // const tweetText = `${tweetBody}\n\nThe Hindu 🔗 ${cleanUrl}`;
+
     const tweetText = `${tweetBody}\n\n[The Hindu]`;
     const imageUrl = getHinduImageUrl(selected);
 
@@ -158,6 +156,10 @@ export async function hinduNewsPollingLoop() {
     }
 
     STATE.hindu.seen[cleanUrl] = Date.now();
+    STATE.hindu.lastPubMs = Math.max(
+      STATE.hindu.lastPubMs || 0,
+      getPubDate(selected)
+    );
     STATE.hindu.lastLink = cleanUrl;
     STATE.hindu.lastTitle = selected.title;
     STATE.hindu.visibleDate = new Date(getPubDate(selected)).toUTCString();
@@ -172,7 +174,6 @@ export async function hinduNewsPollingLoop() {
     }
 
     STATE.hindu = {
-      ...STATE.hindu,
       lastPubMs: STATE.hindu?.lastPubMs || 0,
       lastLink: STATE.hindu?.lastLink || "",
       lastTitle: STATE.hindu?.lastTitle || "",
@@ -193,7 +194,8 @@ export async function hinduNewsPollingLoop() {
 }
 
 function getPubDate(item) {
-  return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
+  const raw = item?.pubDate;
+  return raw ? new Date(raw).getTime() : 0;
 }
 
 function getTodayUTC() {

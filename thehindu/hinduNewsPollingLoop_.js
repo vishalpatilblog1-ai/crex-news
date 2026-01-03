@@ -9,6 +9,8 @@ import { parseHinduArticle } from "./parseHinduArticle.js";
 import { generateHinduNewsTweet } from "./ai/generateHinduNewsTweet.js";
 import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
+import { getHinduImageUrl } from "./getHinduImage.js";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) return;
@@ -102,7 +104,11 @@ export async function hinduNewsPollingLoop() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log("🔁 Hindu context already covered — skipping");
+        console.log(
+          "🔁 Hindu context already covered — skipping- existingContexts::",
+          existingContexts
+        );
+
         STATE.hindu.seen[normalizeHinduLink(selected.link)] = Date.now();
         await saveState(STATE);
         return;
@@ -124,16 +130,33 @@ export async function hinduNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeHinduLink(selected.link);
-    const tweetText = `${tweetBody}\n\nThe Hindu 🔗 ${cleanUrl}`;
+    // const tweetText = `${tweetBody}\n\nThe Hindu 🔗 ${cleanUrl}`;
+    const tweetText = `${tweetBody}\n\n[The Hindu]`;
+    const imageUrl = getHinduImageUrl(selected);
 
     if (CONSOLE_ONLY) {
       console.log("🟡 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);
     } else {
-      await postTweet_ie_web({ text: tweetText });
+      try {
+        if (imageUrl) {
+          await tweetWithNativeImage({
+            text: tweetText,
+            imageUrl,
+          });
+        } else {
+          // rare edge case: no image
+          await postTweet_ie_web({ text: tweetText });
+        }
+      } catch (err) {
+        console.warn(
+          "⚠️ Hindu image tweet failed, falling back to text-only:",
+          err.message
+        );
+        await postTweet_ie_web({ text: tweetText });
+      }
     }
 
-    // 💾 Save state
     STATE.hindu.seen[cleanUrl] = Date.now();
     STATE.hindu.lastLink = cleanUrl;
     STATE.hindu.lastTitle = selected.title;
@@ -147,6 +170,20 @@ export async function hinduNewsPollingLoop() {
         createdAt: new Date().toISOString(),
       });
     }
+
+    STATE.hindu = {
+      ...STATE.hindu,
+      lastPubMs: STATE.hindu?.lastPubMs || 0,
+      lastLink: STATE.hindu?.lastLink || "",
+      lastTitle: STATE.hindu?.lastTitle || "",
+      visibleDate: STATE.hindu?.visibleDate || null,
+      seen: STATE.hindu?.seen || {},
+    };
+
+    STATE.dailyContext = {
+      date: STATE.dailyContext.date,
+      contexts: STATE.dailyContext.contexts || [],
+    };
 
     await saveState(STATE);
     console.log("🟢 Hindu state + dailyContext saved");

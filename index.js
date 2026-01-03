@@ -11,10 +11,7 @@ import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
 
-// global.BBC_STATE_READY = false;
-
 const log = createLogger("prod");
-// console.log("BBC polling started v2");
 
 async function bootstrap() {
   global.STATE = await loadState();
@@ -54,7 +51,7 @@ async function bootstrap() {
   }
   if (process.env.ENABLE_PROBATSMAN_NEWS_POLLING === "true") {
     console.log("📰 ProBatsman news polling enabled");
-    setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 4);
+    setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 8);
   }
 }
 
