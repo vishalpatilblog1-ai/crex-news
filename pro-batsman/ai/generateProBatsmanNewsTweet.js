@@ -30,8 +30,8 @@ STRUCTURE:
 - No filler lines
 
 LENGTH:
-- Maximum 280 characters
-- Prefer 180–240 characters
+- Maximum 240 characters
+- Prefer 180–220 characters
 
 ARTICLE:
 """
