@@ -121,7 +121,10 @@ export async function ieNewsPollingLoop() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log("🔁 Skipping IE article (context already covered)");
+        console.log(
+          "🔁 Indian Express context already covered — skipping- existingContexts::",
+          existingContexts
+        );
         console.log("↳ Context:", contextDecision.newContext);
 
         const cleanLink = normalizeIELink(selected.link);

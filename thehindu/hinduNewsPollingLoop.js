@@ -104,7 +104,11 @@ export async function hinduNewsPollingLoop() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log("🔁 Hindu context already covered — skipping");
+        console.log(
+          "🔁 Hindu context already covered — skipping- existingContexts::",
+          existingContexts
+        );
+
         STATE.hindu.seen[normalizeHinduLink(selected.link)] = Date.now();
         await saveState(STATE);
         return;

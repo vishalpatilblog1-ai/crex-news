@@ -82,6 +82,10 @@ export async function probatsmanNewsPollingLoop() {
         contextDecision?.isAlreadyCovered &&
         contextDecision?.confidence >= 0.8
       ) {
+        console.log(
+          "🔁 ProBatsman context already covered — skipping - existingContexts::",
+          existingContexts
+        );
         STATE.probatsman.seen[normalizeProBatsmanLink(selected.link)] =
           Date.now();
         await saveState(STATE);
