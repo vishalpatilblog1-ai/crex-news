@@ -159,12 +159,10 @@ export async function ieNewsPollingLoop() {
       console.log("🟡 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);
     } else {
-      // await postTweet_ie_web({ text: tweetText });
       try {
         if (imageUrl) {
           await tweetWithNativeImage({ text: tweetText, imageUrl });
         } else {
-          // fallback: no image available in RSS
           await postTweet_ie_web({ text: tweetText });
         }
       } catch (err) {
@@ -190,6 +188,20 @@ export async function ieNewsPollingLoop() {
         createdAt: new Date().toISOString(),
       });
     }
+
+    STATE.ie = {
+      ...STATE.ie,
+      lastPubMs: STATE.ie?.lastPubMs || 0,
+      lastLink: STATE.ie?.lastLink || "",
+      lastTitle: STATE.ie?.lastTitle || "",
+      visibleDate: STATE.ie?.visibleDate || null,
+      seen: STATE.ie?.seen || {},
+    };
+
+    STATE.dailyContext = {
+      date: STATE.dailyContext.date,
+      contexts: STATE.dailyContext.contexts || [],
+    };
 
     await saveState(STATE);
     console.log("🟢 IE state + dailyContext saved");

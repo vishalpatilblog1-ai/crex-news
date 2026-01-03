@@ -153,14 +153,6 @@ export async function hinduNewsPollingLoop() {
       }
     }
 
-    // if (CONSOLE_ONLY) {
-    //   console.log("🟡 CONSOLE MODE — Tweet skipped");
-    //   console.log(tweetText);
-    // } else {
-    //   await postTweet_ie_web({ text: tweetText });
-    // }
-
-    // 💾 Save state
     STATE.hindu.seen[cleanUrl] = Date.now();
     STATE.hindu.lastLink = cleanUrl;
     STATE.hindu.lastTitle = selected.title;
@@ -174,6 +166,20 @@ export async function hinduNewsPollingLoop() {
         createdAt: new Date().toISOString(),
       });
     }
+
+    STATE.hindu = {
+      ...STATE.hindu,
+      lastPubMs: STATE.hindu?.lastPubMs || 0,
+      lastLink: STATE.hindu?.lastLink || "",
+      lastTitle: STATE.hindu?.lastTitle || "",
+      visibleDate: STATE.hindu?.visibleDate || null,
+      seen: STATE.hindu?.seen || {},
+    };
+
+    STATE.dailyContext = {
+      date: STATE.dailyContext.date,
+      contexts: STATE.dailyContext.contexts || [],
+    };
 
     await saveState(STATE);
     console.log("🟢 Hindu state + dailyContext saved");

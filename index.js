@@ -2,13 +2,14 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { loadState } from "./utils/stateStoreCloud.js";
+import { loadState, saveState } from "./utils/stateStoreCloud.js";
 import { createLogger } from "./utils/logger.js";
 
 import { bbcNewsPollingLoop } from "./bbc/bbcNewsPollingLoop.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
 import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
+import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
 
 // global.BBC_STATE_READY = false;
 
@@ -17,17 +18,19 @@ const log = createLogger("prod");
 
 async function bootstrap() {
   global.STATE = await loadState();
-  // global.BBC_STATE_READY = true;
 
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
 
   const today = new Date().toISOString().slice(0, 10);
-  if (!STATE.dailyContext || STATE.dailyContext.date !== today) {
-    STATE.dailyContext = {
+
+  if (!global.STATE.dailyContext || global.STATE.dailyContext.date !== today) {
+    console.log("🗓️ Initializing dailyContext for", today);
+    global.STATE.dailyContext = {
       date: today,
       contexts: [],
     };
+    await saveState(global.STATE);
   }
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
@@ -42,12 +45,16 @@ async function bootstrap() {
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 5);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("📰 The Hindu news polling enabled");
-    setInterval(hinduNewsPollingLoop, 1000 * 60 * 10);
+    setInterval(hinduNewsPollingLoop, 1000 * 60 * 5);
+  }
+  if (process.env.ENABLE_PROBATSMAN_NEWS_POLLING === "true") {
+    console.log("📰 ProBatsman news polling enabled");
+    setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 8);
   }
 }
 
