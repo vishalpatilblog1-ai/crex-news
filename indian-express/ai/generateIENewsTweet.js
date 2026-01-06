@@ -46,7 +46,7 @@ export async function generateIENewsTweet(articleText) {
   - Body: 2 punchy sentences. 
     * ALGORITHMIC TRIGGER: If the news involves a record, milestone, or ranking, you MUST mention if it is the "fastest," "highest," or "first ever" to maximize Dwell Time.
   - Spacing: Use a double line break before the engagement question.
-  - The "Gully Point" Debate Rule: End with a "Comparison" or "Choice-based" question. Instead of asking for a general opinion, force the user to choose between two players/sides or give a Yes/No answer.
+  - The "Gully Point" Debate Rule: End with a "Comparison" or "Choice-based" question. Instead of asking for a general opinion, force the user to choose between two players/sides.
 
   STRUCTURE:
   1. [CAPITALIZED HEADER] [EMOJI]

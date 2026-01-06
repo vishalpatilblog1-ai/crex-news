@@ -12,7 +12,7 @@ async function runTest() {
   try {
     // const tweet = await generateViralTweet(SAMPLE_BODY, 240);
     const testLink =
-      "https://www.probatsman.com/cricket-news/bangladesh-bans-ipl-2026-broadcasts-amid-mustafizur-rahman-row-with-bcci";
+      "https://indianexpress.com/sports/india-vs-england-2016/cricket-1st-test-joe-root-moeen-ali-steer-england-to-3114-on-day-1-4366134/";
     const html = await fetchIEArticle(testLink);
     const parsed = parseIEArticle(html);
     // console.log("parsed::", parsed);
