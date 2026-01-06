@@ -120,7 +120,10 @@ export async function hinduNewsPollingLoop() {
     let tweetBody;
     try {
       // tweetBody = await generateHinduNewsTweet(parsed.body);
-      tweetBody = await generateCommonStyleTweet(parsed.body, "The Hindu");
+      tweetBody = await generateCommonStyleTweet(
+        parsed.headline + parsed.body,
+        "The Hindu"
+      );
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");

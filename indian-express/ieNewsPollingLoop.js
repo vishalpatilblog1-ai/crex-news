@@ -145,7 +145,10 @@ export async function ieNewsPollingLoop() {
 
     try {
       // tweetBody = await generateIENewsTweet(parsed.body);
-      tweetBody = await generateCommonStyleTweet(parsed.body, "Indian Express");
+      tweetBody = await generateCommonStyleTweet(
+        parsed.headline + parsed.body,
+        "Indian Express"
+      );
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
