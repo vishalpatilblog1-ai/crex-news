@@ -8,7 +8,7 @@ const client = new OpenAI({
 });
 
 export async function generateCommonStyleTweet(articleText, source) {
-  const sourceTag = source && source !== "Gully Point" ? `- [${source}]` : "";
+  const sourceTag = source && source !== "Gully Point" ? ` - [${source}]` : "";
 
   const prompt = `
   You are the Lead Editor for 'Gully Point', a premium cricket news outlet on X. 
