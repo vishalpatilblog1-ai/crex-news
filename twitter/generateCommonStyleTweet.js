@@ -23,7 +23,7 @@ export async function generateCommonStyleTweet(articleText, source) {
 
   ---
   STEP 2: STYLE & CHARACTER RULES
-  - NO MARKDOWN: Use PLAIN TEXT only. No asterisks, underscores, or hashtags.
+  - NO MARKDOWN: Use PLAIN TEXT only.
   - HEADER: 2-3 words ALL CAPS + ONE emoji based on the Mood (HYPE: 🔥, CRITICAL: 🚨, EMOTIONAL: 🏟️).
   - **NAME LOCK & ANCHOR**: The player(s) in the headline MUST be in the Header and the first sentence.
   - CHARACTER LIMIT: Total tweet MUST be under 260 characters.
