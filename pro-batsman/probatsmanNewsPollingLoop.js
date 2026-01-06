@@ -62,7 +62,10 @@ export async function probatsmanNewsPollingLoop() {
       break;
     }
 
-    if (!selected) return;
+    if (!selected) {
+      console.log("🟡 No eligible probatsman articles");
+      return;
+    }
 
     // 📄 Parse from RSS content
     const parsed = parseProBatsmanArticle(
