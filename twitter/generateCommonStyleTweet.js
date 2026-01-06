@@ -27,9 +27,9 @@ export async function generateCommonStyleTweet(articleText, source) {
   
     STRUCTURE:
     1. [CAPITALIZED HEADER] [EMOJI]
-    2. . (This dot forces a clean break)
+    2. (Line break)
     3. [The News Detail with Stats/Records]${sourceTag}
-    4. . (This dot forces a clean break)
+    4. (Line break)
     5. [Choice/Comparison Question] + 👇
   
     ARTICLE:
