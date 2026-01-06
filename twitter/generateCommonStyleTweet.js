@@ -23,7 +23,7 @@ export async function generateCommonStyleTweet(articleText, source) {
       * ALGORITHMIC TRIGGER: If the news involves a record or milestone, you MUST mention if it is the "fastest," "highest," or "first ever" to maximize Dwell Time.
     - Source Attribution: If a source is provided, it must be placed at the end of the news body.
     - Spacing: Use a double line break before the engagement question.
-    - The "Gully Point" Debate Rule: End with a "Comparison" or "Choice-based" question. Instead of asking for a general opinion, force the user to choose between two specific players, teams, or a Yes/No.
+    - The "Gully Point" Debate Rule: End with a "Comparison" or "Choice-based" question. Instead of asking for a general opinion, force the user to choose between two specific players, teams.
   
     STRUCTURE:
     1. [CAPITALIZED HEADER] [EMOJI]
