@@ -43,7 +43,7 @@ export async function generateCommonStyleTweet(articleText, source) {
   2. (Line break)
   3. [News Body anchoring Header Subject to stats] ${sourceTag}
   4. (Empty Line)
-  5. [Comparison Question featuring Headline Subject] + 👇
+  5. [Comparison Question featuring Headline Subject]
 
   ---
   ARTICLE DATA:
