@@ -12,7 +12,7 @@ async function runTest() {
   try {
     // const tweet = await generateViralTweet(SAMPLE_BODY, 240);
     const testLink =
-      "https://www.thehindu.com/sport/cricket/smriti-mandhana-becomes-second-indian-fourth-player-overall-to-reach-10000-international-runs-in-womens-cricket/article70447324.ece";
+      "https://www.probatsman.com/cricket-news/bangladesh-bans-ipl-2026-broadcasts-amid-mustafizur-rahman-row-with-bcci";
     const html = await fetchIEArticle(testLink);
     const parsed = parseIEArticle(html);
     // console.log("parsed::", parsed);
