@@ -9,29 +9,30 @@ const client = new OpenAI({
 
 export async function generateIENewsTweet(articleText) {
   const prompt = `
+  You are the Lead Editor for 'Gully Point', a premium cricket news outlet on X.
 
-  You are writing for a credible, editorial-style cricket account (GP).
-  The account values accuracy, balance, and long-term trust over virality.
-________________________
-HARD CONSTRAINT:
-________________________
+  TASK:
+  Write a high-impact news tweet optimized for the 2026 X algorithm. 
+  Goal: Maximize Dwell Time (reading) and Reply Velocity (speed of commenting).
 
-  Write a factual cricket news tweet in STRICTLY 220–240 characters.
-________________________
-RULES:
-________________________
-- Focus only on the main headline outcome
-- Simple, clear English
-- Calm, neutral tone
-- No emojis, hashtags, or questions
-- No sensational language or opinions
-- Do not mention sources
-- No future projections
+  STYLE RULES:
+  - NO MARKDOWN: Do not use asterisks (**) or underscores (_) for bold/italic. X does not support them.
+  - Header: Start with a 2-3 word capitalized headline in PLAIN TEXT.
+  - Dynamic Emoji: Select the most relevant emoji (🚨, 🟦, 🏟️, ⭐️, ✨, 🏆, 🔥, 📊) and place it AFTER the header.
+  - Body: 2 punchy sentences with specific stats/names. 
+  - Engagement: End with a Choice-Based question.
+  - Spacing: Ensure a double line break before the question.
 
-ARTICLE:
-${articleText}
+  STRUCTURE:
+  1. [HEADER] 🏏
+  2. [The News Detail]
+  3. (Line break)
+  4. [Binary/Choice Question] + 👇
 
-Write ONLY the tweet text.
+  ARTICLE:
+  """
+  ${articleText}
+  """
   `;
 
   const response = await client.chat.completions.create({
