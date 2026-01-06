@@ -13,7 +13,7 @@ async function runTest() {
   try {
     // const tweet = await generateViralTweet(SAMPLE_BODY, 240);
     const testLink =
-      "https://www.thehindu.com/sport/cricket/aus-vs-eng-fifth-ashes-test-day-three-in-sydney-updates-on-january-6-2026/article70476622.ece";
+      "https://www.thehindu.com/sport/cricket/icc-womens-t20-rankings-harmanpreet-kaur-moves-up-two-places-deepti-loses-top-spot/article70477684.ece";
     const html = await fetchIEArticle(testLink);
     const parsed = parseIEArticle(html);
     // console.log("parsed::", parsed);
@@ -23,7 +23,7 @@ async function runTest() {
     // console.log(tweet_news);
 
     const tweet_spice = await generateCommonStyleTweet(
-      parsed.body,
+      parsed.headline + parsed.body,
       "Indian Express"
     );
     console.log("✅ AI spice Tweet Output:");
