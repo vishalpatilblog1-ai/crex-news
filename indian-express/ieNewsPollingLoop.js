@@ -1,5 +1,6 @@
 // ieNewsPollingLoop.js
 
+import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -143,7 +144,9 @@ export async function ieNewsPollingLoop() {
     let tweetBody;
 
     try {
-      tweetBody = await generateIENewsTweet(parsed.body);
+      // tweetBody = await generateIENewsTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(parsed.body);
+
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }

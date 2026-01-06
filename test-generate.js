@@ -12,7 +12,7 @@ async function runTest() {
   try {
     // const tweet = await generateViralTweet(SAMPLE_BODY, 240);
     const testLink =
-      "https://indianexpress.com/sports/india-vs-england-2016/cricket-1st-test-joe-root-moeen-ali-steer-england-to-3114-on-day-1-4366134/";
+      "https://www.probatsman.com/cricket-analysis/ind-vs-sa-2025-himachal-pradesh-cricket-association-stadium-hpca-dharamsala-pitch-report-playing-condition-ahead-of-3rd-t20i";
     const html = await fetchIEArticle(testLink);
     const parsed = parseIEArticle(html);
     // console.log("parsed::", parsed);

@@ -11,6 +11,7 @@ import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { getHinduImageUrl } from "./getHinduImage.js";
+import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) return;
@@ -118,7 +119,9 @@ export async function hinduNewsPollingLoop() {
     // ✍️ Tweet generation
     let tweetBody;
     try {
-      tweetBody = await generateHinduNewsTweet(parsed.body);
+      // tweetBody = await generateHinduNewsTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(parsed.body);
+
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }

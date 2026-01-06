@@ -14,6 +14,7 @@ import { generateProBatsmanNewsTweet } from "./ai/generateProBatsmanNewsTweet.js
 import { generateProBatsmanFallbackTweet } from "./ai/generateProBatsmanFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
+import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
 
 export async function probatsmanNewsPollingLoop() {
   if (!global.STATE) return;
@@ -96,7 +97,9 @@ export async function probatsmanNewsPollingLoop() {
     // ✍️ Tweet
     let tweetBody;
     try {
-      tweetBody = await generateProBatsmanNewsTweet(parsed.body);
+      // tweetBody = await generateProBatsmanNewsTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(parsed.body);
+
       if (!tweetBody || tweetBody.length < 30) throw new Error();
     } catch {
       tweetBody = generateProBatsmanFallbackTweet(selected);
