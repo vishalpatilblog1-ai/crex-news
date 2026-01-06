@@ -98,7 +98,7 @@ export async function probatsmanNewsPollingLoop() {
     let tweetBody;
     try {
       // tweetBody = await generateProBatsmanNewsTweet(parsed.body);
-      tweetBody = await generateCommonStyleTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(parsed.body, "");
 
       if (!tweetBody || tweetBody.length < 30) throw new Error();
     } catch {

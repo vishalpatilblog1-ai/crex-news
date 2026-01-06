@@ -145,7 +145,7 @@ export async function ieNewsPollingLoop() {
 
     try {
       // tweetBody = await generateIENewsTweet(parsed.body);
-      tweetBody = await generateCommonStyleTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(parsed.body, "Indian Express");
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
@@ -157,7 +157,8 @@ export async function ieNewsPollingLoop() {
 
     const cleanUrl = normalizeIELink(selected.link);
     // const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
-    const tweetText = `${tweetBody}\n\n[Indian Express]`;
+    // const tweetText = `${tweetBody}\n\n[Indian Express]`;
+    const tweetText = `${tweetBody}`;
     const imageUrl = getIEImageUrl(selected);
     console.log("imageUrl::", imageUrl);
 

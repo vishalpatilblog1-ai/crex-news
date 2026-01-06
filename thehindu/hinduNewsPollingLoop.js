@@ -120,7 +120,7 @@ export async function hinduNewsPollingLoop() {
     let tweetBody;
     try {
       // tweetBody = await generateHinduNewsTweet(parsed.body);
-      tweetBody = await generateCommonStyleTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(parsed.body, "The Hindu");
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
@@ -132,7 +132,8 @@ export async function hinduNewsPollingLoop() {
 
     const cleanUrl = normalizeHinduLink(selected.link);
 
-    const tweetText = `${tweetBody}\n\n[The Hindu]`;
+    // const tweetText = `${tweetBody}\n\n[The Hindu]`;
+    const tweetText = `${tweetBody}`;
     const imageUrl = getHinduImageUrl(selected);
 
     if (CONSOLE_ONLY) {
