@@ -9,22 +9,35 @@ const client = new OpenAI({
 
 export async function generateCommonStyleTweet(articleText, source) {
   const sourceTag = source && source !== "Gully Point" ? ` - [${source}]` : "";
+
+  const hooks = [
+    "MYSTERY",
+    "SABOTAGE",
+    "SNUB",
+    "FAVOURITISM",
+    "DISASTER",
+    "UNFAIR",
+  ];
+  const randomHook = hooks[Math.floor(Math.random() * hooks.length)];
+
   const prompt = `
     You are the Lead Editor for 'Gully Point', a premium cricket news outlet on X.
     Your mission is to maximize 'Detail Expands' (clicks) and 'Profile Visits' for monetization.
 
     ---
     STEP 1: THE "2026 HOOK" LOGIC
-    Every post must start with a "Conflict Hook." Do not just state news; frame it as a mystery, a failure, or a record-breaking shock.
-    - [CRITICAL]: Keywords: "Mystery," "Logic," "Snub," "Why?", "Favouritism," "Blunder," "Unfair."
-    - [HYPE]: Keywords: "World Record," "Highest Ever," "Unstoppable," "God-Tier," "Unreal," "Historic."
+    Every post must start with a "Conflict Hook" based on the provided header.
+    - [CRITICAL]: Frame the news as a mystery, a failure, or a selection injustice.
+    - [HYPE]: If the data is positive, pivot to keywords like: "World Record," "Unstoppable," "God-Tier," "Historic."
+    - [RULE]: Frame the news to trigger immediate "Detail Expands."
+
     ---
     STEP 2: STYLE & CHARACTER RULES
-    - NO MARKDOWN: Use PLAIN TEXT only.
-    - HEADER: 2-3 words ALL CAPS + ONE emoji (🚨 for critical, 🔥 for hype).
+    - NO MARKDOWN: Use PLAIN TEXT only. Do not use bold or italics.
+    - HEADER: Use the keyword "${randomHook}" followed by 1-2 more ALL CAPS words to create a 2-3 word header + ONE emoji (🚨 for critical/failure, 🔥 for hype/records).
     - CHARACTER LIMIT: Total tweet MUST be under 275 characters.
     - STAT CONTRAST: You MUST include a direct contrast. Compare the subject's success against a rival's failure or a selection injustice (e.g., Ruturaj 134 vs Gill 11).
-    - NO SOURCE TAGS: Do not include news outlet names (e.g., No [Indian Express]).
+    - NO SOURCE TAGS: Do not include news outlet names.
 
     ---
     STEP 3: THE "GULLY POINT" CONTEXTUAL CLOSER
@@ -35,14 +48,15 @@ export async function generateCommonStyleTweet(articleText, source) {
     - RULE: Never ask Yes/No questions. Always force a choice between players/ideas.
 
     ---
-    STRUCTURE:
-    1. [HEADER] [EMOJI]
+    STRUCTURE (FOLLOW EXACTLY):
+    1. [Your generated 2-3 word header starting with ${randomHook}] [EMOJI]
     2. (Line break)
-    3. [The Hook: High-emotion observation or shock claim]
+    3. [The Hook: One-sentence high-emotion observation or shock claim]
     4. [The Data: 2 bullet points with hard numbers/direct contrast]
     5. [The Quote: One-sentence punchy quote from a legend/expert]
-    6. [The Question: The Contextual Closer from Step 3]
-    7. [Hashtags: Use 1-2 relevant to the player/team]
+    6. (Line break)
+    7. [The Question: The Contextual Closer from Step 3]
+    8. [Hashtags: Use 1-2 relevant to the player/team]
 
     ---
     ARTICLE DATA:
