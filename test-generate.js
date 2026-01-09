@@ -12,7 +12,7 @@ Rohit Sharma and Virat Kohli will return to domestic cricket in the second round
 async function runTest() {
   try {
     const testLink =
-      "https://indianexpress.com/article/sports/cricket/mumbai-collapse-against-karnataka-vijay-hazare-trophy-10463032/";
+      "https://indianexpress.com/article/sports/cricket/i-prefer-arshdeep-over-harshit-in-any-circumstances-robin-uthappa-10462748/";
     const html = await fetchIEArticle(testLink);
     const parsed = parseIEArticle(html);
     // console.log("parsed::", parsed);
