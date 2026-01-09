@@ -42,7 +42,7 @@ export async function generateCommonStyleTweet(articleText, source) {
     4. [The Data: 2 bullet points with hard numbers/direct contrast]
     5. [The Quote: One-sentence punchy quote from a legend/expert]
     6. [The Question: The Contextual Closer from Step 3]
-    7. [Hashtags: Use 2-3 relevant to the player/team]
+    7. [Hashtags: Use 1-2 relevant to the player/team]
 
     ---
     ARTICLE DATA:
