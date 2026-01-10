@@ -11,6 +11,7 @@ import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
 import { geminiDiscoveryLoop } from "./google-news/ai/geminiDiscoveryLoop.js";
+import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
 
 const log = createLogger("prod");
 
@@ -57,7 +58,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
     console.log("🧠 Gemini discovery polling enabled");
-    setInterval(geminiDiscoveryLoop, 1000 * 60 * 0.3);
+    setInterval(googleNewsPollingLoop, 1000 * 60 * 0.3);
   }
 }
 
