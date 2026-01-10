@@ -63,14 +63,31 @@ export async function geminiDiscoveryLoop() {
 
   const STATE = global.STATE;
 
-  if (!STATE.dailyContext) {
+  if (
+    !STATE.dailyContext ||
+    STATE.dailyContext.date !== new Date().toISOString().slice(0, 10)
+  ) {
     STATE.dailyContext = {
       date: new Date().toISOString().slice(0, 10),
       contexts: [],
     };
   }
 
+  // 🛡️ SECOND GUARD — this is the missing one
+  if (!Array.isArray(STATE.dailyContext.contexts)) {
+    STATE.dailyContext.contexts = [];
+  }
+
   const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
+
+  // if (!STATE.dailyContext) {
+  //   STATE.dailyContext = {
+  //     date: new Date().toISOString().slice(0, 10),
+  //     contexts: [],
+  //   };
+  // }
+
+  // const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
 
   const existingSummaries = existingContexts.join(", ");
 
