@@ -58,7 +58,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
     console.log("🧠 Gemini discovery polling enabled");
-    setInterval(googleNewsPollingLoop, 1000 * 60 * 0.3);
+    setInterval(googleNewsPollingLoop, 1000 * 60 * 15);
   }
 }
 

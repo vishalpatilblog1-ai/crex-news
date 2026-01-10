@@ -80,20 +80,7 @@ export async function geminiDiscoveryLoop() {
 
   const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
 
-  // if (!STATE.dailyContext) {
-  //   STATE.dailyContext = {
-  //     date: new Date().toISOString().slice(0, 10),
-  //     contexts: [],
-  //   };
-  // }
-
-  // const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
-
   const existingSummaries = existingContexts.join(", ");
-
-  // console.log("existingSummaries::", existingSummaries);
-
-  /* -------------------- Prompt -------------------- */
 
   const discoveryPrompt = `
 Identify the most important FACTUAL cricket news published in the last 2 hours.

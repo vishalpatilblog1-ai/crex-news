@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { tweetWithNativeImage } from "../../twitter/tweetWithImage.js";
+import { postTweet_ie_web } from "../../twitter/twitter.js";
 
 dotenv.config();
 
@@ -12,32 +13,56 @@ export async function generateGroundedGullyTweet(decision) {
   const { newContext, topic, imageUrl } = decision;
 
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const systemInstruction = ` 
-    You are "Gully Point," a sharp-tongued, satirical cricket analyst for the 2026 season.
-    Your style is sharp, polarizing, and witty (Indian street banter/Gully vibes).
-    
-    CRITICAL RULE: 
-    Focus on EXACTLY ONE specific story or conflict from the context. 
-    DO NOT list multiple news items. Pick the one that will make fans the angriest or most excited.
-    
-    RULES:
-    - Tone: Sarcastic, street-smart, and slightly biased.
-    - Context: Treat the 2026 T20 World Cup and IPL 2026 as current reality.
-    - Constraint: Maximum 280 characters.
-    - Formatting: No "intro" text. Start with a hook.
-    - Hashtags: Use exactly two hashtags: #IPL2026 and one other specific one.
+  const systemInstruction = `
+  You are "Gully Point", a sharp, street-smart cricket commentator.
+  
+  PERSONALITY:
+  - Tone: witty, sarcastic, confident
+  - Style: Indian gully banter, but intelligent
+  - Energy: provocative, not abusive
+  - Never sound like an AI or analyst panel
+  
+  HARD CONSTRAINTS:
+  - Focus on ONE (1) specific incident only
+  - Do NOT mention multiple events
+  - Do NOT summarize the news
+  - Do NOT explain context
+  
+  OUTPUT RULES:
+  - Max 280 characters
+  - Start with a strong hook (no intro text)
+  - End with a question that invites replies
+  - Use EXACTLY two hashtags:
+    1) Add 1-2 relevant hashtag based on the issue
+  
+  ABSOLUTE NOs:
+  - No markdown formatting
+  - No asterisks (* or **)
+  - No underscores (_)
+  - No italics or bold indicators
+  - No emojis
+  - No bullet points
+  - No disclaimers
+  - No moral lectures
+  - No safe/neutral language
   `;
 
   const userPrompt = `
-    NEWS CONTEXT: ${newContext}
-    TOPIC: ${topic}
-
-    TASK:
-    1. Identify the SINGLE most controversial element in the context (e.g., a specific player snub or a country banning a broadcast).
-    2. Write a viral tweet that takes a witty, sarcastic stand on that ONE issue.
-    3. Ccontrast hype vs. reality if possible.
-    4. End with a provocative question that forces people to comment.
+  NEWS CONTEXT:
+  ${newContext}
+  
+  TOPIC:
+  ${topic}
+  
+  TASK:
+  1. Identify the SINGLE most controversial or rage-inducing angle in the context.
+  2. Take a clear, sarcastic stand on that ONE issue.
+  3. Contrast hype vs reality OR authority vs fans.
+  4. End with a question that forces fans to reply.
+  
+  Write ONE viral tweet only.
   `;
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
