@@ -26,7 +26,6 @@ export async function ieNewsPollingLoop() {
   if (!STATE.ie) STATE.ie = {};
   if (!STATE.ie.seen) STATE.ie.seen = {};
 
-  // 🔒 Fail-safe (index.js should already init this)
   if (!STATE.dailyContext || !Array.isArray(STATE.dailyContext.contexts)) {
     STATE.dailyContext = {
       date: getTodayUTC(),

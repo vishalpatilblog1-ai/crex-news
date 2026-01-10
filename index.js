@@ -10,6 +10,7 @@ import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
 import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
+import { geminiDiscoveryLoop } from "./google-news/ai/geminiDiscoveryLoop.js";
 
 const log = createLogger("prod");
 
@@ -52,6 +53,11 @@ async function bootstrap() {
   if (process.env.ENABLE_PROBATSMAN_NEWS_POLLING === "true") {
     console.log("📰 ProBatsman news polling enabled");
     setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 8);
+  }
+
+  if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
+    console.log("🧠 Gemini discovery polling enabled");
+    setInterval(geminiDiscoveryLoop, 1000 * 60 * 0.3);
   }
 }
 

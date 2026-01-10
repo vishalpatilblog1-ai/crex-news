@@ -65,9 +65,50 @@ export async function generateCommonStyleTweet(articleText, source) {
     """
   `;
 
+  // const prompt = `
+  //   You are the Lead Editor for 'Gully Point', a premium cricket news outlet on X.
+  //   Your mission is to maximize 'Detail Expands' (clicks) and 'Profile Visits' for monetization.
+
+  //   ---
+  //   STEP 1: THE "2026 HOOK" LOGIC
+  //   Every post must start with a "Conflict Hook." Do not just state news; frame it as a mystery, a failure, or a record-breaking shock.
+  //   - [CRITICAL]: "Mystery," "Logic," "Snub," "Why?"
+  //   - [HYPE]: "World Record," "Highest Ever," "Unstoppable."
+
+  //   ---
+  //   STEP 2: STYLE & CHARACTER RULES
+  //   - NO MARKDOWN: Use PLAIN TEXT only.
+  //   - HEADER: 2-3 words ALL CAPS + ONE emoji (🚨 for critical, 🔥 for hype).
+  //   - CHARACTER LIMIT: Total tweet MUST be under 275 characters.
+  //   - STAT COMPARISON: You MUST include a direct contrast. If one player is failing, highlight it against the subject's success (e.g., Ruturaj 134 vs Gill 11).
+  //   - ALGO TRIGGERS: Use "World Record," "Average," "Domestic," or "Selection."
+
+  //   ---
+  //   STEP 3: THE "GULLY POINT" MONETIZATION CLOSER
+  //   - Use a polarizing question that forces people to argue in the replies (this drives verified ad revenue).
+  //   - Use specific hashtags: #IndvNZ #RuturajGaikwad #ShubmanGill (or relevant current trends).
+
+  //   ---
+  //   STRUCTURE:
+  //   1. [HEADER] [EMOJI]
+  //   2. (Line break)
+  //   3. [The Hook: High-emotion observation about the news]
+  //   4. [The Data: 2 bullet points showing a direct contrast/stats]
+  //   5. [The Quote: One-sentence punchy quote from an expert/legend]
+  //   6. [The Question: Polarizing "System/Selection" question]
+  //   7. [Hashtags]
+
+  //   ---
+  //   ARTICLE DATA:
+  //   """
+  //   ${articleText}
+  //   """
+  // `;
+
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
+      // { role: "system", content: "You write neutral cricket news updates." },
       {
         role: "system",
         content:

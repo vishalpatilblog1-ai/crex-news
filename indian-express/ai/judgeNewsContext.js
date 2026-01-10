@@ -8,20 +8,20 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/**
- * Judge whether a news article's context is already covered today.
- *
- * @param {Object} params
- * @param {string} params.articleText - Full article body
- * @param {string[]} params.existingContexts - Array of 1–2 sentence summaries already posted today
- *
- * @returns {Promise<{
- *   newContext: string,
- *   isAlreadyCovered: boolean,
- *   matchedIndex: number | null,
- *   confidence: number
- * }>}
- */
+// /**
+//  * Judge whether a news article's context is already covered today.
+//  *
+//  * @param {Object} params
+//  * @param {string} params.articleText - Full article body
+//  * @param {string[]} params.existingContexts - Array of 1–2 sentence summaries already posted today
+//  *
+//  * @returns {Promise<{
+//  *   newContext: string,
+//  *   isAlreadyCovered: boolean,
+//  *   matchedIndex: number | null,
+//  *   confidence: number
+//  * }>}
+//  */
 export async function judgeNewsContext({ articleText, existingContexts = [] }) {
   if (!articleText || articleText.length < 50) {
     throw new Error("Article text too short for context judgment");
