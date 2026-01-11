@@ -95,6 +95,7 @@ export async function generateGroundedGullyTweet(decision) {
     5. [The Data: One sentence comparing stats or authority vs fans using hard numbers]
     6. (Line break)
     7. [The Question: A polarizing question forcing a choice between two players or ideas]
+    8. (Line break)
 
     HASHTAGS:
     - First hashtag MUST be #IPL2026
