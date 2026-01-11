@@ -36,81 +36,48 @@ export async function generateGroundedGullyTweet(decision) {
   `;
 
   const userPrompt = `
-    NEWS CONTEXT: ${decision.newContext}
-    TOPIC: ${decision.topic}
-
-    EMOJI USAGE RULE (STRICT):
-
-    You may use ONLY ONE emoji, chosen strictly from ["🚨", "🗣️", "📢"].
-    
-    🚨 USE ONLY IF ALL CONDITIONS ARE TRUE:
-    - The news is officially announced (board / government / league)
-    - The decision has immediate impact
-    - The information is time-sensitive (same-day relevance)
-    
-    Examples where 🚨 is allowed:
-    - Ban announced
-    - Emergency withdrawal
-    - Rule enforced with instant effect
-    
-    DO NOT use 🚨 for:
-    - Reactions
-    - Fallout
-    - Opinions
-    - Fan anger
-    - Analysis
-    
-    🗣️ USE FOR REACTIONS AND OUTRAGE:
-    Use 🗣️ when the story focuses on:
-    - Fan anger or public pushback
-    - Player or stakeholder voices
-    - Emotional or political reactions
-    
-    Examples:
-    - Fans furious over a decision
-    - Players speak out
-    - Country reacts to a move
-    
-    🗣️ is the DEFAULT emoji for non-breaking controversies.
-    
-    📢 USE FOR STATEMENTS OR EXPLANATIONS:
-    Use 📢 when:
-    - An authority clarifies a decision
-    - A board or official explains or defends a move
-    - A stance or justification is issued
-    
-    Examples:
-    - Board explanation
-    - Official clarification
-    - Media briefing
-    
-    📢 signals an announcement or positioning, NOT an emergency.
-
-    TASK:
-    Follow this structure EXACTLY:
-    1. [HEADER} [${selectedHook} + 1-4 ALL CAPS WORDS] [${raondomEmojis}]
-    2. (Line break)
-    3. [The Hook: One-sentence high-emotion shock claim about the news]
-    4. (Line break)
-    5. [The Data: One sentence comparing stats or authority vs fans using hard numbers]
-    6. (Line break)
-    7. [The Question: A polarizing question forcing a choice between two players or ideas]
-    8. (Line break)
-
-    HASHTAGS:
-    - First hashtag MUST be #IPL2026
-    - Second must be context-relevant
-    - Exactly two total
-
-    Example of desired format:
-    RUTURAJ GAIKWAD HITS A MAIDEN ODI TON AND 15 LIST-A CENTURIES ONLY TO BE BENCHED FOR A NEWBIE. 🇮🇳
-
-    Despite Rutu smashing 100s for fun and Sanju Samson carrying a 56+ ODI average, the selectors have handed Dhruv Jurel an ODI debut on a silver platter. 
-    
-    Jurel has 0 international experience in this format, yet he’s leapfrogged everyone to replace Rishabh Pant.
-    
-    Is the "Godfather" culture back in BCCI, or are they just blind to Rutu and Sanju’s dominance ?
-    #IPL2026 #T20WorldCup
+  NEWS CONTEXT:
+  ${decision.newContext}
+  
+  TOPIC:
+  ${decision.topic}
+  
+  EMOJI USAGE RULE (STRICT):
+  - You may use ONLY ONE emoji
+  - Emoji must be chosen from ["🚨", "🗣️", "📢"]
+  - Emoji may appear ONLY in the HEADER
+  - Do NOT use emojis anywhere else
+  
+  TASK:
+  Generate a neutral but engaging international cricket tweet.
+  Frame the issue as a debated decision, policy question, or unresolved situation.
+  Focus on implications, not emotions.
+  Do NOT take sides.
+  
+  REQUIRED STRUCTURE:
+  1. HEADER: ${selectedHook} + 2–4 ALL CAPS WORDS + ONE EMOJI
+  2. Line break
+  3. Context line: a factual summary of what has happened or been decided
+  4. Line break
+  5. Impact line: why this matters for international cricket, teams, or players
+  6. Line break
+  7. Closing question: an open-ended analytical question (not A vs B outrage)
+  
+  STYLE RULES:
+  - Plain text only
+  - NO asterisks (*), NO underscores (_), NO markdown
+  - Emphasis ONLY via CAPITAL LETTERS (max 2–4 words)
+  - Calm, analytical, newsroom-style tone
+  
+  SAFETY RULES (MANDATORY):
+  - Do NOT imply pressure, coercion, or hidden intent
+  - Do NOT frame speculation as certainty
+  - Do NOT use emotive or nationalistic language
+  
+  HASHTAGS:
+  - Exactly TWO hashtags
+  - First hashtag MUST be #IPL2026
+  - Second must be internationally relevant (e.g., #Cricket, #ICC, #T20WorldCup)
   `;
 
   try {
