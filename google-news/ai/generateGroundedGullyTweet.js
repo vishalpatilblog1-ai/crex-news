@@ -91,9 +91,10 @@ export async function generateGroundedGullyTweet(decision) {
     1. [HEADER} [${selectedHook} + 1-4 ALL CAPS WORDS] [${raondomEmojis}]
     2. (Line break)
     3. [The Hook: One-sentence high-emotion shock claim about the news]
-    4. [The Data: One sentence comparing stats or authority vs fans using hard numbers]
-    5. (Line break)
-    6. [The Question: A polarizing question forcing a choice between two players or ideas]
+    4. (Line break)
+    5. [The Data: One sentence comparing stats or authority vs fans using hard numbers]
+    6. (Line break)
+    7. [The Question: A polarizing question forcing a choice between two players or ideas]
 
     HASHTAGS:
     - First hashtag MUST be #IPL2026
@@ -101,12 +102,13 @@ export async function generateGroundedGullyTweet(decision) {
     - Exactly two total
 
     Example of desired format:
-    ${selectedHook} FOR THE HISTORY 🔥
+    RUTURAJ GAIKWAD HITS A MAIDEN ODI TON AND 15 LIST-A CENTURIES ONLY TO BE BENCHED FOR A NEWBIE. 🇮🇳
+
+    Despite Rutu smashing 100s for fun and Sanju Samson carrying a 56+ ODI average, the selectors have handed Dhruv Jurel an ODI debut on a silver platter. 
     
-    The Prince of Ahmedabad is officially back in the gully after the selectors woke up.
-    Gill 2026 average of 14.2 looks like a phone PIN compared to Samson's 145 strike rate.
+    Jurel has 0 international experience in this format, yet he’s leapfrogged everyone to replace Rishabh Pant.
     
-    Brand value or actual runs: what wins you the 2026 Trophy?
+    Is the "Godfather" culture back in BCCI, or are they just blind to Rutu and Sanju’s dominance ?
     #IPL2026 #T20WorldCup
   `;
 
