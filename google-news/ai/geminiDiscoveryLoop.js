@@ -83,7 +83,11 @@ export async function geminiDiscoveryLoop() {
   const existingSummaries = existingContexts.join(", ");
 
   const discoveryPrompt = `
-Identify the most important FACTUAL cricket news published in the last 2 hours.
+IMPORTANT:
+- Identify ONLY ONE news event.
+- Do NOT combine multiple unrelated developments.
+- If multiple important events exist, return ONLY the most impactful ONE.
+- Never merge two stories into a single summary.
 
 Strictly limit scope to:
 - India National Cricket Team
