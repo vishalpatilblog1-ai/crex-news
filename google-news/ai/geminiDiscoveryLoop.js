@@ -82,31 +82,60 @@ export async function geminiDiscoveryLoop() {
 
   const existingSummaries = existingContexts.join(", ");
 
+  //   const discoveryPrompt = `
+  //     IMPORTANT:
+  //     - Identify ONLY ONE news event.
+  //     - Do NOT combine multiple unrelated developments.
+  //     - If multiple important events exist, return ONLY the most impactful ONE.
+  //     - Never merge two stories into a single summary.
+
+  //     Strictly limit scope to:
+  //     - India National Cricket Team
+  //     - IPL 2026 (teams, players, venues, official decisions)
+  //     - Major international cricket-related controversies or official developments
+
+  //     Do NOT include:
+  //     - Opinions
+  //     - Speculation
+  //     - Predictions
+  //     - Commentary
+
+  //     Already covered today:
+  //     ${existingSummaries}
+  // `;
+
   const discoveryPrompt = `
-IMPORTANT:
-- Identify ONLY ONE news event.
-- Do NOT combine multiple unrelated developments.
-- If multiple important events exist, return ONLY the most impactful ONE.
-- Never merge two stories into a single summary.
+    TASK: Identify and extract ALL unique, factual news events from the provided context.
+    
+    CRITICAL INSTRUCTION:
+    - Return an ARRAY of distinct objects.
+    - Each object must contain ONLY ONE specific news event.
+    - NEVER combine different teams or different topics (e.g., Keep RCB news separate from KKR/BCCI news).
+    - Maintain a 1:1 relationship between "newContext" and "topic".
 
-Strictly limit scope to:
-- India National Cricket Team
-- IPL 2026 (teams, players, venues, official decisions)
-- Major international cricket-related controversies or official developments
+    STRICT SCOPE:
+    1. India Men's National Team (e.g., IND vs NZ ODI series, Kohli's 28k runs, KL Rahul's heroics).
+    2. WPL 2026 (e.g., MI vs RCB opener, Gujarat Giants' Anushka Sharma debut, match results).
+    3. IPL 2026 (e.g., RCB moving venues from Chinnaswamy, KKR releasing Mustafizur, coaching updates).
+    4. Domestic/BCCI (e.g., Tilak Varma injury surgery, Shreyas Iyer fitness).
 
-Do NOT include:
-- Opinions
-- Speculation
-- Predictions
-- Commentary
+    Already covered today (DO NOT REPEAT):
+    ${existingSummaries}
 
-Already covered today:
-${existingSummaries}
+    OUTPUT FORMAT:
+    You are a JSON-only engine. Output a VALID JSON ARRAY.
+    Schema:
+    [
+      {
+        "isNewsworthy": true,
+        "newContext": "Single factual event description",
+        "topic": "IPL" | "WPL" | "INDIA_MEN" | "DOMESTIC",
+        "reasoning": "Why this is a unique story"
+      }
+    ]
 `;
 
   try {
-    /* -------------------- Gemini Call -------------------- */
-
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: [
@@ -115,34 +144,34 @@ ${existingSummaries}
           parts: [
             {
               text: `
-You are a JSON-only response engine.
+    You are a JSON-only response engine.
 
-Rules:
-- Output VALID JSON only
-- No markdown
-- No prose
-- No explanations
-- No extra keys
+    Rules:
+    - Output VALID JSON only
+    - No markdown
+    - No prose
+    - No explanations
+    - No extra keys
 
-Schema:
-{
-  "isNewsworthy": boolean,
-  "newContext": string,
-  "topic": string,
-  "reasoning": string
-}
+    Schema:
+    {
+      "isNewsworthy": boolean,
+      "newContext": string,
+      "topic": string,
+      "reasoning": string
+    }
 
-If no qualifying news exists:
-{
-  "isNewsworthy": false,
-  "newContext": "",
-  "topic": "",
-  "reasoning": ""
-}
+    If no qualifying news exists:
+    {
+      "isNewsworthy": false,
+      "newContext": "",
+      "topic": "",
+      "reasoning": ""
+    }
 
-TASK:
-${discoveryPrompt}
-`,
+    TASK:
+    ${discoveryPrompt}
+    `,
             },
           ],
         },
@@ -163,8 +192,6 @@ ${discoveryPrompt}
       },
     });
 
-    /* -------------------- Parse Gemini Output -------------------- */
-
     const rawText = extractGeminiText(response);
     if (!rawText) {
       console.log("⚠️ Empty Gemini response");
@@ -183,8 +210,6 @@ ${discoveryPrompt}
       console.log("ℹ️ No newsworthy Gemini item");
       return null;
     }
-
-    /* -------------------- Context Deduplication -------------------- */
 
     let contextDecision;
 
@@ -205,16 +230,12 @@ ${discoveryPrompt}
       console.warn("⚠️ Context judge failed, continuing:", err.message);
     }
 
-    /* -------------------- Image Extraction -------------------- */
-
     const metadata = response.candidates?.[0]?.groundingMetadata;
 
     const sources = metadata?.groundingChunks || [];
     const primarySourceUrl = sources[0]?.web?.uri || null;
 
     const imageUrl = await getOgImage(primarySourceUrl);
-
-    /* -------------------- Save State -------------------- */
 
     STATE.dailyContext.contexts.push({
       summary: contextDecision?.newContext || decision.newContext,
@@ -224,8 +245,6 @@ ${discoveryPrompt}
 
     await saveState(STATE);
     console.log("💾 Gemini dailyContext saved");
-
-    /* -------------------- Return -------------------- */
 
     return {
       ...decision,
