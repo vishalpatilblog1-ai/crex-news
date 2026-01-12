@@ -57,7 +57,6 @@ export async function generateGroundedGullyTweet(decision) {
     6. THE STAT: Use ONE specific number or head-to-head fact from the context.
     7. Line break.
     8. THE TRIGGER: A closing question to start a fight in the replies.
-    9. HASHTAGS: 1-2 relevent hashtags.
     `;
 
   try {
