@@ -10,7 +10,7 @@ async function runTest() {
     }
     const finalTweet = await generateGroundedGullyTweet(tweet_spice);
     console.log("✅ AI spice Tweet Output:");
-    console.log(finalTweet);
+    // console.log(finalTweet);
   } catch (err) {
     console.error("❌ TEST FAILED:", err.message);
   }
