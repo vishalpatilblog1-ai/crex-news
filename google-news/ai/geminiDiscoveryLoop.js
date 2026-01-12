@@ -294,9 +294,11 @@ OUTPUT RULES (ABSOLUTE)
         continue;
       }
 
-      if (!contextDecision?.isAlreadyCovered) {
-        console.log("chosen context:::", contextDecision);
-      }
+      // console.log("decision to proceed:::", decision);
+
+      // if (!contextDecision?.isAlreadyCovered) {
+      //   console.log("chosen context:::", contextDecision);
+      // }
 
       const imageSearchQuery = `${decision.topic} ${decision.newContext}`;
 
