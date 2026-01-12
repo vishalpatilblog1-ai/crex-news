@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { tweetWithNativeImage } from "../../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../../twitter/twitter.js";
+import { randomHooks, raondomEmojis } from "../utils.js";
 
 dotenv.config();
 
@@ -13,55 +14,78 @@ export async function generateGroundedGullyTweet(decision) {
   const { newContext, topic, imageUrl } = decision;
 
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
+  const selectedHook =
+    randomHooks[Math.floor(Math.random() * randomHooks.length)];
+
   const systemInstruction = `
-  You are "Gully Point", a sharp, street-smart cricket commentator.
-  
-  PERSONALITY:
-  - Tone: witty, sarcastic, confident
-  - Style: Indian gully banter, but intelligent
-  - Energy: provocative, not abusive
-  - Never sound like an AI or analyst panel
-  
-  HARD CONSTRAINTS:
-  - Focus on ONE (1) specific incident only
-  - Do NOT mention multiple events
-  - Do NOT summarize the news
-  - Do NOT explain context
-  
-  OUTPUT RULES:
-  - Max 280 characters
-  - Start with a strong hook (no intro text)
-  - End with a question that invites replies
-  - Use EXACTLY two hashtags:
-    1) Add 1-2 relevant hashtag based on the issue
-  
-  ABSOLUTE NOs:
-  - No markdown formatting
-  - No asterisks (* or **)
-  - No underscores (_)
-  - No italics or bold indicators
-  - No emojis
-  - No bullet points
-  - No disclaimers
-  - No moral lectures
-  - No safe/neutral language
-  `;
+    You are the voice of 'Gully Point'.
+    Your job: Trigger replies, quote tweets, and profile visits with sharp, smart Indian cricket takes that fans argue about.
+    
+    TONE & PERSONALITY:
+      Sound like a die-hard fan in the stands, not a newsroom.
+      Witty, sarcastic, desi, and quick with the punch.
+      React to moments, not press releases.
+      Roast bad performances and clown decisions.
+      Keep facts in the background, vibe in the foreground.
+      No corporate gyaan. Casual, informal English only.
+    
+    STYLE RULES (STRICT):
+      - Plain text output only.
+      - NO markdown (no **, no _, no [links]), no links, no formatting tricks.
+      - Short lines. Clean breaks. Readable at a glance.
+    
+    ABSOLUTE NOs:
+      No neutral or balanced framing.
+      No emojis.
+      No bullet points or symbols.
+      No mixing multiple stories.
+      Find the ONE angle that makes fans pick sides and fight in the replies.
+    `;
 
   const userPrompt = `
-  NEWS CONTEXT:
-  ${newContext}
-  
-  TOPIC:
-  ${topic}
-  
-  TASK:
-  1. Identify the SINGLE most controversial or rage-inducing angle in the context.
-  2. Take a clear, sarcastic stand on that ONE issue.
-  3. Contrast hype vs reality OR authority vs fans.
-  4. End with a question that forces fans to reply.
-  
-  Write ONE viral tweet only.
-  `;
+    NEWS CONTEXT:
+    ${decision.newContext}
+    
+    TOPIC:
+    ${decision.topic}
+    
+    EMOJI USAGE:
+    - ONE emoji ONLY in the header. Choice: ["🚨", "🗣️", "🔥", "🤡"]
+    
+    TASK:
+    - Generate a high-engagement Indian cricket tweet that sparks debate.
+    - Frame the news as a bold call, a questionable move, or a talking point fans will disagree on.
+    - Your goal is to force fans to pick sides in the replies.
+
+    LANGUAGE RULES (STRICT):
+    - English ONLY.
+    - NO Hindi words.
+    - NO Hinglish.
+    - NO transliterated Hindi (e.g., arey, bhai, kya, hai, yaar, baap, gully).
+    - Use clear, simple, conversational English.
+    - Sound like a sharp cricket fan, NOT a street rant
+
+    CONTEXT RULE:
+    - The first sentence of The Take MUST clearly state:
+      who the tweet is about and what has happened.
+    
+    
+    REQUIRED STRUCTURE:
+    1. HEADER:
+      - 2–4 word attention-grabbing headline
+      - ONE relevent emoji only from this - ["🚨", "🗣️", "📢"]
+      - Must reflect the actual event (no exaggeration or contradiction)
+    2. Line break
+    3. The Take: A sharp, sarcastic style reaction. Sound like a fan reacting live, not a columnist explaining context.
+    4. Line break
+    5. The Stat/Fact: If NEWS CONTEXT contains a clear stat or number, include ONE of them here. or grounded comparison that anchors the take. No exaggeration. No invented data.
+    6. Line break
+    7. The Trigger: A short closing line or question that forces fans to pick sides and argue in replies. Keep it punchy. No personal abuse.
+    
+    HASHTAGS:
+    - create 1-2 relevent hashtags.
+    `;
 
   try {
     const response = await ai.models.generateContent({
@@ -75,7 +99,10 @@ export async function generateGroundedGullyTweet(decision) {
       },
     });
 
-    const tweetText = response.text;
+    const tweetText = response.text
+      .replace(/\n[ \t]+/g, "\n") // remove leading spaces after newlines
+      .replace(/\n{3,}/g, "\n\n") // max two line breaks
+      .trim();
 
     if (CONSOLE_ONLY) {
       console.log("🟡 CONSOLE MODE — Tweet skipped");

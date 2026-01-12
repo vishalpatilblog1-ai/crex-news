@@ -272,7 +272,6 @@ OUTPUT RULES (ABSOLUTE)
       };
     });
 
-    // 4️⃣ BASIC SANITY FILTER
     items = items.filter((item) => item.isNewsworthy === true);
 
     if (items.length === 0) {
@@ -281,10 +280,6 @@ OUTPUT RULES (ABSOLUTE)
     }
 
     console.log("🔍 CLEANED GEMINI OUTPUT:\n", items);
-
-    // const decisions = JSON.parse(stripCodeFences(rawText));
-
-    // if (!Array.isArray(decisions)) return null;
 
     for (const decision of items) {
       const { newContext, topic, reasoning } = decision;
