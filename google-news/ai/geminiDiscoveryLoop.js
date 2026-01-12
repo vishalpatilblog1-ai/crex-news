@@ -244,7 +244,7 @@ OUTPUT RULES (ABSOLUTE)
     const rawText = extractGeminiText(response);
 
     if (!rawText) return null;
-    console.log("🔍 RAW GEMINI OUTPUT:\n", rawText);
+    // console.log("🔍 RAW GEMINI OUTPUT:\n", rawText);
 
     let items;
     try {
@@ -256,10 +256,7 @@ OUTPUT RULES (ABSOLUTE)
 
     if (!Array.isArray(items) || items.length === 0) return null;
 
-    // 2️⃣ DEDUPE FIRST (source-level)
     items = dedupeBySource(items);
-
-    // 3️⃣ HARD TIME FILTER
 
     items = items.map((item) => {
       const withinTime = isWithinTimeWindow(item.publishedAt);
@@ -297,7 +294,9 @@ OUTPUT RULES (ABSOLUTE)
         continue;
       }
 
-      console.log("chosen context:::", contextDecision);
+      if (!contextDecision?.isAlreadyCovered) {
+        console.log("chosen context:::", contextDecision);
+      }
 
       const imageSearchQuery = `${decision.topic} ${decision.newContext}`;
 
