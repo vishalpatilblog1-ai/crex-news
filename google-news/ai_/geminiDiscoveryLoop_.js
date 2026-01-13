@@ -136,6 +136,17 @@ PRIORITY EVENT TYPES (ONLY THESE)
 - Live match status updates (explicitly stated in source)
 - Confirmed injury updates
 - Official squad or team announcements
+- Official post-match reactions (captain/coach quotes)
+- Match-related disciplinary or officiating decisions
+- Confirmed last-minute team changes on match day
+- Authoritative statements by current or former international players,
+  ONLY if:
+  - directly related to a match played within the last 24 hours, OR
+  - a breaking administrative or disciplinary issue
+  AND:
+  - presented as a direct quote
+  - free of predictions, selection opinions, or hypothetical scenarios
+  - sourced from a verified interview or official broadcast.
 
 Evergreen previews, schedules, explainers, or “league ongoing” articles
 are NOT news and MUST be rejected.
@@ -241,12 +252,6 @@ OUTPUT RULES (ABSOLUTE)
                   "Full ISO timestamp with minutes, e.g. 2026-01-13T05:22:00Z",
               },
             },
-            // properties: {
-            //   isNewsworthy: { type: "boolean" },
-            //   newContext: { type: "string" },
-            //   topic: { type: "string" },
-            //   reasoning: { type: "string" },
-            // },
             required: [
               "isNewsworthy",
               "newContext",
@@ -255,6 +260,13 @@ OUTPUT RULES (ABSOLUTE)
               "sourceUrl",
               "publishedAt",
             ],
+            // properties: {
+            //   isNewsworthy: { type: "boolean" },
+            //   newContext: { type: "string" },
+            //   topic: { type: "string" },
+            //   reasoning: { type: "string" },
+            // },
+            // required: ["isNewsworthy", "newContext", "topic", "reasoning"],
           },
         },
       },
