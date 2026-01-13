@@ -1,17 +1,20 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-// import { saveState } from "../utils/stateStoreCloud.js";
-
 import * as cheerio from "cheerio";
+
 import { judgeNewsContext } from "../../indian-express/ai/judgeNewsContext.js";
-import { saveState } from "../../utils/stateStoreCloud.js";
+import { loadState, saveState } from "../../utils/stateStoreCloud.js";
 
 dotenv.config();
+
+/* -------------------- Gemini Client -------------------- */
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
+
+/* -------------------- Helpers -------------------- */
 
 function stripCodeFences(text) {
   return text
@@ -33,6 +36,8 @@ function extractGeminiText(response) {
 }
 
 async function getOgImage(articleUrl) {
+  if (!articleUrl) return null;
+
   try {
     const res = await fetch(articleUrl, { redirect: "follow" });
     const html = await res.text();
@@ -48,36 +53,163 @@ async function getOgImage(articleUrl) {
   }
 }
 
+/* -------------------- Main Loop -------------------- */
+
+function dedupeBySource(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    if (seen.has(item.sourceUrl)) return false;
+    seen.add(item.sourceUrl);
+    return true;
+  });
+}
+
+const MAX_AGE_MINUTES = 60;
+
+function isWithinTimeWindow(publishedAt) {
+  if (!publishedAt) return false;
+
+  const publishedTime = new Date(publishedAt).getTime();
+  if (Number.isNaN(publishedTime)) return false;
+
+  const now = Date.now();
+  const diffMs = now - publishedTime;
+
+  // Reject future timestamps or old ones
+  if (diffMs < 0) return false;
+
+  return diffMs <= MAX_AGE_MINUTES * 60 * 1000;
+}
+
 export async function geminiDiscoveryLoop() {
-  if (!global.STATE) global.STATE = {};
+  if (!global.STATE || !global.STATE.dailyContext) {
+    global.STATE = await loadState();
+  }
+
   const STATE = global.STATE;
 
-  if (!STATE.dailyContext) {
+  if (
+    !STATE.dailyContext ||
+    STATE.dailyContext.date !== new Date().toISOString().slice(0, 10)
+  ) {
     STATE.dailyContext = {
       date: new Date().toISOString().slice(0, 10),
       contexts: [],
     };
   }
 
-  const existingSummaries = STATE.dailyContext.contexts
-    .map((c) => c.summary)
-    .join(", ");
+  if (!Array.isArray(STATE.dailyContext.contexts)) {
+    STATE.dailyContext.contexts = [];
+  }
 
-  console.log("existingSummaries::", existingSummaries);
+  const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
 
-  const prompt = `
-    Identify the most important FACTUAL cricket news published in the last 2 hours.
-    
-    Limit your analysis strictly to:
-    - India National Cricket Team
-    - IPL 2026 (teams, players, venues, official decisions)
-    - Major international cricket-related controversies or official developments
-    
-    Do NOT include opinions, speculation, or commentary.
-    
-    Already covered today:
-    ${existingSummaries}
-    `;
+  const discoveryPrompt = `
+IDENTITY:
+You are a real-time sports news discovery engine.
+
+CURRENT TIME (UTC):
+${new Date().toISOString()}
+
+==================================================
+STRICT TEMPORAL SCOPE (NON-NEGOTIABLE)
+==================================================
+- You MUST consider ONLY events reported in the LAST 15–60 MINUTES.
+- Any event older than 60 minutes is INVALID, regardless of importance.
+- If exact publish time cannot be determined with minute-level precision,
+  the item MUST be rejected.
+
+HARD TIME FILTER (OVERRIDES ALL OTHER RULES):
+- Compute the time difference between Current Time (UTC) and publishedAt.
+- If publishedAt is MORE THAN 60 MINUTES older than Current Time (UTC),
+  you MUST set isNewsworthy = false.
+- If publishedAt is missing, vague, date-only, or unverifiable,
+  you MUST set isNewsworthy = false.
+- Do NOT rely on assumptions, summaries, or “recently reported” phrasing.
+
+==================================================
+PRIORITY EVENT TYPES (ONLY THESE)
+==================================================
+- Breaking news
+- Toss results
+- Match conclusions
+- Live match status updates (explicitly stated in source)
+- Confirmed injury updates
+- Official squad or team announcements
+
+Evergreen previews, schedules, explainers, or “league ongoing” articles
+are NOT news and MUST be rejected.
+
+==================================================
+COVERAGE SCOPE (STRICT)
+==================================================
+- India Men's National Team (international matches & official selections only)
+- IPL (auctions, trades, official team announcements only)
+- WPL (live matches & confirmed injury updates only)
+- Domestic Cricket:
+  - Vijay Hazare Trophy — knockout matches only
+  - Ranji Trophy — knockout matches only
+
+==================================================
+CRITICAL GROUNDING RULES (MANDATORY)
+==================================================
+1. Use ONLY player/team names that appear explicitly in TODAY’S source snippet.
+2. DO NOT use memory, prior knowledge, or assumptions.
+3. DO NOT invent statistics, form, history, or comparisons.
+4. DO NOT introduce debates or implied selection logic unless stated verbatim.
+5. DO NOT change match formats unless explicitly mentioned in the source.
+6. EACH output item must map to EXACTLY ONE primary web source.
+7. One primary source URL may produce AT MOST ONE output object. Multiple summaries from the same source are forbidden.
+
+==================================================
+OUTPUT QUALITY RULES
+==================================================
+- newContext:
+  - 1–2 sentences
+  - Purely factual
+  - No analysis, opinions, or exaggeration
+- reasoning:
+  - MUST explicitly justify recency
+  - Example: “reported within the last hour” or “match currently in progress”
+  - If recency cannot be proven, set isNewsworthy = false
+- Live matches:
+  - Include ONLY what is explicitly stated in the source snippet
+  - No ball-by-ball or inferred updates
+
+==================================================
+CRITICAL JSON STRUCTURE (STRICT)
+==================================================
+- Output MUST be a valid JSON ARRAY.
+- Each object MUST use EXACT field names:
+  - isNewsworthy (boolean)
+  - newContext (string)
+  - topic (string)
+  - reasoning (string)
+  - sourceUrl (string)
+  - publishedAt (string, full ISO timestamp required)
+
+- If NO valid news exists within the last 60 minutes,
+  return EXACTLY this object and nothing else:
+
+[
+  {
+    "isNewsworthy": false,
+    "newContext": "",
+    "topic": "",
+    "reasoning": "",
+    "sourceUrl": "",
+    "publishedAt": ""
+  }
+]
+
+==================================================
+OUTPUT RULES (ABSOLUTE)
+==================================================
+- Return ONLY raw JSON.
+- NO markdown.
+- NO explanations.
+- NO extra text.
+`;
 
   try {
     const response = await ai.models.generateContent({
@@ -85,117 +217,148 @@ export async function geminiDiscoveryLoop() {
       contents: [
         {
           role: "user",
-          parts: [
-            {
-              text: `
-            You are a JSON-only response engine.
-            
-            Strict rules:
-            - Respond with VALID JSON only
-            - No markdown
-            - No prose
-            - No explanations
-            - No formatting
-            - No extra keys
-            
-            Output schema:
-            {
-              "isNewsworthy": boolean,
-              "newContext": string,
-              "topic": string,
-              "reasoning": string
-            }
-            
-            If NO qualifying news exists, return:
-            {
-              "isNewsworthy": false,
-              "newContext": "",
-              "topic": "",
-              "reasoning": ""
-            }
-            
-            TASK:
-            ${prompt}
-            `,
-            },
-          ],
+          parts: [{ text: discoveryPrompt }],
         },
       ],
       config: {
         tools: [{ googleSearch: {} }],
         response_mime_type: "application/json",
+
+        // 🔴 FIX 1: ARRAY schema (correct)
         response_schema: {
-          type: "object",
-          properties: {
-            isNewsworthy: { type: "boolean" },
-            newContext: { type: "string" },
-            topic: { type: "string" },
-            reasoning: { type: "string" },
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              isNewsworthy: { type: "boolean" },
+              newContext: { type: "string" },
+              topic: { type: "string" },
+              reasoning: { type: "string" },
+              sourceUrl: { type: "string" },
+              publishedAt: {
+                type: "string",
+                description:
+                  "Full ISO timestamp with minutes, e.g. 2026-01-13T05:22:00Z",
+              },
+            },
+            // properties: {
+            //   isNewsworthy: { type: "boolean" },
+            //   newContext: { type: "string" },
+            //   topic: { type: "string" },
+            //   reasoning: { type: "string" },
+            // },
+            required: [
+              "isNewsworthy",
+              "newContext",
+              "topic",
+              "reasoning",
+              "sourceUrl",
+              "publishedAt",
+            ],
           },
-          required: ["isNewsworthy", "newContext", "topic", "reasoning"],
         },
       },
     });
 
     const rawText = extractGeminiText(response);
-    if (!rawText) {
-      console.log("⚠️ Empty Gemini response");
-      return;
-    }
 
-    let decision;
+    if (!rawText) return null;
+    // console.log("🔍 RAW GEMINI OUTPUT:\n", rawText);
+
+    let items;
     try {
-      decision = JSON.parse(stripCodeFences(rawText));
-    } catch {
-      console.error("❌ Invalid JSON from Gemini:\n", rawText);
-      return;
+      items = JSON.parse(stripCodeFences(rawText));
+    } catch (e) {
+      console.error("❌ Failed to parse Gemini JSON", e);
+      return null;
     }
 
-    if (!decision || typeof decision.isNewsworthy !== "boolean") {
-      console.log("⚠️ Malformed Gemini decision:", decision);
-      return;
+    if (!Array.isArray(items) || items.length === 0) return null;
+
+    items = dedupeBySource(items);
+
+    items = items.map((item) => {
+      const withinTime = isWithinTimeWindow(item.publishedAt);
+
+      console.log("withinTime:::", withinTime, item.isNewsworthy);
+
+      return {
+        ...item,
+        isNewsworthy: withinTime && item.isNewsworthy === true,
+      };
+    });
+
+    items = items.filter((item) => item.isNewsworthy === true);
+
+    if (items.length === 0) {
+      console.log("🟡 No new Gemini news to tweet");
+      return null;
     }
 
-    let contextDecision = null;
+    console.log("🔍 CLEANED GEMINI OUTPUT:\n", items);
 
-    try {
-      contextDecision = await judgeNewsContext({
-        articleText: decision.newContext,
-        existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
+    for (const decision of items) {
+      const { newContext, topic, reasoning } = decision;
+      if (decision.isNewsworthy !== true) continue;
+
+      const contextDecision = await judgeNewsContext({
+        articleText: newContext + " " + topic + " " + reasoning,
+        existingContexts,
       });
 
       if (
-        contextDecision?.isAlreadyCovered === true &&
+        contextDecision?.isAlreadyCovered &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log("🔁 Google News context already covered — skipping");
-        return;
+        continue;
       }
-    } catch (err) {
-      console.warn(
-        "⚠️ Google News context judge failed, proceeding without dedupe:",
-        err.message
-      );
-    }
-    const metadata = response.candidates?.[0]?.groundingMetadata;
-    const sources = metadata?.groundingChunks || [];
-    const primarySourceUrl = sources[0]?.web?.uri || "";
-    const imageUrl = await getOgImage(primarySourceUrl);
 
-    if (decision.isNewsworthy && contextDecision?.newContext) {
+      // console.log("decision to proceed:::", decision);
+
+      // if (!contextDecision?.isAlreadyCovered) {
+      //   console.log("chosen context:::", contextDecision);
+      // }
+
+      const imageSearchQuery = `${decision.topic} ${decision.newContext}`;
+
+      // Use Google Search tool AGAIN for this decision
+      const imageResponse = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: `Find a relevant news image for: ${imageSearchQuery}` },
+            ],
+          },
+        ],
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
+
+      const imgMetadata =
+        imageResponse.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+
+      const primarySourceUrl =
+        imgMetadata.find((c) => c.web?.uri)?.web?.uri || null;
+      let imageUrl = await getOgImage(primarySourceUrl);
+
+      // console.log("primarySourceUrl::", primarySourceUrl);
+      console.log("imageUrl::", imageUrl);
+
       STATE.dailyContext.contexts.push({
-        summary: contextDecision.newContext,
+        summary: contextDecision?.newContext || decision.newContext,
         imageUrl,
+        sourceUrl: primarySourceUrl,
         createdAt: new Date().toISOString(),
       });
 
       await saveState(STATE);
+
+      return { ...decision, sourceUrl: primarySourceUrl, imageUrl };
     }
-    return {
-      ...decision,
-      imageUrl,
-    };
   } catch (err) {
-    console.error("Discovery Loop Error:", err);
+    console.error("❌ Gemini discovery error:", err);
   }
 }
