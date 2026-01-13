@@ -51,12 +51,13 @@ export async function generateGroundedGullyTweet(decision) {
     DRAFT A TWEET USING THIS EXACT STRUCTURE:
     1. HEADER: 2-4 words + ONE emoji (🚨, 🗣️, or 📢).
     2. Line break.
-    3. THE CONTEXT: news context in one sentence.
+    3. THE CONTEXT: news context in one-two sentences.
     4. Line break.
     5. THE TAKE: First sentence MUST state who/what this is about.
-    6. THE STAT: Use ONE specific number or head-to-head fact from the context.
-    7. Line break.
-    8. THE TRIGGER: A closing question to start a fight in the replies.
+    6. Line break.
+    7. THE STAT: Use ONE specific number or head-to-head fact from the context.
+    8. Line break.
+    9. THE TRIGGER: A closing question to start a fight in the replies.
     `;
 
   try {
