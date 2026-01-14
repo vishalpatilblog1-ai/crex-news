@@ -175,7 +175,7 @@ COVERAGE SCOPE (STRICT)
   - No inferred significance or retrospective framing
 
 - Global T20 & Franchise Leagues:
-  - IPL / PSL / MLC / The Hundred / BBL:
+    - IPL / WPL:
     - Auctions
     - Trades and transfers
     - International player availability or withdrawals
@@ -187,7 +187,7 @@ COVERAGE SCOPE (STRICT)
   - International matches and tournaments
   - Official squad announcements
   - Confirmed injuries
-  - League-level announcements with global relevance (WPL, The Hundred, WBBL)
+  - League-level announcements with global relevance (WPL, IPL)
 
 - ICC Age-Group Events:
   - ICC U19 World Cup:
