@@ -58,7 +58,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
     console.log("🧠 Gemini discovery polling enabled for crex-news");
-    setInterval(googleNewsPollingLoop, 1000 * 60 * 15);
+    setInterval(googleNewsPollingLoop, 1000 * 60 * 10);
   }
 }
 
