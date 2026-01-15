@@ -8,13 +8,9 @@ import { loadState, saveState } from "../../utils/stateStoreCloud.js";
 
 dotenv.config();
 
-/* -------------------- Gemini Client -------------------- */
-
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
-
-/* -------------------- Helpers -------------------- */
 
 function stripCodeFences(text) {
   return text
@@ -53,8 +49,6 @@ async function getOgImage(articleUrl) {
   }
 }
 
-/* -------------------- Main Loop -------------------- */
-
 function dedupeBySource(items) {
   const seen = new Set();
   return items.filter((item) => {
@@ -75,7 +69,6 @@ function isWithinTimeWindow(publishedAt) {
   const now = Date.now();
   const diffMs = now - publishedTime;
 
-  // Reject future timestamps or old ones
   if (diffMs < 0) return false;
 
   return diffMs <= MAX_AGE_MINUTES * 60 * 1000;
@@ -154,12 +147,76 @@ are NOT news and MUST be rejected.
 ==================================================
 COVERAGE SCOPE (STRICT)
 ==================================================
-- India Men's National Team (international matches & official selections only)
-- IPL (auctions, trades, official team announcements only)
-- WPL (live matches & confirmed injury updates only)
-- Domestic Cricket:
-  - Vijay Hazare Trophy — knockout matches only
-  - Ranji Trophy — knockout matches only
+- ICC Official News:
+  - Rankings updates
+  - Playing condition or rules changes
+  - Global tournament announcements
+  - ICC Men’s and Women’s World Cups (all formats)
+  - T20 World Cup 2026 official updates
+
+- International Cricket:
+  - All international matches (Men’s and Women’s)
+  - Match results, toss updates, and live match status (explicitly stated)
+  - Confirmed injury updates
+  - Disciplinary or officiating decisions
+  - Official post-match reactions from captains, coaches, players, or match officials
+
+- Major International Series & High-Interest Bilaterals:
+  - The Ashes (England / Australia)
+  - IND vs NZ
+  - IND vs AUS
+  - IND vs ENG
+  - Other globally followed bilateral series
+  - Scope limited to match events, confirmed updates, and official statements
+
+- International Milestones & Records:
+  - Major individual or team records in international cricket
+  - Landmark achievements explicitly stated in the source
+  - No inferred significance or retrospective framing
+
+- Global T20 & Franchise Leagues:
+    - IPL / WPL:
+    - Auctions
+    - Trades and transfers
+    - International player availability or withdrawals
+    - Official team announcements
+    - Major, verified controversies with authoritative sourcing
+  - Focus on players with international relevance or global fan interest
+
+- Women’s Cricket (International & Global Leagues):
+  - International matches and tournaments
+  - Official squad announcements
+  - Confirmed injuries
+  - League-level announcements with global relevance (WPL, IPL)
+
+- ICC Age-Group Events:
+  - ICC U19 World Cup:
+    - Match results
+    - Official squad announcements
+    - Breakout performances explicitly highlighted in the source
+
+- Local & Domestic Leagues (STRICTLY LIMITED):
+  - Vijay Hazare Trophy (VJT):
+    - Knockout-stage matches only
+    - Match results, exceptional individual performances, or official announcements
+    - Coverage allowed only when explicitly reported by a credible source
+  - Other domestic competitions:
+    - ONLY when the event has clear international relevance
+      (e.g., immediate national call-up, official selector or board reference)
+- Authoritative cricket statements:
+  - Direct quotes explicitly attributed to former or current international players
+        (e.g., Ashwin said, Irfan Pathan said, Nasser Hussain said, Ricky Ponting said)
+  - ONLY when:
+    - The quote is reported by a credible news source
+    - The quote directly reacts to:
+      • a match played within the last 24 hours, OR
+      • a confirmed injury, selection, disciplinary, or officiating event
+    - The quote is factual or declarative in nature
+  - NOT allowed:
+        - Form explanations
+        - Mindset or motivation narratives
+        - Retrospective storytelling
+        - Hypothetical or opinion-led debates
 
 ==================================================
 CRITICAL GROUNDING RULES (MANDATORY)
@@ -235,7 +292,6 @@ OUTPUT RULES (ABSOLUTE)
         tools: [{ googleSearch: {} }],
         response_mime_type: "application/json",
 
-        // 🔴 FIX 1: ARRAY schema (correct)
         response_schema: {
           type: "array",
           items: {
@@ -260,13 +316,6 @@ OUTPUT RULES (ABSOLUTE)
               "sourceUrl",
               "publishedAt",
             ],
-            // properties: {
-            //   isNewsworthy: { type: "boolean" },
-            //   newContext: { type: "string" },
-            //   topic: { type: "string" },
-            //   reasoning: { type: "string" },
-            // },
-            // required: ["isNewsworthy", "newContext", "topic", "reasoning"],
           },
         },
       },
@@ -275,7 +324,6 @@ OUTPUT RULES (ABSOLUTE)
     const rawText = extractGeminiText(response);
 
     if (!rawText) return null;
-    // console.log("🔍 RAW GEMINI OUTPUT:\n", rawText);
 
     let items;
     try {
@@ -325,15 +373,8 @@ OUTPUT RULES (ABSOLUTE)
         continue;
       }
 
-      // console.log("decision to proceed:::", decision);
-
-      // if (!contextDecision?.isAlreadyCovered) {
-      //   console.log("chosen context:::", contextDecision);
-      // }
-
       const imageSearchQuery = `${decision.topic} ${decision.newContext}`;
 
-      // Use Google Search tool AGAIN for this decision
       const imageResponse = await ai.models.generateContent({
         model: "gemini-2.0-flash",
         contents: [
@@ -355,9 +396,6 @@ OUTPUT RULES (ABSOLUTE)
       const primarySourceUrl =
         imgMetadata.find((c) => c.web?.uri)?.web?.uri || null;
       let imageUrl = await getOgImage(primarySourceUrl);
-
-      // console.log("primarySourceUrl::", primarySourceUrl);
-      console.log("imageUrl::", imageUrl);
 
       STATE.dailyContext.contexts.push({
         summary: contextDecision?.newContext || decision.newContext,
