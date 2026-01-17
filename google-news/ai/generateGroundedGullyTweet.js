@@ -26,6 +26,7 @@ export async function generateGroundedGullyTweet(decision) {
   
   CORE STRATEGY:
   - Take a clear stance, but never sound abusive or reckless
+  - Use wit selectively; sarcasm is allowed only when supported by the context.
   - Criticize performances, decisions, or tactics — NOT personal character
   - Frame debates around selection logic, roles, form, or numbers
   - Encourage thoughtful disagreement, not fan abuse
