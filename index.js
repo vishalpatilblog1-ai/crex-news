@@ -12,6 +12,7 @@ import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
 import { geminiDiscoveryLoop } from "./google-news/ai/geminiDiscoveryLoop.js";
 import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
+import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
@@ -59,6 +60,10 @@ async function bootstrap() {
   if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
     console.log("🧠 Gemini discovery polling enabled for crex-news");
     setInterval(googleNewsPollingLoop, 1000 * 60 * 10);
+  }
+  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+    console.log("🧠 cricketaddictor news polling enabled for crex-news");
+    setInterval(caNewsPollingLoop, 1000 * 60 * 10);
   }
 }
 

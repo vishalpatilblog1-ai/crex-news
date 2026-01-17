@@ -43,7 +43,6 @@ export async function ieNewsPollingLoop() {
   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
 
   try {
-    // 🧹 Prune old seen entries (sliding window)
     const now = Date.now();
     let pruned = 0;
 
