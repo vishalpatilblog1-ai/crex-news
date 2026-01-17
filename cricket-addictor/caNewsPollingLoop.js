@@ -10,6 +10,7 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
 
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
@@ -18,8 +19,6 @@ export async function caNewsPollingLoop() {
   const STATE = global.STATE;
   if (!STATE.ca) STATE.ca = {};
   if (!STATE.ca.seen) STATE.ca.seen = {};
-
-  console.log("1.....");
 
   const MAX_AGE_MIN = 15;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
@@ -54,8 +53,6 @@ export async function caNewsPollingLoop() {
 
   let selected = null;
 
-  //   let selected = null;
-
   for (const item of sorted) {
     const pubMs = getPubDate(item);
     if (!pubMs) {
@@ -71,11 +68,11 @@ export async function caNewsPollingLoop() {
 
     const cleanLink = normalizeCALink(item.link);
     if (STATE.ca.seen[cleanLink]) {
-      console.log("⛔ skip: already seen");
+      //   console.log("⛔ skip: already seen");
       continue;
     }
 
-    console.log("✅ SELECTED:", item.title);
+    // console.log("✅ SELECTED:", item.title);
     selected = item;
     break;
   }
@@ -105,11 +102,13 @@ export async function caNewsPollingLoop() {
   } catch (_) {}
 
   let tweetText;
-  //   console.log("parsed::", parsed);
   try {
-    tweetText = await generateCommonStyleTweet(
-      parsed.headline + "\n" + parsed.body,
-      "Cricket Addictor"
+    // tweetText = await generateCommonStyleTweet(
+    //   parsed.headline + "\n" + parsed.body,
+    //   "Cricket Addictor"
+    // );
+    tweetText = await generateGeminiCAtweet(
+      parsed.headline + "\n" + parsed.body
     );
   } catch {
     // tweetText = generateCAFallbackTweet(selected);
