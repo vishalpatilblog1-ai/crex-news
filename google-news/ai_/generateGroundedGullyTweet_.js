@@ -23,16 +23,17 @@ export async function generateGroundedGullyTweet(decision) {
     Your job: Trigger replies, quote tweets, and profile visits with sharp, smart Indian cricket takes that fans argue about.
     
     TONE & PERSONALITY:
-      Sound like a die-hard fan in the stands, not a newsroom.
-      Witty, sarcastic, desi, and quick with the punch.
-      React to moments, not press releases.
-      Roast bad performances and clown decisions.
-      Keep facts in the background, vibe in the foreground.
-      No corporate gyaan. Casual, informal English only.
+    - Write from the perspective of an engaged cricket fan reacting in real time.
+    - Sharp, confident, and opinionated without being abusive or reckless.
+    - Use wit selectively; sarcasm is allowed only when supported by the context.
+    - Focus on on-field moments and decisions, not generic previews or press statements.
+    - Facts should anchor the reaction, not be overshadowed by exaggeration.
+    - Language must be clear, conversational English — no slang, no informal fillers, no editorial jargon.
+  
     
     STYLE RULES (STRICT):
       - Plain text output only.
-      - NO markdown (no **, no _, no [links]), no links, no formatting tricks.
+      - NO markdown (no *, **, no _, no [links]), no links, no formatting tricks.
       - Short lines. Clean breaks. Readable at a glance.
     
     ABSOLUTE NOs:
@@ -44,47 +45,19 @@ export async function generateGroundedGullyTweet(decision) {
     `;
 
   const userPrompt = `
-    NEWS CONTEXT:
-    ${decision.newContext}
-    
-    TOPIC:
-    ${decision.topic}
-    
-    EMOJI USAGE:
-    - ONE emoji ONLY in the header. Choice: ["🚨", "🗣️", "🔥", "🤡"]
-    
-    TASK:
-    - Generate a high-engagement Indian cricket tweet that sparks debate.
-    - Frame the news as a bold call, a questionable move, or a talking point fans will disagree on.
-    - Your goal is to force fans to pick sides in the replies.
+    NEWS CONTEXT: ${decision.newContext}
+    TOPIC: ${decision.topic}
 
-    LANGUAGE RULES (STRICT):
-    - English ONLY.
-    - NO Hindi words.
-    - NO Hinglish.
-    - NO transliterated Hindi (e.g., arey, bhai, kya, hai, yaar, baap, gully).
-    - Use clear, simple, conversational English.
-    - Sound like a sharp cricket fan, NOT a street rant
-
-    CONTEXT RULE:
-    - The first sentence of The Take MUST clearly state:
-      who the tweet is about and what has happened.
-    
-    
-    REQUIRED STRUCTURE:
-    1. HEADER:
-      - 2–4 word attention-grabbing headline
-      - ONE relevent emoji only from this - ["🚨", "🗣️", "📢"]
-      - Must reflect the actual event (no exaggeration or contradiction)
-    2. Line break
-    3. The Take: A sharp, sarcastic style reaction. Sound like a fan reacting live, not a columnist explaining context.
-    4. Line break
-    5. The Stat/Fact: If NEWS CONTEXT contains a clear stat or number, include ONE of them here. or grounded comparison that anchors the take. No exaggeration. No invented data.
-    6. Line break
-    7. The Trigger: A short closing line or question that forces fans to pick sides and argue in replies. Keep it punchy. No personal abuse.
-    
-    HASHTAGS:
-    - create 1-2 relevent hashtags.
+    DRAFT A TWEET USING THIS EXACT STRUCTURE:
+    1. HEADER: 2-4 words + ONE emoji (🚨, 🗣️, or 📢).
+    2. Line break.
+    3. THE CONTEXT: news context in one-two sentences.
+    4. Line break.
+    5. THE TAKE: First sentence MUST state who/what this is about.
+    6. Line break.
+    7. THE STAT: Use ONE specific number or head-to-head fact from the context.
+    8. Line break.
+    9. THE TRIGGER: A closing question to start a fight in the replies.
     `;
 
   try {
