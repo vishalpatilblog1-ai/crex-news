@@ -86,20 +86,35 @@ GUIDELINES (IMPORTANT):
 - Structure is flexible; do NOT force a rigid format
 
 SUGGESTED FLOW (OPTIONAL):
-- A short opening hook (emoji optional)
+
+- A short opening hook  
+  (emoji optional from "🚨", "🗣️", "📢", "💥", "🔥")
 - Line break
-- 1–2 lines of factual context
+- 1–2 sentences of factual context  
+  (what changed / what is different from expectations)
 - Line break
-- A clear, composed opinion
+- Clear opinionated stance that naturally leads into where the real pressure is building — and who it’s falling on,
+  using ONE sharpening device chosen dynamically by the model:
+  - contrast (expectation vs reality)
+  - exposure (what is being revealed)
+  - consequence (what this forces next)
+  - constraint (what options are disappearing)
+  The pressure angle MUST be decided dynamically from the NEWS CONTEXT and may focus on:
+  - a player
+  - a role
+  - a phase of the game
+  - a selection decision
+  - a tactical pattern
+  Choose the angle that feels inevitable, not dramatic.
 - Line break
-- Supporting detail (stat OR selection/match logic)
-- Line break
-- A thoughtful, open-ended question to invite discussion
+- A thoughtful, open-ended question that:
+  - invites disagreement
+  - avoids absolutes
+  - encourages replies, saves, and quote tweets
 
 RULES:
-- Emoji is optional (max 1)
+- Emoji is optional (max 1 and that too only for opening line mentioned in the SUGGESTED FLOW above )
 - Stats are optional, only if genuinely relevant
-- Avoid inflammatory or fanbait language
 - Prioritize retweets and bookmarks over angry replies
 `;
 
