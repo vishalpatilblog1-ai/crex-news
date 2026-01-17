@@ -109,8 +109,8 @@ RULES:
       contents: [{ role: "user", parts: [{ text: userPrompt }] }],
       config: {
         systemInstruction,
-        temperature: 0.85,
-        maxOutputTokens: 260,
+        temperature: 0.7,
+        maxOutputTokens: 160,
       },
     });
 
