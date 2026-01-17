@@ -12,15 +12,19 @@ export function buildDiscoveryPrompt({ nowUtc }) {
     - You MUST consider ONLY events reported in the LAST 15–60 MINUTES.
     - Any event older than 60 minutes is INVALID, regardless of importance.
     - If exact publish time cannot be determined with minute-level precision,
-      the item MUST be rejected.
+      BUT the source explicitly indicates real-time recency
+      (e.g., "just now", "live update", "currently delayed"),
+      Gemini MAY estimate publishedAt as CURRENT TIME (UTC) minus 5 minutes.
+  
     
     HARD TIME FILTER (OVERRIDES ALL OTHER RULES):
     - Compute the time difference between Current Time (UTC) and publishedAt.
-    - If publishedAt is MORE THAN 60 MINUTES older than Current Time (UTC),
-      you MUST set isNewsworthy = false.
-    - If publishedAt is missing, vague, date-only, or unverifiable,
+    - If publishedAt is MORE THAN 60 MINUTES older than Current Time (UTC), you MUST set isNewsworthy = false.
+    - If publishedAt is missing, vague, or date-only,
+      AND no real-time recency indicator is present in the source,
       you MUST set isNewsworthy = false.
     - Do NOT rely on assumptions, summaries, or “recently reported” phrasing.
+    - When publishedAt is estimated, it MUST still be output as a full ISO timestamp string.
     
     ==================================================
     EVENT TYPE FRESHNESS WINDOWS (STRICT)
@@ -34,18 +38,20 @@ export function buildDiscoveryPrompt({ nowUtc }) {
     - Match conclusions/results: <= 60 minutes
     - ICC announcements / rankings / rules: <= 180 minutes (authoritative only)
     - Ticketing or administrative issues: <= 180 minutes (authoritative only)
+    - Toss delays / start-time delays / pre-match interruptions: <= 30 minutes
     
     If an item exceeds its category freshness window, it MUST be rejected.
     
-    ==================================================
     PRIORITY EVENT TYPES (ONLY THESE)
     ==================================================
     - Breaking news
     - Toss results
+    - Toss delays or start-time delays caused by weather or ground conditions
+    - Match interruptions before first ball (rain, wet outfield, inspection delays)
     - Match conclusions
     - Live match status updates (explicitly stated in source)
     - Confirmed injury updates
-    - Official squad or team announcements
+    - Official squad or team announcements    
     - Confirmed last-minute team changes on match day
     - Match-related disciplinary or officiating decisions
     - Official post-match reactions (captain/coach/player quotes)
@@ -79,10 +85,14 @@ export function buildDiscoveryPrompt({ nowUtc }) {
     Apply these strict rules:
     
     A) PRE_MATCH:
-    - Allowed ONLY: toss results, playing XI, pitch/conditions updates,
-      last-minute confirmed team changes.
+    - Allowed:
+      - toss results
+      - toss delays
+      - start-time delays
+      - pitch or outfield condition updates
+      - weather-related interruptions BEFORE the first ball
     - MUST be reported BEFORE the first ball.
-    - If the match has already started, PRE_MATCH items are INVALID.
+  
     
     B) LIVE:
     - Allowed ONLY if the source explicitly states the match is
@@ -177,6 +187,15 @@ export function buildDiscoveryPrompt({ nowUtc }) {
     - The output MUST clearly indicate the source platform in reasoning.
     - If a claim comes from a whitelisted account, it MAY be marked
       isNewsworthy = true even without TIER-1 corroboration.
+
+    ==================================================
+      FAST PATH OVERRIDE (REAL-TIME SAFETY VALVE)
+    ==================================================
+      If the source explicitly states an ongoing match delay, interruption,
+      or uncertainty in start time due to weather or ground conditions,
+      AND no contradictory match state is present,
+      Gemini SHOULD mark isNewsworthy = true even if
+      full category classification is incomplete.
     
     ==================================================
     CRITICAL GROUNDING RULES (MANDATORY)
@@ -272,6 +291,7 @@ export function buildDiscoveryPrompt({ nowUtc }) {
       - reasoning (string)
       - sourceUrl (string)
       - publishedAt (string, full ISO timestamp required)
+
     
     - If NO valid news exists within the last 60 minutes,
       return EXACTLY this object and nothing else:
