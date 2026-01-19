@@ -43,7 +43,14 @@ export async function generateGeminiCAtweet(articleText) {
   - No hashtags unless absolutely necessary (max 1)
   - Natural human flow — NOT a rigid template
   - Short paragraphs (1–2 lines max)
+
+  EMPHASIS RULE (STRICT):
+  - Do NOT use typographic emphasis to push opinions.
+  - Avoid asterisks (*), underscores (_), or capitalization for persuasion.
+  - Strong views must be expressed through reasoning, not formatting.
+  - If emphasis is needed, achieve it through sentence structure, not symbols.
   
+
   CONTENT RULES (IMPORTANT):
   - Use facts, stats, or recent context whenever possible
   - If no exact stat is available, rely on observable match or selection logic
