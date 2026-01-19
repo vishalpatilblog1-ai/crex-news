@@ -122,7 +122,6 @@ RULES (STRICT):
 - Do NOT end with a question by default
 - End confidently if no question is needed
 - Prioritize clarity and authority over interaction bait
-
 `;
 
   try {
