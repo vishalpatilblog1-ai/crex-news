@@ -2,7 +2,6 @@
 import * as cheerio from "cheerio";
 
 export function getCAImageUrl(item) {
-  // 1️⃣ Try content:encoded (BEST)
   const contentHtml = item?.["content:encoded"];
   if (contentHtml) {
     const $ = cheerio.load(contentHtml);
@@ -12,7 +11,6 @@ export function getCAImageUrl(item) {
     }
   }
 
-  // 2️⃣ Fallback: description
   const descHtml = item?.description;
   if (descHtml) {
     const $ = cheerio.load(descHtml);
@@ -27,5 +25,5 @@ export function getCAImageUrl(item) {
 
 function normalizeImageUrl(url) {
   if (!url) return null;
-  return url.split("?")[0]; // remove resizing params
+  return url.split("?")[0];
 }

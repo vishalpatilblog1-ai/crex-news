@@ -1,16 +1,16 @@
 // cricket-addictor/caNewsPollingLoop.js
 
-import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
-
-import { fetchCARSS } from "./fetchCARss.js";
-import { parseCAArticle } from "./parseCAArticle.js";
-import { isCAArticle, normalizeCALink } from "./caFilters.js";
-import { getCAImageUrl } from "./getCAImageUrl.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
+import { isCAArticle, normalizeCALink } from "./caFilters.js";
+import { fetchCARSS } from "./fetchCARss.js";
+import { getCAImageUrl } from "./getCAImageUrl.js";
+import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
+import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
+import { parseCAArticle } from "./parseCAArticle.js";
 
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
@@ -68,7 +68,6 @@ export async function caNewsPollingLoop() {
 
     const cleanLink = normalizeCALink(item.link);
     if (STATE.ca.seen[cleanLink]) {
-      //   console.log("⛔ skip: already seen");
       continue;
     }
 
@@ -103,10 +102,6 @@ export async function caNewsPollingLoop() {
 
   let tweetText;
   try {
-    // tweetText = await generateCommonStyleTweet(
-    //   parsed.headline + "\n" + parsed.body,
-    //   "Cricket Addictor"
-    // );
     tweetText = await generateGeminiCAtweet(
       parsed.headline + "\n" + parsed.body
     );
@@ -117,14 +112,44 @@ export async function caNewsPollingLoop() {
   const imageUrl = getCAImageUrl(selected);
   const cleanLink = normalizeCALink(selected.link);
 
-  //   console.log("tweetText::", tweetText);
   console.log("imageUrl::", imageUrl);
   console.log("cleanLink::", cleanLink);
 
+  // if (!CONSOLE_ONLY) {
+  //   if (imageUrl) {
+  //     await tweetWithNativeImage({ text: tweetText, imageUrl });
+  //   } else {
+  //     await postTweet_ie_web({ text: tweetText });
+  //   }
+  // }
   if (!CONSOLE_ONLY) {
+    let useImage = false;
+
     if (imageUrl) {
+      try {
+        const localImagePath = await downloadImageToTemp(imageUrl);
+        const ocrResult = await isRiskyTwitterImage(localImagePath);
+
+        console.log("localImagePath::", localImagePath);
+        console.log("ocrResult::", ocrResult);
+        if (!ocrResult.risky) {
+          useImage = true;
+        } else {
+          console.log("⚠️ OCR flagged image as risky:", ocrResult.reason);
+        }
+      } catch (err) {
+        console.warn(
+          "⚠️ OCR check failed, fallback to text-only:",
+          err.message
+        );
+      }
+    }
+
+    if (useImage) {
+      console.log("eligible for text with image");
       await tweetWithNativeImage({ text: tweetText, imageUrl });
     } else {
+      console.log("eligible for only text");
       await postTweet_ie_web({ text: tweetText });
     }
   }
