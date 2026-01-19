@@ -6,6 +6,7 @@ import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
+import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
 import { getCAImageUrl } from "./getCAImageUrl.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
@@ -62,7 +63,6 @@ export async function caNewsPollingLoop() {
 
     const ageMin = (Date.now() - pubMs) / 60000;
     if (ageMin > MAX_AGE_MIN) {
-      //   console.log("⛔ skip: too old", ageMin.toFixed(1), "min");
       continue;
     }
 
@@ -71,7 +71,12 @@ export async function caNewsPollingLoop() {
       continue;
     }
 
-    // console.log("✅ SELECTED:", item.title);
+    if (isBlockedCAHeadline(item.title)) {
+      STATE.ca.seen[cleanLink] = Date.now();
+      console.log("⛔ skipped utility headline really blocked:", item.title);
+      continue;
+    }
+
     selected = item;
     break;
   }
