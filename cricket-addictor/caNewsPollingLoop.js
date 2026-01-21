@@ -25,7 +25,7 @@ export async function caNewsPollingLoop() {
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
   const SEEN_RETENTION_HOURS = 48;
   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
-  console.log("caNewsPollingLoop1..");
+
   try {
     const now = Date.now();
     let pruned = 0;
@@ -43,7 +43,7 @@ export async function caNewsPollingLoop() {
   } catch (err) {
     console.warn("⚠️ CA seen prune failed:", err.message);
   }
-  console.log("caNewsPollingLoop2..");
+
   const items = await fetchCARSS();
 
   if (!Array.isArray(items)) return;
@@ -162,26 +162,6 @@ export async function caNewsPollingLoop() {
       await saveState(STATE);
       return;
     }
-
-    // if (imageUrl) {
-    //   try {
-    //     const localImagePath = await downloadImageToTemp(imageUrl);
-    //     const ocrResult = await isRiskyTwitterImage(localImagePath);
-
-    //     console.log("localImagePath::", localImagePath);
-    //     console.log("ocrResult::", ocrResult);
-    //     if (!ocrResult.risky) {
-    //       useImage = true;
-    //     } else {
-    //       console.log("⚠️ OCR flagged image as risky:", ocrResult.reason);
-    //     }
-    //   } catch (err) {
-    //     console.warn(
-    //       "⚠️ OCR check failed, fallback to text-only:",
-    //       err.message
-    //     );
-    //   }
-    // }
 
     if (useImage) {
       console.log("eligible for text with image");
