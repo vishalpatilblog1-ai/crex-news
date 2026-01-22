@@ -81,7 +81,7 @@ export async function caNewsPollingLoop() {
     break;
   }
 
-  //   console.log("selected::", selected);
+  // console.log("selected::", selected);
 
   if (!selected) return;
 
@@ -89,8 +89,9 @@ export async function caNewsPollingLoop() {
   if (!parsed?.body || parsed.body.length < 80) return;
 
   // 🧠 Context dedupe
+  let decision = null;
   try {
-    const decision = await judgeNewsContext({
+    decision = await judgeNewsContext({
       articleText: parsed.body,
       existingContexts:
         STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
@@ -114,49 +115,78 @@ export async function caNewsPollingLoop() {
     // tweetText = generateCAFallbackTweet(selected);
   }
 
+  if (!tweetText || tweetText.length < 30) {
+    console.log("⚠️ Tweet text too short, skipping");
+    STATE.ca.seen[cleanLink] = Date.now();
+    await saveState(STATE);
+    return;
+  }
   const imageUrl = getCAImageUrl(selected);
   const cleanLink = normalizeCALink(selected.link);
 
   console.log("imageUrl::", imageUrl);
   console.log("cleanLink::", cleanLink);
 
-  // if (!CONSOLE_ONLY) {
-  //   if (imageUrl) {
-  //     await tweetWithNativeImage({ text: tweetText, imageUrl });
-  //   } else {
-  //     await postTweet_ie_web({ text: tweetText });
-  //   }
-  // }
+  if (!STATE.usedImages) STATE.usedImages = {};
   if (!CONSOLE_ONLY) {
     let useImage = false;
 
     if (imageUrl) {
-      try {
-        const localImagePath = await downloadImageToTemp(imageUrl);
-        const ocrResult = await isRiskyTwitterImage(localImagePath);
+      if (STATE.usedImages[imageUrl]) {
+        console.log("🖼️ Image already used — forcing text-only");
+        useImage = false;
+      } else {
+        try {
+          const localImagePath = await downloadImageToTemp(imageUrl);
+          const ocrResult = await isRiskyTwitterImage(localImagePath);
 
-        console.log("localImagePath::", localImagePath);
-        console.log("ocrResult::", ocrResult);
-        if (!ocrResult.risky) {
-          useImage = true;
-        } else {
-          console.log("⚠️ OCR flagged image as risky:", ocrResult.reason);
+          console.log("localImagePath::", localImagePath);
+          console.log("ocrResult::", ocrResult);
+          if (!ocrResult.risky) {
+            useImage = true;
+          } else {
+            console.log("⚠️ OCR flagged image as risky:", ocrResult.reason);
+          }
+        } catch (err) {
+          console.warn(
+            "⚠️ OCR check failed, fallback to text-only:",
+            err.message
+          );
         }
-      } catch (err) {
-        console.warn(
-          "⚠️ OCR check failed, fallback to text-only:",
-          err.message
-        );
       }
+    }
+
+    if (!useImage && isBlockedCAHeadline(selected.title)) {
+      console.log("⛔ Duplicate image + utility headline — skipping");
+      STATE.ca.seen[cleanLink] = Date.now();
+      await saveState(STATE);
+      return;
     }
 
     if (useImage) {
       console.log("eligible for text with image");
       await tweetWithNativeImage({ text: tweetText, imageUrl });
+      STATE.usedImages[imageUrl] = Date.now();
     } else {
       console.log("eligible for only text");
       await postTweet_ie_web({ text: tweetText });
     }
+  }
+
+  if (decision?.newContext) {
+    if (!STATE.dailyContext) {
+      STATE.dailyContext = {
+        date: new Date().toISOString().slice(0, 10),
+        contexts: [],
+      };
+    }
+
+    STATE.dailyContext.contexts.push({
+      summary: decision.newContext,
+      source: "CA",
+      link: cleanLink,
+      createdAt: new Date().toISOString(),
+    });
   }
 
   STATE.ca.seen[cleanLink] = Date.now();
