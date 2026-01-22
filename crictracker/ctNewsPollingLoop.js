@@ -30,6 +30,7 @@ export async function ctNewsPollingLoop() {
   const RETENTION_MS = RETENTION_HOURS * 60 * 60 * 1000;
 
   /* -------------------- PRUNE SEEN -------------------- */
+  console.log("ctNewsPollingLoop..1");
   try {
     const now = Date.now();
     let pruned = 0;
@@ -48,6 +49,7 @@ export async function ctNewsPollingLoop() {
     console.warn("⚠️ CT seen prune failed:", err.message);
   }
 
+  console.log("ctNewsPollingLoop..2");
   /* -------------------- PRUNE DAILY CONTEXT -------------------- */
   if (STATE.dailyContext?.contexts?.length) {
     const now = Date.now();
@@ -65,6 +67,7 @@ export async function ctNewsPollingLoop() {
 
   /* -------------------- FETCH & SELECT -------------------- */
   const items = await fetchCTRSS();
+  console.log("ctNewsPollingLoop..3");
   if (!Array.isArray(items)) return;
 
   const sorted = items
@@ -72,6 +75,7 @@ export async function ctNewsPollingLoop() {
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   let selected = null;
+  console.log("ctNewsPollingLoop..4");
 
   for (const item of sorted) {
     const pubMs = getPubDate(item);
@@ -92,6 +96,7 @@ export async function ctNewsPollingLoop() {
     selected = item;
     break;
   }
+  console.log("ctNewsPollingLoop..5");
 
   if (!selected) return;
 
@@ -102,6 +107,7 @@ export async function ctNewsPollingLoop() {
   if (!parsed?.body || parsed.body.length < 80) return;
 
   /* -------------------- CONTEXT DEDUPE -------------------- */
+  console.log("ctNewsPollingLoop..6");
   let decision = null;
   try {
     decision = await judgeNewsContext({
@@ -137,7 +143,9 @@ export async function ctNewsPollingLoop() {
   const imageUrl = getCTImageUrl(selected);
   STATE.usedImages ??= {};
 
+  console.log("ctNewsPollingLoop..7");
   if (!CONSOLE_ONLY) {
+    console.log("ctNewsPollingLoop..8");
     let useImage = false;
 
     if (imageUrl && !STATE.usedImages[imageUrl]) {
@@ -176,6 +184,7 @@ export async function ctNewsPollingLoop() {
     }
   }
 
+  console.log("ctNewsPollingLoop..9");
   /* -------------------- SAVE CONTEXT -------------------- */
   if (decision?.newContext) {
     STATE.dailyContext ??= { contexts: [] };
@@ -196,6 +205,7 @@ export async function ctNewsPollingLoop() {
   await saveState(STATE);
 }
 
+console.log("ctNewsPollingLoop..10");
 /* -------------------- HELPERS -------------------- */
 
 function getPubDate(item) {
