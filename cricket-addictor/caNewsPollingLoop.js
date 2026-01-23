@@ -21,7 +21,7 @@ export async function caNewsPollingLoop() {
   if (!STATE.ca) STATE.ca = {};
   if (!STATE.ca.seen) STATE.ca.seen = {};
 
-  const MAX_AGE_MIN = 15;
+  const MAX_AGE_MIN = 25;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
   const SEEN_RETENTION_HOURS = 24;
   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;

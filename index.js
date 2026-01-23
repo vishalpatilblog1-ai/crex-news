@@ -62,13 +62,25 @@ async function bootstrap() {
     console.log("🧠 Gemini discovery polling enabled for crex-news");
     setInterval(googleNewsPollingLoop, 1000 * 60 * 10);
   }
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 cricketaddictor news polling enabled for crex-news");
+  //   setInterval(caNewsPollingLoop, 1000 * 60 * 10);
+  // }
+  // if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
+  //   console.log("🧠 crictracker news polling enabled for crex-news");
+  //   setInterval(ctNewsPollingLoop, 1000 * 60 * 15);
+  // }
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("🧠 cricketaddictor news polling enabled for crex-news");
-    setInterval(caNewsPollingLoop, 1000 * 60 * 10);
+    setTimeout(() => {
+      setInterval(caNewsPollingLoop, 1000 * 60 * 10);
+    }, 0);
   }
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     console.log("🧠 crictracker news polling enabled for crex-news");
-    setInterval(ctNewsPollingLoop, 1000 * 60 * 15);
+    setTimeout(() => {
+      setInterval(ctNewsPollingLoop, 1000 * 60 * 10);
+    }, 1000 * 60 * 2);
   }
 }
 
