@@ -165,8 +165,8 @@ export async function caNewsPollingLoop() {
           const localImagePath = await downloadImageToTemp(imageUrl);
           const ocrResult = await isRiskyTwitterImage(localImagePath);
 
-          console.log("localImagePath::", localImagePath);
-          console.log("ocrResult::", ocrResult);
+          // console.log("localImagePath::", localImagePath);
+          // console.log("ocrResult::", ocrResult);
           if (!ocrResult.risky) {
             useImage = true;
           } else {

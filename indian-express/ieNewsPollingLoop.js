@@ -1,12 +1,12 @@
 // ieNewsPollingLoop.js
 
+import { generateGeminiCAtweet } from "../cricket-addictor/ai/generateGeminiCAtweet.js";
 import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
-import { generateIENewsTweet } from "./ai/generateIENewsTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 
 import { fetchIEArticle } from "./fetchIEArticle.js";
@@ -23,23 +23,21 @@ export async function ieNewsPollingLoop() {
 
   const STATE = global.STATE;
 
-  if (!STATE.ie) STATE.ie = {};
-  if (!STATE.ie.seen) STATE.ie.seen = {};
+  STATE.ie ??= {};
+  STATE.ie.seen ??= {};
 
-  if (!STATE.dailyContext || !Array.isArray(STATE.dailyContext.contexts)) {
+  const today = getTodayUTC();
+  if (!STATE.dailyContext || STATE.dailyContext.date !== today) {
     STATE.dailyContext = {
-      date: getTodayUTC(),
+      date: today,
       contexts: [],
     };
   }
 
-  const MAX_AGE_HOURS = Number(process.env.IE_MAX_AGE_HOURS || 24);
-  const SEEN_RETENTION_HOURS = Number(
-    process.env.IE_SEEN_RETENTION_HOURS || 48
-  );
+  const MAX_AGE_MIN = 25;
+  const SEEN_RETENTION_HOURS = 6;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-  const MAX_AGE_MS = MAX_AGE_HOURS * 60 * 60 * 1000;
   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
 
   try {
@@ -53,11 +51,10 @@ export async function ieNewsPollingLoop() {
       }
     }
 
-    if (pruned > 0) {
+    if (pruned) {
       console.log(`🧹 Pruned ${pruned} old IE seen entries`);
     }
 
-    // 📰 Fetch RSS
     const items = await fetchIECricketRSS();
     if (!Array.isArray(items) || items.length === 0) {
       console.log("ℹ️ No IE RSS items");
@@ -74,8 +71,8 @@ export async function ieNewsPollingLoop() {
       const pubMs = getPubDate(item);
       if (!pubMs) continue;
 
-      // ⏱️ Age gate (same as BBC)
-      if (Date.now() - pubMs > MAX_AGE_MS) continue;
+      const ageMin = (Date.now() - pubMs) / 60000;
+      if (ageMin > MAX_AGE_MIN) continue;
 
       const cleanLink = normalizeIELink(item.link);
       if (STATE.ie.seen[cleanLink]) continue;
@@ -98,7 +95,6 @@ export async function ieNewsPollingLoop() {
       CONSOLE_ONLY
     );
 
-    // 📄 Fetch + parse
     const html = await fetchIEArticle(selected.link);
     const parsed = parseIEArticle(html);
 
@@ -107,7 +103,6 @@ export async function ieNewsPollingLoop() {
       return;
     }
 
-    // 🧠 Context dedupe (shared dailyContext)
     let contextDecision = null;
 
     try {
@@ -121,31 +116,37 @@ export async function ieNewsPollingLoop() {
         contextDecision?.confidence >= 0.8
       ) {
         console.log(
-          "🔁 Indian Express context already covered — skipping- existingContexts::",
-          existingContexts
+          "🔁 IE context already covered — skipping",
+          STATE.dailyContext.contexts.map((c) => c.summary)
         );
         console.log("↳ Context:", contextDecision.newContext);
 
         const cleanLink = normalizeIELink(selected.link);
         STATE.ie.seen[cleanLink] = Date.now();
+        STATE.ie.lastLink = cleanLink;
+        STATE.ie.lastTitle = selected.title;
+        STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+
         await saveState(STATE);
         return;
       }
     } catch (err) {
       console.warn(
-        "⚠️ IE context judge failed, proceeding without context dedup:",
+        "⚠️ IE context judge failed, proceeding without dedup:",
         err.message
       );
     }
 
-    // ✍️ Generate tweet
     let tweetBody;
 
     try {
-      // tweetBody = await generateIENewsTweet(parsed.body);
-      tweetBody = await generateCommonStyleTweet(
-        parsed.headline + parsed.body,
-        "Indian Express"
+      // tweetBody = await generateCommonStyleTweet(
+      //   parsed.headline + parsed.body,
+      //   "Indian Express"
+      // );
+
+      tweetBody = await generateGeminiCAtweet(
+        parsed.headline + "\n" + parsed.body
       );
 
       if (!tweetBody || tweetBody.length < 30) {
@@ -157,14 +158,12 @@ export async function ieNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeIELink(selected.link);
-    // const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
-    // const tweetText = `${tweetBody}\n\n[Indian Express]`;
-    const tweetText = `${tweetBody}`;
+    let tweetText = tweetBody;
     const imageUrl = getIEImageUrl(selected);
-    console.log("imageUrl::", imageUrl);
 
+    tweetText = `🔵 ${tweetText}`;
     if (CONSOLE_ONLY) {
-      console.log("🟡 CONSOLE MODE — Tweet skipped");
+      console.log("🔵 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);
     } else {
       try {
@@ -175,14 +174,13 @@ export async function ieNewsPollingLoop() {
         }
       } catch (err) {
         console.warn(
-          "⚠️ IE native image tweet failed, fallback to text-only:",
+          "⚠️ IE native image failed, fallback to text-only:",
           err.message
         );
         await postTweet_ie_web({ text: tweetText });
       }
     }
 
-    // 💾 Update state
     STATE.ie.seen[cleanUrl] = Date.now();
     STATE.ie.lastLink = cleanUrl;
     STATE.ie.lastTitle = selected.title;
@@ -196,20 +194,6 @@ export async function ieNewsPollingLoop() {
         createdAt: new Date().toISOString(),
       });
     }
-
-    STATE.ie = {
-      ...STATE.ie,
-      lastPubMs: STATE.ie?.lastPubMs || 0,
-      lastLink: STATE.ie?.lastLink || "",
-      lastTitle: STATE.ie?.lastTitle || "",
-      visibleDate: STATE.ie?.visibleDate || null,
-      seen: STATE.ie?.seen || {},
-    };
-
-    STATE.dailyContext = {
-      date: STATE.dailyContext.date,
-      contexts: STATE.dailyContext.contexts || [],
-    };
 
     await saveState(STATE);
     console.log("🟢 IE state + dailyContext saved");

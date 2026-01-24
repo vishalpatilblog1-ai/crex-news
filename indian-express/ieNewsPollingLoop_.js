@@ -1,5 +1,7 @@
 // ieNewsPollingLoop.js
 
+import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
+import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
@@ -8,6 +10,7 @@ import { generateIENewsTweet } from "./ai/generateIENewsTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 
 import { fetchIEArticle } from "./fetchIEArticle.js";
+import { getIEImageUrl } from "./getIEImageUrl.js";
 import { isIEArticle, normalizeIELink } from "./ieFilters.js";
 import { fetchIECricketRSS } from "./ieRssFetcher.js";
 import { parseIEArticle } from "./parseIEArticle.js";
@@ -23,7 +26,6 @@ export async function ieNewsPollingLoop() {
   if (!STATE.ie) STATE.ie = {};
   if (!STATE.ie.seen) STATE.ie.seen = {};
 
-  // 🔒 Fail-safe (index.js should already init this)
   if (!STATE.dailyContext || !Array.isArray(STATE.dailyContext.contexts)) {
     STATE.dailyContext = {
       date: getTodayUTC(),
@@ -41,7 +43,6 @@ export async function ieNewsPollingLoop() {
   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
 
   try {
-    // 🧹 Prune old seen entries (sliding window)
     const now = Date.now();
     let pruned = 0;
 
@@ -119,7 +120,10 @@ export async function ieNewsPollingLoop() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log("🔁 Skipping IE article (context already covered)");
+        console.log(
+          "🔁 Indian Express context already covered — skipping- existingContexts::",
+          existingContexts
+        );
         console.log("↳ Context:", contextDecision.newContext);
 
         const cleanLink = normalizeIELink(selected.link);
@@ -138,7 +142,12 @@ export async function ieNewsPollingLoop() {
     let tweetBody;
 
     try {
-      tweetBody = await generateIENewsTweet(parsed.body);
+      // tweetBody = await generateIENewsTweet(parsed.body);
+      tweetBody = await generateCommonStyleTweet(
+        parsed.headline + parsed.body,
+        "Indian Express"
+      );
+
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }
@@ -148,13 +157,29 @@ export async function ieNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeIELink(selected.link);
-    const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
+    // const tweetText = `${tweetBody}\n\nIndian Express 🔗 ${cleanUrl}`;
+    // const tweetText = `${tweetBody}\n\n[Indian Express]`;
+    const tweetText = `${tweetBody}`;
+    const imageUrl = getIEImageUrl(selected);
+    console.log("imageUrl::", imageUrl);
 
     if (CONSOLE_ONLY) {
       console.log("🟡 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);
     } else {
-      await postTweet_ie_web({ text: tweetText });
+      try {
+        if (imageUrl) {
+          await tweetWithNativeImage({ text: tweetText, imageUrl });
+        } else {
+          await postTweet_ie_web({ text: tweetText });
+        }
+      } catch (err) {
+        console.warn(
+          "⚠️ IE native image tweet failed, fallback to text-only:",
+          err.message
+        );
+        await postTweet_ie_web({ text: tweetText });
+      }
     }
 
     // 💾 Update state
@@ -171,6 +196,20 @@ export async function ieNewsPollingLoop() {
         createdAt: new Date().toISOString(),
       });
     }
+
+    STATE.ie = {
+      ...STATE.ie,
+      lastPubMs: STATE.ie?.lastPubMs || 0,
+      lastLink: STATE.ie?.lastLink || "",
+      lastTitle: STATE.ie?.lastTitle || "",
+      visibleDate: STATE.ie?.visibleDate || null,
+      seen: STATE.ie?.seen || {},
+    };
+
+    STATE.dailyContext = {
+      date: STATE.dailyContext.date,
+      contexts: STATE.dailyContext.contexts || [],
+    };
 
     await saveState(STATE);
     console.log("🟢 IE state + dailyContext saved");
