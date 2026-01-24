@@ -90,9 +90,6 @@ Return JSON in this exact format:
     throw new Error("AI response is not valid JSON");
   }
 
-  // ---------------------------------------------------
-  // HARD VALIDATION (DO NOT TRUST AI BLINDLY)
-  // ---------------------------------------------------
   if (typeof parsed.newContext !== "string" || parsed.newContext.length < 20) {
     throw new Error("Invalid newContext from AI");
   }
