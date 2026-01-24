@@ -1,16 +1,16 @@
-import { postTweet_ie_web } from "../twitter/twitter.js"; // consider renaming later
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
+import { postTweet_ie_web } from "../twitter/twitter.js"; // consider renaming later
 import { saveState } from "../utils/stateStoreCloud.js";
 
-import { fetchHinduCricketRSS } from "./hinduRssFetcher.js";
-import { isHinduArticle, normalizeHinduLink } from "./hinduFilters.js";
 import { fetchHinduArticle } from "./fetchHinduArticle.js";
-import { parseHinduArticle } from "./parseHinduArticle.js";
 import { getHinduImageUrl } from "./getHinduImage.js";
+import { isHinduArticle, normalizeHinduLink } from "./hinduFilters.js";
+import { fetchHinduCricketRSS } from "./hinduRssFetcher.js";
+import { parseHinduArticle } from "./parseHinduArticle.js";
 
+import { generateGeminiCAtweet } from "../cricket-addictor/ai/generateGeminiCAtweet.js";
 import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
-import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) {
@@ -133,9 +133,8 @@ export async function hinduNewsPollingLoop() {
     let tweetBody;
 
     try {
-      tweetBody = await generateCommonStyleTweet(
-        parsed.headline + parsed.body,
-        "The Hindu"
+      tweetBody = await generateGeminiCAtweet(
+        parsed.headline + "\n" + parsed.body
       );
 
       if (!tweetBody || tweetBody.length < 30) {

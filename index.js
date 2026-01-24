@@ -46,12 +46,12 @@ async function bootstrap() {
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 3);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("📰 The Hindu news polling enabled");
-    setInterval(hinduNewsPollingLoop, 1000 * 60 * 5);
+    setInterval(hinduNewsPollingLoop, 1000 * 60 * 15);
   }
   if (process.env.ENABLE_PROBATSMAN_NEWS_POLLING === "true") {
     console.log("📰 ProBatsman news polling enabled");
