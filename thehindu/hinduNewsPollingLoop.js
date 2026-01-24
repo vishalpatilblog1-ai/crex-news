@@ -34,7 +34,7 @@ export async function hinduNewsPollingLoop() {
 
   // ── Config ────────────────────────────────────────────────
   // const MAX_AGE_HOURS = 24;
-  const MAX_AGE_MIN = 25;
+  const MAX_AGE_MIN = 60;
   const SEEN_RETENTION_HOURS = 6;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
