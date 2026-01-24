@@ -23,7 +23,7 @@ export async function ctNewsPollingLoop() {
   STATE.cricktracker ??= {};
   STATE.cricktracker.seen ??= {};
 
-  const MAX_AGE_MIN = 30;
+  const MAX_AGE_MIN = 60;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
   const RETENTION_HOURS = 24;

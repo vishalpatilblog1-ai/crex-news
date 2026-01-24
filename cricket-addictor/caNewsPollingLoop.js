@@ -23,16 +23,15 @@ export async function caNewsPollingLoop() {
 
   const MAX_AGE_MIN = 25;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const SEEN_RETENTION_HOURS = 6;
-  const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
-  const CONTEXT_RETENTION_HOURS = 6;
-  const CONTEXT_RETENTION_MS = CONTEXT_RETENTION_HOURS * 60 * 60 * 1000;
+  const COVERED_RETENTION_HOURS = 6;
+  const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
+
   try {
     const now = Date.now();
     let pruned = 0;
 
     for (const [link, ts] of Object.entries(STATE.ca.seen)) {
-      if (now - ts > SEEN_RETENTION_MS) {
+      if (now - ts > COVERED_RETENTION_MS) {
         delete STATE.ca.seen[link];
         pruned++;
       }
@@ -50,7 +49,7 @@ export async function caNewsPollingLoop() {
     const before = STATE.dailyContext.contexts.length;
 
     STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter(
-      (c) => now - new Date(c.createdAt).getTime() <= CONTEXT_RETENTION_MS
+      (c) => now - new Date(c.createdAt).getTime() <= COVERED_RETENTION_MS
     );
 
     const after = STATE.dailyContext.contexts.length;
