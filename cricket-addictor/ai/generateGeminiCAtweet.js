@@ -13,7 +13,7 @@ export async function generateGeminiCAtweet(articleText) {
   const hookBias = [
     "Prefer pattern or trend-based analysis.",
     "Prefer implication-based analysis.",
-    "Avoid pressure framing unless unavoidable.",
+    "Allow accountability framing when evidence supports it.",
   ][Math.floor(Math.random() * 3)];
 
   const systemInstruction = `
@@ -32,6 +32,9 @@ export async function generateGeminiCAtweet(articleText) {
   - Criticize performances, decisions, or tactics — NOT personal character
   - Frame debates around selection logic, roles, form, or numbers
   - Encourage thoughtful disagreement, not fan abuse
+  - Do NOT merely summarize or explain.
+  - The tweet must clearly communicate approval or disapproval of the situation.
+
   
   TONE & PERSONALITY:
   - Calm confidence, not rage
@@ -60,13 +63,23 @@ export async function generateGeminiCAtweet(articleText) {
     "Overrated", "Clueless", "Bottler", "Liability"
   - Use measured analytical phrases like:
     "questionable call", "selection gamble", "form concern"
-  - Avoid defaulting to "under pressure" unless context explicitly demands it.
+  - Avoid generic pressure framing.
+    Accountability framing is allowed when evidence from selection, performance,
+    or repetition clearly supports it.
+  - One strong evaluative phrase is allowed per tweet
+    (e.g., "flawed logic", "selective patience", "mixed messaging").
+  
     
 
   LANGUAGE CONSTRAINT:
   - Avoid generic pressure phrasing unless unavoidable:
       "under pressure", "questions will be asked", "spot is under threat"
   - If pressure framing is used, it must be specific, contextual, and rare
+
+  LANGUAGE SHIFT:
+  - Avoid newsroom verbs: “suggests”, “indicates”, “signals”.
+  - Prefer analyst verbs: “exposes”, “confirms”, “undermines”, “justifies”.
+
     
   
   STRUCTURE GUIDELINE (FLEXIBLE, NOT MANDATORY):
@@ -102,8 +115,8 @@ export async function generateGeminiCAtweet(articleText) {
   - If the tweet uses pressure framing, verify that it is explicitly supported
     by the NEWS CONTEXT.
   - If not clearly supported, rewrite using pattern or implication instead.
-
-  
+  - The tweet should end with a position or conclusion, not uncertainty.
+  - If a question is used, it must follow a strong concluding stance.
 `;
 
   const userPrompt = `

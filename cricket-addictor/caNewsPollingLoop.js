@@ -126,13 +126,6 @@ export async function caNewsPollingLoop() {
       await saveState(STATE);
       return;
     }
-
-    // if (decision?.isAlreadyCovered && decision.confidence >= 0.8) {
-    //   console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
-    //   STATE.ca.seen[normalizeCALink(selected.link)] = Date.now();
-    //   await saveState(STATE);
-    //   return;
-    // }
   } catch (_) {}
 
   let tweetText;
@@ -165,8 +158,6 @@ export async function caNewsPollingLoop() {
           const localImagePath = await downloadImageToTemp(imageUrl);
           const ocrResult = await isRiskyTwitterImage(localImagePath);
 
-          // console.log("localImagePath::", localImagePath);
-          // console.log("ocrResult::", ocrResult);
           if (!ocrResult.risky) {
             useImage = true;
           } else {
