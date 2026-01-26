@@ -33,11 +33,15 @@ export async function caNewsPollingLoop() {
     process.env.COVERED_RETENTION_HOURS ?? 6
   );
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
+  let stateDirty = false;
+  stateDirty ||= pruneSeen(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_MS);
 
-  // ---- GC / pruning (MUST be before any early returns) ----
-  pruneSeen(STATE, COVERED_RETENTION_MS);
-  pruneDailyContext(STATE, COVERED_RETENTION_MS);
-  pruneUsedImages(STATE, COVERED_RETENTION_MS);
+  if (stateDirty) {
+    console.log("💾 Persisting pruned state to JSONBin");
+    await saveState(STATE);
+  }
 
   // ---- fetch rss ----
   const items = await fetchCARSS();
@@ -198,16 +202,20 @@ function pruneSeen(STATE, retentionMs) {
       }
     }
 
-    if (pruned > 0) console.log(`🧹 Pruned ${pruned} old CA seen entries`);
+    if (pruned > 0) {
+      console.log(`🧹 Pruned ${pruned} old CA seen entries`);
+      return true;
+    }
   } catch (err) {
     console.warn("⚠️ CA seen prune failed:", err?.message || err);
   }
+  return false;
 }
 
 function pruneDailyContext(STATE, retentionMs) {
   try {
     const ctx = STATE.dailyContext?.contexts;
-    if (!Array.isArray(ctx) || ctx.length === 0) return;
+    if (!Array.isArray(ctx) || ctx.length === 0) return false;
 
     const now = Date.now();
     const before = ctx.length;
@@ -218,12 +226,15 @@ function pruneDailyContext(STATE, retentionMs) {
     });
 
     const after = STATE.dailyContext.contexts.length;
+
     if (before !== after) {
       console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
+      return true;
     }
   } catch (err) {
     console.warn("⚠️ dailyContext prune failed:", err?.message || err);
   }
+  return false;
 }
 
 function pruneUsedImages(STATE, retentionMs) {
@@ -238,10 +249,14 @@ function pruneUsedImages(STATE, retentionMs) {
       }
     }
 
-    if (pruned > 0) console.log(`🧹 Pruned ${pruned} old usedImages entries`);
+    if (pruned > 0) {
+      console.log(`🧹 Pruned ${pruned} old usedImages entries`);
+      return true;
+    }
   } catch (err) {
     console.warn("⚠️ usedImages prune failed:", err?.message || err);
   }
+  return false;
 }
 
 async function decideImageUsage({ imageUrl, usedImages }) {
