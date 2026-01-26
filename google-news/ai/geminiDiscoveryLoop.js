@@ -179,7 +179,7 @@ export async function geminiDiscoveryLoop() {
       return null;
     }
 
-    console.log("🔍 CLEANED GEMINI OUTPUT:\n", items);
+    // console.log("🔍 CLEANED GEMINI OUTPUT:\n", items);
 
     for (const decision of items) {
       const { newContext, topic, reasoning } = decision;

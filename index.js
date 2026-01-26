@@ -71,10 +71,14 @@ async function bootstrap() {
   }
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     console.log("🧠 crictracker news polling enabled for crex-news");
-    setTimeout(() => {
-      setInterval(ctNewsPollingLoop, 1000 * 60 * 10);
-    }, 1000 * 60 * 2);
+    setInterval(googleNewsPollingLoop, 1000 * 60 * 15);
   }
+  // if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
+  //   console.log("🧠 crictracker news polling enabled for crex-news");
+  //   setTimeout(() => {
+  //     setInterval(ctNewsPollingLoop, 1000 * 60 * 0.10);
+  //   }, 1000 * 60 * 2);
+  // }
 }
 
 bootstrap();
