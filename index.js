@@ -66,14 +66,14 @@ async function bootstrap() {
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("🧠 cricketaddictor news polling enabled for crex-news");
     setTimeout(() => {
-      setInterval(caNewsPollingLoop, 1000 * 60 * 5);
+      setInterval(caNewsPollingLoop, 1000 * 60 * 10);
     }, 0);
   }
 
   setTimeout(() => {
     console.log("🧠 cricktracker news polling enabled for crex-news");
     setInterval(ctNewsPollingLoop, 1000 * 60 * 10);
-  }, 1000 * 60 * 3);
+  }, 1000 * 60 * 5);
 
   // if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
   //   console.log("🧠 crictracker news polling enabled for crex-news");
