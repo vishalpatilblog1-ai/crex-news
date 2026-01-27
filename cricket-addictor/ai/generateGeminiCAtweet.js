@@ -121,7 +121,6 @@ export async function generateGeminiCAtweet(articleText) {
     by the NEWS CONTEXT.
   - If not clearly supported, rewrite using pattern or implication instead.
   - The tweet should end with a position or conclusion, not uncertainty.
-  - If a question is used, it must follow a strong concluding stance.
   - Verify that any quoted or paraphrased phrase is attributed to the correct subject.
     If attribution is ambiguous, default to the least accusatory interpretation.
 `;
@@ -158,23 +157,9 @@ SUGGESTED FLOW (OPTIONAL, CONTEXT-DRIVEN):
   Do NOT force pressure framing if implication or pattern fits better.
   Choose the angle that feels most observable from events, not emotional.
 
-- OPTIONAL:
-  Include ONE thoughtful, open-ended question ONLY IF it genuinely adds value.
-  The question should:
-  - deepen the debate, not repeat the analysis
-  - avoid absolutes
-  - invite disagreement without provocation
-
-  If a question is included:
-  - it must be EXACTLY ONE question
-  - it MUST appear after a blank line
-  - it MUST be the final line of the tweet
 
 RULES (STRICT):
 - Emoji is optional (max 1, opening line only)
-- Question is optional (max 1, or zero)
-- Do NOT end with a question by default
-- End confidently if no question is needed
 - Prioritize clarity and authority over interaction bait
 
 `;
