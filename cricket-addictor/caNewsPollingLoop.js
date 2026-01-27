@@ -29,9 +29,7 @@ export async function caNewsPollingLoop() {
   // ---- config ----
   const MAX_AGE_MIN = Number(process.env.CA_MAX_AGE_MIN ?? 25);
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const COVERED_RETENTION_HOURS = Number(
-    process.env.COVERED_RETENTION_HOURS ?? 6
-  );
+  const COVERED_RETENTION_HOURS = 1;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, COVERED_RETENTION_MS);
@@ -84,35 +82,35 @@ export async function caNewsPollingLoop() {
 
   // temporary commented
 
-  // let decision = null;
-  // try {
-  //   decision = await judgeNewsContext({
-  //     articleText: `${parsed.headline}\n${parsed.body}`,
-  //     existingContexts:
-  //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-  //   });
+  let decision = null;
+  try {
+    decision = await judgeNewsContext({
+      articleText: `${parsed.headline}\n${parsed.body}`,
+      existingContexts:
+        STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+    });
 
-  //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-  //     console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
 
-  //     if (
-  //       typeof decision.matchedIndex === "number" &&
-  //       STATE.dailyContext?.contexts?.[decision.matchedIndex]
-  //     ) {
-  //       console.log(
-  //         "🧠 Matched dailyContext object:",
-  //         STATE.dailyContext.contexts[decision.matchedIndex]
-  //       );
-  //     } else {
-  //       console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
-  //     }
-  //     STATE.ca.seen[cleanLink] = Date.now();
-  //     await saveState(STATE);
-  //     return;
-  //   }
-  // } catch (err) {
-  //   console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-  // }
+      if (
+        typeof decision.matchedIndex === "number" &&
+        STATE.dailyContext?.contexts?.[decision.matchedIndex]
+      ) {
+        console.log(
+          "🧠 Matched dailyContext object:",
+          STATE.dailyContext.contexts[decision.matchedIndex]
+        );
+      } else {
+        console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
+      }
+      STATE.ca.seen[cleanLink] = Date.now();
+      await saveState(STATE);
+      return;
+    }
+  } catch (err) {
+    console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+  }
 
   let tweetText = "";
   try {
