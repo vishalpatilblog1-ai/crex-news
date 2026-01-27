@@ -82,41 +82,38 @@ export async function caNewsPollingLoop() {
   const parsed = parseCAArticle(selected);
   if (!parsed?.body || parsed.body.length < 80) return;
 
-  // ---- coverage check (dedupe via dailyContext) ----
-  let decision = null;
-  try {
-    decision = await judgeNewsContext({
-      articleText: `${parsed.headline}\n${parsed.body}`,
-      existingContexts:
-        STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-    });
+  // temporary commented
 
-    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
+  // let decision = null;
+  // try {
+  //   decision = await judgeNewsContext({
+  //     articleText: `${parsed.headline}\n${parsed.body}`,
+  //     existingContexts:
+  //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+  //   });
 
-      if (
-        typeof decision.matchedIndex === "number" &&
-        STATE.dailyContext?.contexts?.[decision.matchedIndex]
-      ) {
-        console.log(
-          "🧠 Matched dailyContext object:",
-          STATE.dailyContext.contexts[decision.matchedIndex]
-        );
-      } else {
-        console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
-      }
+  //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+  //     console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
 
-      // mark as seen and persist (so we don't re-evaluate this link again)
-      STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE);
-      return;
-    }
-  } catch (err) {
-    console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-    // continue: we can still post without the coverage decision
-  }
+  //     if (
+  //       typeof decision.matchedIndex === "number" &&
+  //       STATE.dailyContext?.contexts?.[decision.matchedIndex]
+  //     ) {
+  //       console.log(
+  //         "🧠 Matched dailyContext object:",
+  //         STATE.dailyContext.contexts[decision.matchedIndex]
+  //       );
+  //     } else {
+  //       console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
+  //     }
+  //     STATE.ca.seen[cleanLink] = Date.now();
+  //     await saveState(STATE);
+  //     return;
+  //   }
+  // } catch (err) {
+  //   console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+  // }
 
-  // ---- generate tweet ----
   let tweetText = "";
   try {
     tweetText = await generateGeminiCAtweet(
@@ -145,8 +142,6 @@ export async function caNewsPollingLoop() {
     if (!useImage) {
       if (reason) console.log(reason);
 
-      // If it's a utility headline AND we couldn't use the image, skip it entirely
-      // (prevents low-quality text-only spam if image keeps repeating)
       if (isBlockedCAHeadline(selected.title)) {
         console.log("⛔ Duplicate image + utility headline — skipping");
         STATE.ca.seen[cleanLink] = Date.now();
