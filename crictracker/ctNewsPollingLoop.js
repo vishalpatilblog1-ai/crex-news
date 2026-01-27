@@ -67,11 +67,13 @@ export async function ctNewsPollingLoop() {
 
     if (STATE.cricktracker.seen[cleanLink]) continue;
 
-    if (isBlockedCAHeadline(item.title)) {
-      STATE.cricktracker.seen[cleanLink] = Date.now();
-      console.log("⛔ CT utility headline blocked:", item.title);
-      continue;
-    }
+    //temproray commented
+
+    // if (isBlockedCAHeadline(item.title)) {
+    //   STATE.cricktracker.seen[cleanLink] = Date.now();
+    //   console.log("⛔ CT utility headline blocked:", item.title);
+    //   continue;
+    // }
 
     selected = item;
     break;
