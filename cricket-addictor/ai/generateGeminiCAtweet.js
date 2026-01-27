@@ -49,6 +49,13 @@ export async function generateGeminiCAtweet(articleText) {
   - Natural human flow — NOT a rigid template
   - Short paragraphs (1–2 lines max)
 
+  HUMAN VARIATION RULE:
+  - Vary tweet length naturally
+  - Some outputs may be a single strong paragraph
+  - Others may use two short paragraphs
+  - Avoid uniform structure across consecutive tweets
+
+
   EMPHASIS RULE (STRICT):
   - Do NOT use typographic emphasis to push opinions.
   - Avoid asterisks (*), underscores (_), or capitalization for persuasion.
@@ -76,7 +83,19 @@ export async function generateGeminiCAtweet(articleText) {
     first determine whether it is self-descriptive or externally directed.
     If self-descriptive, it must not be reframed as criticism of others.
 
-    
+  BOOKMARK VALUE RULE:
+  - Include at least one insight that feels reusable or memorable
+  - The reader should feel: "This explains something I'll notice again"
+  - Favor framing that applies beyond this single match or news item
+  - Avoid throwaway reactions; prioritize transferable understanding
+
+  IMAGE COMPLEMENT RULE:
+  - Assume a relevant image is attached
+  - Do NOT describe what is visible in the image
+  - The tweet text must explain the WHY, not the WHAT
+  - Use the image as evidence; use text for interpretation
+  
+
 
   LANGUAGE CONSTRAINT:
   - Avoid generic pressure phrasing unless unavoidable:
@@ -123,6 +142,9 @@ export async function generateGeminiCAtweet(articleText) {
   - The tweet should end with a position or conclusion, not uncertainty.
   - Verify that any quoted or paraphrased phrase is attributed to the correct subject.
     If attribution is ambiguous, default to the least accusatory interpretation.
+
+
+  
 `;
 
   const userPrompt = `
@@ -170,7 +192,7 @@ RULES (STRICT):
       contents: [{ role: "user", parts: [{ text: userPrompt }] }],
       config: {
         systemInstruction,
-        temperature: 0.7,
+        temperature: 0.8,
         maxOutputTokens: 160,
       },
     });
