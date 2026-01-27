@@ -68,11 +68,13 @@ export async function caNewsPollingLoop() {
 
     if (STATE.ca.seen[cleanLink]) continue;
 
-    if (isBlockedCAHeadline(item.title)) {
-      STATE.ca.seen[cleanLink] = Date.now();
-      console.log("⛔ skipped utility headline (blocked):", item.title);
-      continue;
-    }
+    //temproray commented
+
+    // if (isBlockedCAHeadline(item.title)) {
+    //   STATE.ca.seen[cleanLink] = Date.now();
+    //   console.log("⛔ skipped utility headline (blocked):", item.title);
+    //   continue;
+    // }
 
     selected = item;
     break;
