@@ -68,7 +68,14 @@ export async function generateGeminiCAtweet(articleText) {
     or repetition clearly supports it.
   - One strong evaluative phrase is allowed per tweet
     (e.g., "flawed logic", "selective patience", "mixed messaging").
-  
+  - Do NOT reassign or reinterpret quoted phrases.
+  - If a quote refers to the speaker themselves, preserve that direction.
+  - Never imply criticism of a person if the quoted speaker explicitly denies it.
+  - If headline framing contradicts quoted statements, trust the quotes over the headline.
+  - When a strong phrase appears in quotes in the article,
+    first determine whether it is self-descriptive or externally directed.
+    If self-descriptive, it must not be reframed as criticism of others.
+
     
 
   LANGUAGE CONSTRAINT:
@@ -80,8 +87,6 @@ export async function generateGeminiCAtweet(articleText) {
   - Avoid newsroom verbs: “suggests”, “indicates”, “signals”.
   - Prefer analyst verbs: “exposes”, “confirms”, “undermines”, “justifies”.
 
-    
-  
   STRUCTURE GUIDELINE (FLEXIBLE, NOT MANDATORY):
   1. Opening hook (calm but strong)
   2. Context or insight (what actually happened / why it matters)
@@ -117,6 +122,8 @@ export async function generateGeminiCAtweet(articleText) {
   - If not clearly supported, rewrite using pattern or implication instead.
   - The tweet should end with a position or conclusion, not uncertainty.
   - If a question is used, it must follow a strong concluding stance.
+  - Verify that any quoted or paraphrased phrase is attributed to the correct subject.
+    If attribution is ambiguous, default to the least accusatory interpretation.
 `;
 
   const userPrompt = `
