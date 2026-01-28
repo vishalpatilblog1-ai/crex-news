@@ -4,6 +4,7 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
@@ -18,51 +19,37 @@ export async function caNewsPollingLoop() {
   if (!global.STATE) return;
 
   const STATE = global.STATE;
-  if (!STATE.ca) STATE.ca = {};
-  if (!STATE.ca.seen) STATE.ca.seen = {};
 
-  const MAX_AGE_MIN = 25;
+  // ---- init state buckets ----
+  STATE.ca ??= {};
+  STATE.ca.seen ??= {};
+  STATE.dailyContext ??= { contexts: [] };
+  STATE.usedImages ??= {};
+
+  // ---- config ----
+  const MAX_AGE_MIN = 30;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const COVERED_RETENTION_HOURS = 6;
+  // const COVERED_RETENTION_HOURS = Number(
+  //   process.env.COVERED_RETENTION_HOURS ?? 6
+  // );
+  const COVERED_RETENTION_HOURS = 1;
+  const COVERED_RETENTION_HOURS_IMAGES = 6;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
+  let stateDirty = false;
+  stateDirty ||= pruneSeen(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_HOURS_IMAGES);
 
-  try {
-    const now = Date.now();
-    let pruned = 0;
-
-    for (const [link, ts] of Object.entries(STATE.ca.seen)) {
-      if (now - ts > COVERED_RETENTION_MS) {
-        delete STATE.ca.seen[link];
-        pruned++;
-      }
-    }
-
-    if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old CA seen entries`);
-    }
-  } catch (err) {
-    console.warn("⚠️ CA seen prune failed:", err.message);
+  if (stateDirty) {
+    console.log("💾 Persisting pruned state to JSONBin");
+    await saveState(STATE);
   }
 
-  if (STATE.dailyContext?.contexts?.length) {
-    const now = Date.now();
-    const before = STATE.dailyContext.contexts.length;
-
-    STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter(
-      (c) => now - new Date(c.createdAt).getTime() <= COVERED_RETENTION_MS
-    );
-
-    const after = STATE.dailyContext.contexts.length;
-
-    if (before !== after) {
-      console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
-    }
-  }
-
+  // ---- fetch rss ----
   const items = await fetchCARSS();
+  if (!Array.isArray(items) || items.length === 0) return;
 
-  if (!Array.isArray(items)) return;
-
+  // ---- select candidate ----
   const sorted = items
     .filter(isCAArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
@@ -71,23 +58,21 @@ export async function caNewsPollingLoop() {
 
   for (const item of sorted) {
     const pubMs = getPubDate(item);
-    if (!pubMs) {
-      continue;
-    }
+    if (!pubMs) continue;
 
     const ageMin = (Date.now() - pubMs) / 60000;
-    if (ageMin > MAX_AGE_MIN) {
-      continue;
-    }
+    if (ageMin > MAX_AGE_MIN) continue;
 
     const cleanLink = normalizeCALink(item.link);
-    if (STATE.ca.seen[cleanLink]) {
-      continue;
-    }
+    if (!cleanLink) continue;
+
+    if (STATE.ca.seen[cleanLink]) continue;
+
+    //temproray commented
 
     if (isBlockedCAHeadline(item.title)) {
       STATE.ca.seen[cleanLink] = Date.now();
-      console.log("⛔ skipped utility headline really blocked:", item.title);
+      console.log("⛔ skipped utility headline (blocked):", item.title);
       continue;
     }
 
@@ -96,9 +81,12 @@ export async function caNewsPollingLoop() {
   }
 
   if (!selected) return;
+
   const cleanLink = normalizeCALink(selected.link);
   const parsed = parseCAArticle(selected);
   if (!parsed?.body || parsed.body.length < 80) return;
+
+  // temporary commented
 
   let decision = null;
   try {
@@ -107,7 +95,8 @@ export async function caNewsPollingLoop() {
       existingContexts:
         STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
     });
-    if (decision?.isAlreadyCovered && decision.confidence >= 0.8) {
+
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
 
       if (
@@ -119,22 +108,23 @@ export async function caNewsPollingLoop() {
           STATE.dailyContext.contexts[decision.matchedIndex]
         );
       } else {
-        console.log("⚠️ matchedIndex missing or out of bounds:", decision);
+        console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
       }
-
-      STATE.ca.seen[normalizeCALink(selected.link)] = Date.now();
+      STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE);
       return;
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+  }
 
-  let tweetText;
+  let tweetText = "";
   try {
     tweetText = await generateGeminiCAtweet(
-      parsed.headline + "\n" + parsed.body
+      `${parsed.headline}\n${parsed.body}`
     );
-  } catch {
-    console.log("could be error..");
+  } catch (err) {
+    console.warn("⚠️ generateGeminiCAtweet failed:", err?.message || err);
   }
 
   if (!tweetText || tweetText.length < 30) {
@@ -143,56 +133,39 @@ export async function caNewsPollingLoop() {
     await saveState(STATE);
     return;
   }
+
+  // ---- image decision ----
   const imageUrl = getCAImageUrl(selected);
 
-  if (!STATE.usedImages) STATE.usedImages = {};
   if (!CONSOLE_ONLY) {
-    let useImage = false;
+    const { useImage, reason } = await decideImageUsage({
+      imageUrl,
+      usedImages: STATE.usedImages,
+    });
 
-    if (imageUrl) {
-      if (STATE.usedImages[imageUrl]) {
-        console.log("🖼️ Image already used — forcing text-only");
-        useImage = false;
-      } else {
-        try {
-          const localImagePath = await downloadImageToTemp(imageUrl);
-          const ocrResult = await isRiskyTwitterImage(localImagePath);
+    if (!useImage) {
+      if (reason) console.log(reason);
 
-          if (!ocrResult.risky) {
-            useImage = true;
-          } else {
-            console.log("⚠️ OCR flagged image as risky:", ocrResult.reason);
-          }
-        } catch (err) {
-          console.warn(
-            "⚠️ OCR check failed, fallback to text-only:",
-            err.message
-          );
-        }
+      if (isBlockedCAHeadline(selected.title)) {
+        console.log("⛔ Duplicate image + utility headline — skipping");
+        STATE.ca.seen[cleanLink] = Date.now();
+        await saveState(STATE);
+        return;
       }
-    }
 
-    if (!useImage && isBlockedCAHeadline(selected.title)) {
-      console.log("⛔ Duplicate image + utility headline — skipping");
-      STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE);
-      return;
-    }
-
-    if (useImage) {
+      console.log("eligible for only text");
+      await postTweet_ie_web({ text: tweetText });
+    } else {
       console.log("eligible for text with image");
       await tweetWithNativeImage({ text: tweetText, imageUrl });
       STATE.usedImages[imageUrl] = Date.now();
-    } else {
-      console.log("eligible for only text");
-      await postTweet_ie_web({ text: tweetText });
     }
+  } else {
+    console.log("🧪 CONSOLE_ONLY=true — not posting to X");
   }
-  if (decision?.newContext) {
-    if (!STATE.dailyContext) {
-      STATE.dailyContext ??= { contexts: [] };
-    }
 
+  // ---- store new context ----
+  if (decision?.newContext) {
     if (!contextExists(STATE, decision.newContext)) {
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
@@ -205,12 +178,115 @@ export async function caNewsPollingLoop() {
     }
   }
 
+  // ---- final persist ----
   STATE.ca.seen[cleanLink] = Date.now();
   await saveState(STATE);
 }
 
+/* ---------------- helpers ---------------- */
+
 function getPubDate(item) {
   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
+}
+
+function pruneSeen(STATE, retentionMs) {
+  try {
+    const now = Date.now();
+    let pruned = 0;
+
+    for (const [link, ts] of Object.entries(STATE.ca?.seen || {})) {
+      if (now - ts > retentionMs) {
+        delete STATE.ca.seen[link];
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      console.log(`🧹 Pruned ${pruned} old CA seen entries`);
+      return true;
+    }
+  } catch (err) {
+    console.warn("⚠️ CA seen prune failed:", err?.message || err);
+  }
+  return false;
+}
+
+function pruneDailyContext(STATE, retentionMs) {
+  try {
+    const ctx = STATE.dailyContext?.contexts;
+    if (!Array.isArray(ctx) || ctx.length === 0) return false;
+
+    const now = Date.now();
+    const before = ctx.length;
+
+    STATE.dailyContext.contexts = ctx.filter((c) => {
+      const t = new Date(c.createdAt).getTime();
+      return Number.isFinite(t) && now - t <= retentionMs;
+    });
+
+    const after = STATE.dailyContext.contexts.length;
+
+    if (before !== after) {
+      console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
+      return true;
+    }
+  } catch (err) {
+    console.warn("⚠️ dailyContext prune failed:", err?.message || err);
+  }
+  return false;
+}
+
+function pruneUsedImages(STATE, retentionMs) {
+  try {
+    const now = Date.now();
+    let pruned = 0;
+
+    for (const [imgUrl, ts] of Object.entries(STATE.usedImages || {})) {
+      if (now - ts > retentionMs) {
+        delete STATE.usedImages[imgUrl];
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      console.log(`🧹 Pruned ${pruned} old usedImages entries`);
+      return true;
+    }
+  } catch (err) {
+    console.warn("⚠️ usedImages prune failed:", err?.message || err);
+  }
+  return false;
+}
+
+async function decideImageUsage({ imageUrl, usedImages }) {
+  if (!imageUrl)
+    return { useImage: false, reason: "🖼️ No imageUrl — text-only" };
+
+  if (usedImages?.[imageUrl]) {
+    return {
+      useImage: false,
+      reason: "🖼️ Image already used — forcing text-only",
+    };
+  }
+
+  try {
+    const localImagePath = await downloadImageToTemp(imageUrl);
+    const ocrResult = await isRiskyTwitterImage(localImagePath);
+
+    if (!ocrResult?.risky) return { useImage: true, reason: "" };
+
+    return {
+      useImage: false,
+      reason: `⚠️ OCR flagged image as risky: ${ocrResult.reason || "unknown"}`,
+    };
+  } catch (err) {
+    return {
+      useImage: false,
+      reason: `⚠️ OCR check failed, fallback to text-only: ${
+        err?.message || err
+      }`,
+    };
+  }
 }
 
 function contextExists(STATE, summary) {
@@ -229,10 +305,3 @@ function normalizeSummary(text = "") {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-// function contextExists(STATE, summary) {
-//   const norm = normalizeSummary(summary);
-//   return STATE.dailyContext.contexts.some(
-//     (c) => normalizeSummary(c.summary) === norm
-//   );
-// }

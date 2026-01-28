@@ -6,6 +6,7 @@ import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
+import { generateGeminiCAtweetSignal } from "./ai/generateGeminiCAtweetSignal.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
@@ -76,14 +77,22 @@ export async function caNewsPollingLoop() {
     //   continue;
     // }
 
-    selected = item;
+    const isUtilityHeadline = isBlockedCAHeadline(item.title);
+    selected = {
+      item,
+      mode: isUtilityHeadline ? "SIGNAL" : "ANALYSIS",
+    };
+    // selected = item;
     break;
   }
 
   if (!selected) return;
 
-  const cleanLink = normalizeCALink(selected.link);
-  const parsed = parseCAArticle(selected);
+  // const cleanLink = normalizeCALink(selected.link);
+  // const parsed = parseCAArticle(selected);
+  const { item, mode } = selected;
+  const cleanLink = normalizeCALink(item.link);
+  const parsed = parseCAArticle(item);
   if (!parsed?.body || parsed.body.length < 80) return;
 
   // temporary commented
@@ -120,9 +129,19 @@ export async function caNewsPollingLoop() {
 
   let tweetText = "";
   try {
-    tweetText = await generateGeminiCAtweet(
-      `${parsed.headline}\n${parsed.body}`
-    );
+    if (mode === "ANALYSIS") {
+      tweetText = await generateGeminiCAtweet(
+        `${parsed.headline}\n${parsed.body}`
+      );
+    } else {
+      tweetText = await generateGeminiCAtweetSignal(
+        `${parsed.headline}\n${parsed.body}`
+      );
+    }
+
+    // tweetText = await generateGeminiCAtweet(
+    //   `${parsed.headline}\n${parsed.body}`
+    // );
   } catch (err) {
     console.warn("⚠️ generateGeminiCAtweet failed:", err?.message || err);
   }
