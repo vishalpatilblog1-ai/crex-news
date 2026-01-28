@@ -9,12 +9,64 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+export async function selectHookBias(articleText) {
+  const prompt = `
+You are a senior cricket editor.
+
+From the following article, choose the SINGLE most appropriate hook bias
+from this list ONLY:
+
+- pattern
+- implication
+- accountability
+- authority_opinion
+- role_system
+- expectation_management
+
+Rules:
+- Choose authority_opinion if a named individual makes a strong claim.
+- Choose accountability ONLY if failure or scrutiny is explicit.
+- Choose pattern if repetition or consistency is highlighted.
+- Choose implication if consequences matter more than performance.
+
+Return ONLY the bias name. No explanation.
+
+ARTICLE:
+${articleText}
+`;
+
+  const res = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { temperature: 0 },
+  });
+
+  return res.text.trim();
+}
+
 export async function generateGeminiCAtweet(articleText) {
-  const hookBias = [
-    "Prefer pattern or trend-based analysis.",
-    "Prefer implication-based analysis.",
-    "Allow accountability framing when evidence supports it.",
-  ][Math.floor(Math.random() * 3)];
+  const selectedHookBias = await selectHookBias(articleText);
+
+  const normalizedHookBias = selectedHookBias?.toLowerCase()?.trim();
+
+  const HOOK_BIAS_INSTRUCTIONS = {
+    pattern:
+      "Prefer pattern or trend-based analysis over single-match reactions.",
+    implication:
+      "Prefer implication-based analysis that explains what this changes going forward.",
+    accountability:
+      "Allow accountability framing only when evidence clearly supports it.",
+    authority_opinion:
+      "Anchor the analysis around the named authority’s claim without absorbing it into the narrator’s voice.",
+    role_system:
+      "Analyze the player or decision within the team system rather than individual brilliance alone.",
+    expectation_management:
+      "Balance praise with expectation-setting and avoid crowning narratives.",
+  };
+
+  const hookBiasInstruction =
+    HOOK_BIAS_INSTRUCTIONS[normalizedHookBias] ??
+    HOOK_BIAS_INSTRUCTIONS.pattern; // safe fallback
 
   const systemInstruction = `
   You are "Gully Point – MONEY MODE":
@@ -64,6 +116,15 @@ export async function generateGeminiCAtweet(articleText) {
   
 
   CONTENT RULES (IMPORTANT):
+  ATTRIBUTION RULE (STRICT):
+  - If the article contains a strong opinion, comparison, or evaluative claim
+    made by a named individual (former player, selector, coach, analyst),
+    that individual MUST be explicitly referenced in the tweet.
+  - Do NOT absorb such claims into the narrator’s voice.
+  - Sensational or legacy comparisons (e.g., player vs legend)
+    must always retain the original speaker’s name.
+  - If attribution is removed, the output is invalid and must be rewritten.
+
   - Use facts, stats, or recent context whenever possible
   - If no exact stat is available, rely on observable match or selection logic
   - Avoid extreme words like:
@@ -83,6 +144,7 @@ export async function generateGeminiCAtweet(articleText) {
     first determine whether it is self-descriptive or externally directed.
     If self-descriptive, it must not be reframed as criticism of others.
 
+
   BOOKMARK VALUE RULE:
   - Include at least one insight that feels reusable or memorable
   - The reader should feel: "This explains something I'll notice again"
@@ -94,8 +156,6 @@ export async function generateGeminiCAtweet(articleText) {
   - Do NOT describe what is visible in the image
   - The tweet text must explain the WHY, not the WHAT
   - Use the image as evidence; use text for interpretation
-  
-
 
   LANGUAGE CONSTRAINT:
   - Avoid generic pressure phrasing unless unavoidable:
@@ -120,8 +180,9 @@ export async function generateGeminiCAtweet(articleText) {
     - OR a clear performance failure directly caused a result
   - If none clearly apply, DO NOT invent pressure
 
-  ANALYSIS BIAS:
-    ${hookBias}
+    ANALYSIS BIAS (EDITOR-SELECTED):
+    ${hookBiasInstruction}
+    Do NOT mix hook families.  
   
   ABSOLUTE NOs:
   - No personal attacks
@@ -142,9 +203,7 @@ export async function generateGeminiCAtweet(articleText) {
   - The tweet should end with a position or conclusion, not uncertainty.
   - Verify that any quoted or paraphrased phrase is attributed to the correct subject.
     If attribution is ambiguous, default to the least accusatory interpretation.
-
-
-  
+  - If the core claim originates from a named individual in the article, confirm that the tweet explicitly names that individual.
 `;
 
   const userPrompt = `
