@@ -30,7 +30,7 @@ export async function ctNewsPollingLoop() {
   // ---- config ----
   const MAX_AGE_MIN = 30;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const COVERED_RETENTION_HOURS = 6;
+  const COVERED_RETENTION_HOURS = 4;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
 
   // ---- GC / pruning ----
@@ -132,6 +132,8 @@ export async function ctNewsPollingLoop() {
       usedImages: STATE.usedImages,
     });
 
+    console.log("tweetText CT::", tweetText);
+    console.log("imageUrl CT::", imageUrl);
     if (!useImage) {
       if (reason) console.log(reason);
 

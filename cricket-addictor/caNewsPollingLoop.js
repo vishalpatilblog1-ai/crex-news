@@ -34,7 +34,7 @@ export async function caNewsPollingLoop() {
   //   process.env.COVERED_RETENTION_HOURS ?? 6
   // );
   const COVERED_RETENTION_HOURS = 1;
-  const COVERED_RETENTION_HOURS_IMAGES = 6;
+  const COVERED_RETENTION_HOURS_IMAGES = 4;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, COVERED_RETENTION_MS);
@@ -162,6 +162,8 @@ export async function caNewsPollingLoop() {
       usedImages: STATE.usedImages,
     });
 
+    console.log("tweetText CA::", tweetText);
+    console.log("imageUrl CA::", imageUrl);
     if (!useImage) {
       if (reason) console.log(reason);
 
