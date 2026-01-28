@@ -129,15 +129,18 @@ export async function caNewsPollingLoop() {
 
   let tweetText = "";
   try {
-    if (mode === "ANALYSIS") {
-      tweetText = await generateGeminiCAtweet(
-        `${parsed.headline}\n${parsed.body}`
-      );
-    } else {
-      tweetText = await generateGeminiCAtweetSignal(
-        `${parsed.headline}\n${parsed.body}`
-      );
-    }
+    tweetText = await generateGeminiCAtweet(
+      `${parsed.headline}\n${parsed.body}`
+    );
+    // if (mode === "ANALYSIS") {
+    //   tweetText = await generateGeminiCAtweet(
+    //     `${parsed.headline}\n${parsed.body}`
+    //   );
+    // } else {
+    //   tweetText = await generateGeminiCAtweetSignal(
+    //     `${parsed.headline}\n${parsed.body}`
+    //   );
+    // }
 
     // tweetText = await generateGeminiCAtweet(
     //   `${parsed.headline}\n${parsed.body}`
@@ -155,6 +158,10 @@ export async function caNewsPollingLoop() {
 
   // ---- image decision ----
   const imageUrl = getCAImageUrl(item);
+  console.log("\n");
+  console.log("tweetText::", tweetText);
+  console.log("imageUrl::", imageUrl);
+  console.log("link::", item.link);
 
   if (!CONSOLE_ONLY) {
     const { useImage, reason } = await decideImageUsage({
@@ -162,8 +169,6 @@ export async function caNewsPollingLoop() {
       usedImages: STATE.usedImages,
     });
 
-    console.log("tweetText CA::", tweetText);
-    console.log("imageUrl CA::", imageUrl);
     if (!useImage) {
       if (reason) console.log(reason);
 

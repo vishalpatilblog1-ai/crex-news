@@ -1,3 +1,4 @@
+//generateGeminiCAtweet.js
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { tweetWithNativeImage } from "../../twitter/tweetWithImage.js";
@@ -85,7 +86,13 @@ export async function generateGeminiCAtweet(articleText) {
   - Frame debates around selection logic, roles, form, or numbers
   - Encourage thoughtful disagreement, not fan abuse
   - Do NOT merely summarize or explain.
-  - The tweet must clearly communicate approval or disapproval of the situation.
+  - The tweet must communicate a clear analytical POSITION.
+  - For previews or selection articles, a POSITION may be:
+    - what the combination reveals
+    - what balance is being tested
+    - what the team seems to prioritize
+  - Approval/disapproval is required ONLY when a decision or outcome is present.
+  
 
   
   TONE & PERSONALITY:
