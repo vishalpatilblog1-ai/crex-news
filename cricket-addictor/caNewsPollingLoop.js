@@ -154,7 +154,7 @@ export async function caNewsPollingLoop() {
   }
 
   // ---- image decision ----
-  const imageUrl = getCAImageUrl(selected);
+  const imageUrl = getCAImageUrl(item);
 
   if (!CONSOLE_ONLY) {
     const { useImage, reason } = await decideImageUsage({
@@ -167,7 +167,7 @@ export async function caNewsPollingLoop() {
     if (!useImage) {
       if (reason) console.log(reason);
 
-      if (isBlockedCAHeadline(selected.title)) {
+      if (isBlockedCAHeadline(item.title)) {
         console.log("⛔ Duplicate image + utility headline — skipping");
         STATE.ca.seen[cleanLink] = Date.now();
         await saveState(STATE);
