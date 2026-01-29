@@ -24,66 +24,40 @@ async function runTest() {
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   let selected = null;
-  // console.log("sorted::", sorted);
 
-  for (const item of sorted) {
-    const pubMs = getPubDate(item);
-    if (!pubMs) continue;
+  const item = sorted[4];
 
-    const ageMin = (Date.now() - pubMs) / 60000;
-    if (ageMin > MAX_AGE_MIN) continue;
-
-    const cleanLink = normalizeCALink(item.link);
-    if (!cleanLink) continue;
-
-    if (STATE.ca.seen[cleanLink]) continue;
-
-    const isUtilityHeadline = isBlockedCAHeadline(item.title);
-    console.log("isUtilityHeadline");
-    selected = {
-      item,
-      mode: isUtilityHeadline ? "SIGNAL" : "ANALYSIS",
-    };
-    // selected = item;
-    break;
-  }
+  selected = item;
 
   if (!selected) return;
 
-  // const cleanLink = normalizeCALink(selected.link);
-  // const parsed = parseCAArticle(selected);
-  const { item, mode } = selected;
-  const cleanLink = normalizeCALink(item.link);
-  // console.log("item::", item);
-  const parsed = parseCAArticle(item);
-  console.log("parsed::::", parsed);
-  const imageUrl = getCAImageUrl(item);
+  const parsed = parseCAArticle(selected);
+  const imageUrl = getCAImageUrl(selected);
   console.log("\n");
-  // console.log("tweetText::", tweetText);
+
   console.log("imageUrl::", imageUrl);
-  console.log("link::", item.link);
+  console.log("link::", selected.link);
   if (!parsed?.body || parsed.body.length < 80) return;
 
   let tweetGeminiText = null;
   let tweetGPTText = null;
-
-  // try {
-  //   tweetGeminiText = await generateGeminiCAtweet(
-  //     `${parsed.headline}\n${parsed.body}`
-  //   );
-  // } catch (err) {
-  //   console.warn("⚠️ Gemini failed, falling back to GPT:", err?.message || err);
-  // }
-
-  if (!tweetGeminiText) {
-    try {
-      tweetGPTText = await generateGPTCAtweet(
-        `${parsed.headline}\n${parsed.body}`
-      );
-    } catch (err) {
-      console.error("❌ GPT also failed:", err?.message || err);
-    }
+  try {
+    tweetGeminiText = await generateGeminiCAtweet(
+      `${parsed.headline}\n${parsed.body}`
+    );
+  } catch (err) {
+    console.warn("⚠️ Gemini failed, falling back to GPT:", err?.message || err);
   }
+
+  // if (!tweetGeminiText) {
+  try {
+    tweetGPTText = await generateGPTCAtweet(
+      `${parsed.headline}\n${parsed.body}`
+    );
+  } catch (err) {
+    console.error("❌ GPT also failed:", err?.message || err);
+  }
+  // }
 
   const tweetText = tweetGeminiText || tweetGPTText;
 
@@ -98,9 +72,18 @@ async function runTest() {
   // const tweetGpt = await generateGPTCAtweet(
   //   `${parsed.headline}\n${parsed.body}`
   // );
-  console.log("tweetGeminiText>>>>>>", tweetGeminiText);
-  console.log("tweetGPTText>>>>>>", tweetGPTText);
-  console.log("tweetText>>>>>>", tweetText);
+  // console.log("tweetGeminiText>>>>>>", tweetGeminiText);
+  // console.log("tweetGPTText>>>>>>", tweetGPTText);
+  if (tweetGPTText) {
+    console.log("tweetGPTText::::");
+    console.log(tweetGPTText);
+  }
+  console.log("=================================================");
+  if (tweetGeminiText) {
+    console.log("tweetGeminiText::::");
+    console.log(tweetGeminiText);
+  }
+  // console.log("tweetText>>>>>>", tweetText);
 }
 
 runTest();
