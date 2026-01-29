@@ -130,7 +130,7 @@ export async function generateGPTCAtweet(articleText) {
     - Strength must come from reasoning, not typography
     
     ATTRIBUTION RULE (STRICT):
-    - If a named individual makes a strong claim, they MUST be explicitly named
+    - If a named individual makes a claim, they MUST be explicitly named
     - Do NOT absorb quoted or attributed opinions into the narrator’s voice
     
     BOOKMARK VALUE RULE:
