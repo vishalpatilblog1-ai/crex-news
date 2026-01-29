@@ -2,18 +2,17 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { loadState, saveState } from "./utils/stateStoreCloud.js";
 import { createLogger } from "./utils/logger.js";
+import { loadState, saveState } from "./utils/stateStoreCloud.js";
 
 import { bbcNewsPollingLoop } from "./bbc/bbcNewsPollingLoop.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
-import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
-import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
-import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
-import { geminiDiscoveryLoop } from "./google-news/ai/geminiDiscoveryLoop.js";
-import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
+import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
+import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
+import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
+import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 
 const log = createLogger("prod");
 

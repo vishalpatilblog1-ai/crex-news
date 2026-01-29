@@ -1,14 +1,9 @@
 import { generateGPTCAtweet } from "./cricket-addictor/ai/generateGPTCAtweet.js";
 import { generateGeminiCAtweet } from "./cricket-addictor/ai/generateGeminiCAtweet.js";
-import { generateGeminiCAtweetSignal } from "./cricket-addictor/ai/generateGeminiCAtweetSignal.js";
-import { isCAArticle, normalizeCALink } from "./cricket-addictor/caFilters.js";
-import { isBlockedCAHeadline } from "./cricket-addictor/caHeadlineFilter.js";
-import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
+import { isCAArticle } from "./cricket-addictor/caFilters.js";
 import { fetchCARSS } from "./cricket-addictor/fetchCARss.js";
 import { getCAImageUrl } from "./cricket-addictor/getCAImageUrl.js";
 import { parseCAArticle } from "./cricket-addictor/parseCAArticle.js";
-import { geminiDiscoveryLoop } from "./google-news/ai/geminiDiscoveryLoop.js";
-import { generateGroundedGullyTweet } from "./google-news/ai/generateGroundedGullyTweet.js";
 import { loadState } from "./utils/stateStoreCloud.js";
 
 async function runTest() {

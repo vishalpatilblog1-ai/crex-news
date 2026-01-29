@@ -54,10 +54,3 @@ export async function tweetNewsWithImage(text, imageUrl) {
     console.error("❌ Error tweeting news image:", err);
   }
 }
-
-// Example usage:
-// const newsText = "🔥 IND vs SA News Update!";
-// const cricketImageUrl =
-//   "https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c136758/i.jpg";
-
-// tweetNewsWithImage(newsText, cricketImageUrl);

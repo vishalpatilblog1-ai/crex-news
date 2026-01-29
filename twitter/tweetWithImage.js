@@ -21,27 +21,61 @@ function guessMime(url, contentType) {
 }
 
 export async function tweetWithNativeImage({ text, imageUrl }) {
-  if (!imageUrl) throw new Error("imageUrl missing");
+  try {
+    if (!imageUrl) {
+      throw new Error("imageUrl missing");
+    }
 
-  // Download as buffer
-  const res = await axios.get(imageUrl, {
-    responseType: "arraybuffer",
-    headers: { "User-Agent": "Mozilla/5.0 (CREX-NewsBot)" },
-    timeout: 15000,
-  });
+    // 1️⃣ Download image
+    const res = await axios.get(imageUrl, {
+      responseType: "arraybuffer",
+      headers: { "User-Agent": "Mozilla/5.0 (CREX-NewsBot)" },
+      timeout: 15000,
+    });
 
-  const mimeType = guessMime(imageUrl, res.headers?.["content-type"]);
-  const mediaId = await rwClient.v1.uploadMedia(Buffer.from(res.data), {
-    mimeType,
-  });
-  console.log("ready tweet::", {
-    text,
-    media: { media_ids: [mediaId] },
-  });
+    // 2️⃣ Detect mime
+    const mimeType = guessMime(imageUrl, res.headers?.["content-type"]);
 
-  // Tweet with native media (image expands, no outbound click)
-  return rwClient.v2.tweet({
-    text,
-    media: { media_ids: [mediaId] },
-  });
+    // 3️⃣ Upload media to Twitter
+    const mediaId = await rwClient.v1.uploadMedia(Buffer.from(res.data), {
+      mimeType,
+    });
+
+    console.log("ready tweet::", {
+      text,
+      media: { media_ids: [mediaId] },
+    });
+
+    // 4️⃣ Post tweet
+    return await rwClient.v2.tweet({
+      text,
+      media: { media_ids: [mediaId] },
+    });
+  } catch (err) {
+    console.error("❌ Error tweeting news image:", err);
+  }
 }
+
+// export async function tweetWithNativeImage({ text, imageUrl }) {
+//   if (!imageUrl) throw new Error("imageUrl missing");
+
+//   const res = await axios.get(imageUrl, {
+//     responseType: "arraybuffer",
+//     headers: { "User-Agent": "Mozilla/5.0 (CREX-NewsBot)" },
+//     timeout: 15000,
+//   });
+
+//   const mimeType = guessMime(imageUrl, res.headers?.["content-type"]);
+//   const mediaId = await rwClient.v1.uploadMedia(Buffer.from(res.data), {
+//     mimeType,
+//   });
+//   console.log("ready tweet::", {
+//     text,
+//     media: { media_ids: [mediaId] },
+//   });
+
+//   return rwClient.v2.tweet({
+//     text,
+//     media: { media_ids: [mediaId] },
+//   });
+// }

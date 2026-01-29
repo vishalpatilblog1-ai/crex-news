@@ -44,7 +44,18 @@ ${articleText}
 }
 
 export async function generateGeminiCAtweet(articleText) {
-  const selectedHookBias = await selectHookBias(articleText);
+  // const selectedHookBias = (await selectHookBias(articleText)) || "pattern";
+  let selectedHookBias = "pattern"; // safest default
+
+  try {
+    const bias = await selectHookBias(articleText);
+    if (bias) selectedHookBias = bias;
+  } catch (err) {
+    console.warn(
+      "⚠️ selectHookBias failed, falling back to pattern:",
+      err?.message || err
+    );
+  }
 
   const normalizedHookBias = selectedHookBias?.toLowerCase()?.trim();
 
