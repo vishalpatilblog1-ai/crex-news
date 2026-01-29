@@ -1,8 +1,6 @@
 //generateGeminiCAtweet.js
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { tweetWithNativeImage } from "../../twitter/tweetWithImage.js";
-import { postTweet_ie_web } from "../../twitter/twitter.js";
 
 dotenv.config();
 

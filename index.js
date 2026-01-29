@@ -33,10 +33,10 @@ function canUseGemini() {
 ------------------------------------------------------------------- */
 async function safeCaPolling() {
   console.log("inside safeCaPolling ...");
-  if (!canUseGemini()) {
-    console.log("⏭️ CA skipped — Gemini busy/cooldown");
-    return;
-  }
+  // if (!canUseGemini()) {
+  //   console.log("⏭️ CA skipped — Gemini busy/cooldown");
+  //   return;
+  // }
 
   try {
     global.GEMINI_BUSY = true;
@@ -54,10 +54,10 @@ async function safeCaPolling() {
 
 async function safeCtPolling() {
   console.log("inside safeCtPolling ...");
-  if (!canUseGemini()) {
-    console.log("⏭️ CT skipped — Gemini busy/cooldown");
-    return;
-  }
+  // if (!canUseGemini()) {
+  //   console.log("⏭️ CT skipped — Gemini busy/cooldown");
+  //   return;
+  // }
 
   // CT = fallback → run only if CA inactive for 30 min
   const sinceLastCA = Date.now() - (global.LAST_CA_SUCCESS_AT || 0);
@@ -81,9 +81,6 @@ async function safeCtPolling() {
   }
 }
 
-/* ------------------------------------------------------------------
-   Bootstrap (UNCHANGED except CA & CT interval targets)
-------------------------------------------------------------------- */
 async function bootstrap() {
   global.STATE = await loadState();
 
@@ -151,13 +148,18 @@ async function bootstrap() {
       setInterval(safeCaPolling, 1000 * 60 * 10);
     }, 0);
   }
-
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     setTimeout(() => {
       console.log("🧠 cricktracker news polling enabled for crex-news");
-      setInterval(safeCtPolling, 1000 * 60 * 15);
+      setInterval(safeCtPolling, 1000 * 60 * 10);
     }, 1000 * 60 * 5);
   }
+  // if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
+  //   setTimeout(() => {
+  //     console.log("🧠 cricktracker news polling enabled for crex-news");
+  //     setInterval(safeCtPolling, 1000 * 60 * 0.1);
+  //   }, 0);
+  // }
 }
 
 bootstrap();
