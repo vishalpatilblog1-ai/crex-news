@@ -122,7 +122,6 @@ export async function generateGPTCAtweet(articleText) {
     
     STYLE CONSTRAINTS:
     - Plain text only
-    - Maximum 1 emoji (or none)
     - No hashtags unless unavoidable (max 1)
     - Short paragraphs only (1–2 lines)
     
