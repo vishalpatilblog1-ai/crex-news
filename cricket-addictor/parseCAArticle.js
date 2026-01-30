@@ -25,7 +25,8 @@ export function parseCAArticle(item) {
 
   return {
     headline: item.title?.trim(),
-    body: paragraphs.slice(0, 3).join("\n"),
+    // body: paragraphs.slice(0, 3).join("\n"),
+    body: paragraphs.join("\n"),
     paragraphCount: paragraphs.length,
   };
 }
