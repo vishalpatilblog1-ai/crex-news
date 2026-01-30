@@ -31,10 +31,8 @@ export async function caNewsPollingLoop() {
   // ---- config ----
   const MAX_AGE_MIN = 30;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  // const COVERED_RETENTION_HOURS = Number(
-  //   process.env.COVERED_RETENTION_HOURS ?? 6
-  // );
-  const COVERED_RETENTION_HOURS = 1;
+
+  const COVERED_RETENTION_HOURS = 2;
   const COVERED_RETENTION_HOURS_IMAGES = 4;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
   let stateDirty = false;
