@@ -131,7 +131,7 @@ async function bootstrap() {
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("🧠 cricketaddictor news polling enabled for crex-news");
     safeCaPolling();
-    setInterval(safeCaPolling, 1000 * 60 * 0.1);
+    setInterval(safeCaPolling, 1000 * 60 * 10);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
