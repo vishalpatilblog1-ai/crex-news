@@ -61,14 +61,6 @@ async function runTest() {
     return;
   }
 
-  // const tweetGemini = await generateGeminiCAtweet(
-  //   `${parsed.headline}\n${parsed.body}`
-  // );
-  // const tweetGpt = await generateGPTCAtweet(
-  //   `${parsed.headline}\n${parsed.body}`
-  // );
-  // console.log("tweetGeminiText>>>>>>", tweetGeminiText);
-  // console.log("tweetGPTText>>>>>>", tweetGPTText);
   if (tweetGPTText) {
     console.log("tweetGPTText::::");
     console.log(tweetGPTText);

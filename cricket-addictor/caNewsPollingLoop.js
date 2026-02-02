@@ -29,7 +29,7 @@ export async function caNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   // ---- config ----
-  const MAX_AGE_MIN = 300;
+  const MAX_AGE_MIN = 60;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
   const COVERED_RETENTION_HOURS = 2;
@@ -130,19 +130,6 @@ export async function caNewsPollingLoop() {
     console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
   }
 
-  // let tweetText = "";
-  // let tweetGeminiText = "";
-  // let tweetGPTText = "";
-  // try {
-  //   tweetGeminiText = await generateGeminiCAtweet(
-  //     `${parsed.headline}\n${parsed.body}`
-  //   );
-  //   tweetGPTText = await generateGPTCAtweet(
-  //     `${parsed.headline}\n${parsed.body}`
-  //   );
-  // } catch (err) {
-  //   console.warn("⚠️ generateGeminiCAtweet failed:", err?.message || err);
-  // }
   let tweetGeminiText = null;
   let tweetGPTText = null;
 
