@@ -28,6 +28,12 @@ Important rules:
 - Ignore wording differences and headlines
 - Focus on cricket meaning, not language
 
+Additional rules (VERY IMPORTANT):
+- If two articles discuss the same topic BUT are driven by different named individuals (players, ex-players, officials), treat them as NOT already covered.
+- Opinion or statement-based articles from different people are considered DIFFERENT coverage, even if the topic overlaps.
+- Only mark as already covered if BOTH the topic AND the primary speaker/angle are the same.
+
+
 You must return STRICT JSON only.
 No explanations. No extra text.
 `;
