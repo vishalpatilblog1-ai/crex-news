@@ -239,13 +239,35 @@ export async function generateGeminiCAtweet(articleText) {
     IN THE FIRST OR SECOND SENTENCE
   `;
 
+  const analysisContext2026 = {
+    dateHint: "Early 2026 T20 cycle",
+    eraHint: "India transitioning toward a younger T20 core",
+    leadershipAxis: "Middle-order leadership and captaincy are central themes",
+    tournamentFocus: "T20 World Cup 2026 in India & Sri Lanka",
+    recurringDebates: "Experience vs explosiveness in T20 selection",
+  };
+
   const userPrompt = `
-NEWS CONTEXT:
-${articleText}
+  [ANALYTICAL CONTEXT — NOT FACTS]
+  The following points describe the broader phase of Indian T20 cricket.
+  They are NOT reported facts from the article.
+  Use them only to frame analysis or raise questions.
+  Do NOT state them as facts unless supported by the NEWS CONTEXT.
+  
+  - Phase: ${analysisContext2026.dateHint}
+  - Team direction: ${analysisContext2026.eraHint}
+  - Strategic axis: ${analysisContext2026.leadershipAxis}
+  - Tournament focus: ${analysisContext2026.tournamentFocus}
+  - Ongoing debate: ${analysisContext2026.recurringDebates}
+  
+  [NEWS CONTEXT]
+  ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
 
 GUIDELINES (IMPORTANT):
+- The ANALYTICAL CONTEXT is optional; use it only if it naturally
+  strengthens the analysis. Do NOT force relevance.
 - The tweet must feel natural, human, and non-templated
 - Follow the MONEY MODE system instruction above
 - Structure is flexible; do NOT force a rigid format

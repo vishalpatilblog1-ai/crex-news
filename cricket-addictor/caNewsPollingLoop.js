@@ -7,7 +7,7 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { generateGPTCAtweet } from "./ai/generateGPTCAtweet.js";
 
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
-import { generateGeminiCAtweetSignal } from "./ai/generateGeminiCAtweetSignal.js";
+// import { generateGeminiCAtweetSignal } from "./ai/generateGeminiCAtweetSignal.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
@@ -20,7 +20,7 @@ export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
   if (!global.STATE) return;
 
-  const STATE = global.STATE;
+  const STATE = global.STATE;̦
 
   // ---- init state buckets ----
   STATE.ca ??= {};

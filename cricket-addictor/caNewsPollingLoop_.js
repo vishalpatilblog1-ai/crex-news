@@ -7,7 +7,6 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { generateGPTCAtweet } from "./ai/generateGPTCAtweet.js";
 
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
-import { generateGeminiCAtweetSignal } from "./ai/generateGeminiCAtweetSignal.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
