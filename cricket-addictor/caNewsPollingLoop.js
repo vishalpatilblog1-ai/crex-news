@@ -20,7 +20,7 @@ export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
   if (!global.STATE) return;
 
-  const STATE = global.STATE;̦
+  const STATE = global.STATE;
 
   // ---- init state buckets ----
   STATE.ca ??= {};
