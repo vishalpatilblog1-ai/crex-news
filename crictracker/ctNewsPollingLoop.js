@@ -108,24 +108,6 @@ export async function ctNewsPollingLoop() {
     console.warn("⚠️ CT judgeNewsContext failed:", err?.message || err);
   }
 
-  // let tweetText = "";
-  // try {
-  //   tweetText = await generateGeminiCAtweet(
-  //     `${parsed.headline}\n${parsed.body}`
-  //   );
-  // } catch (err) {
-  //   console.warn("⚠️ CT tweet generation failed:", err?.message || err);
-  // }
-
-  // if (!tweetText || tweetText.length < 30) {
-  //   console.log("⚠️ CT tweet too short, skipping");
-  //   STATE.cricktracker.seen[cleanLink] = Date.now();
-  //   await saveState(STATE);
-  //   return;
-  // }
-
-  // const imageUrl = getCTImageUrl(selected);
-
   let tweetGeminiText = null;
   let tweetGPTText = null;
 
