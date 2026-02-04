@@ -42,13 +42,11 @@ export async function caNewsPollingLoop() {
   stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_HOURS_IMAGES);
 
   if (stateDirty) {
-    // console.log("💾 Persisting pruned state to JSONBin");
     await saveState(STATE);
   }
 
   // ---- fetch rss ----
   const items = await fetchCARSS();
-  // console.log("items", items);
   if (!Array.isArray(items) || items.length === 0) return;
 
   // ---- select candidate ----
@@ -57,7 +55,6 @@ export async function caNewsPollingLoop() {
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   let selected = null;
-  console.log("sorted::", sorted);
 
   for (const item of sorted) {
     const pubMs = getPubDate(item);
