@@ -153,12 +153,12 @@ export async function ctNewsPollingLoop() {
   console.log("CT imageUrl::", imageUrl);
   console.log("CT link::", selected.link);
 
-  if (isBlockedCAHeadline(selected.title)) {
-    console.log("⛔ CT duplicate image + utility headline — skipping");
-    STATE.cricktracker.seen[cleanLink] = Date.now();
-    await saveState(STATE);
-    return;
-  }
+  // if (isBlockedCAHeadline(selected.title)) {
+  //   console.log("⛔ CT duplicate image + utility headline — skipping");
+  //   STATE.cricktracker.seen[cleanLink] = Date.now();
+  //   await saveState(STATE);
+  //   return;
+  // }
 
   if (CONSOLE_ONLY) {
     console.log("🧪 CONSOLE_ONLY=true — not posting to X");
