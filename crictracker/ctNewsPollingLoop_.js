@@ -14,6 +14,8 @@ import { isBlockedCAHeadline } from "../cricket-addictor/caHeadlineFilter.js";
 import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
 import { isRiskyTwitterImage } from "../cricket-addictor/ocr/detectTwitterReference.js";
 import { generateGeminiCAtweet } from "../cricket-addictor/ai/generateGeminiCAtweet.js";
+import { generateGPTCAtweet } from "../cricket-addictor/ai/generateGPTCAtweet.js";
+import { getCAImageUrl } from "../cricket-addictor/getCAImageUrl.js";
 
 export async function ctNewsPollingLoop() {
   console.log("ctNewsPollingLoop..");
@@ -21,37 +23,34 @@ export async function ctNewsPollingLoop() {
 
   const STATE = global.STATE;
 
-  if (!STATE.cricktracker) STATE.cricktracker = {};
-  if (!STATE.cricktracker.seen) STATE.cricktracker.seen = {};
+  // ---- init state buckets ----
+  STATE.cricktracker ??= {};
+  STATE.cricktracker.seen ??= {};
+  STATE.dailyContext ??= { contexts: [] };
+  STATE.usedImages ??= {};
 
-  const MAX_AGE_MIN = 200;
+  // ---- config ----
+  const MAX_AGE_MIN = 45;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const SEEN_RETENTION_HOURS = 48;
-  const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
+  const COVERED_RETENTION_HOURS = 4;
+  const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
 
-  try {
-    const now = Date.now();
-    let pruned = 0;
+  // ---- GC / pruning ----
+  let stateDirty = false;
+  stateDirty ||= pruneCTSeen(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_MS);
 
-    for (const [link, ts] of Object.entries(STATE.cricktracker.seen)) {
-      if (now - ts > SEEN_RETENTION_MS) {
-        delete STATE.cricktracker.seen[link];
-        pruned++;
-      }
-    }
-
-    if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old CT seen entries`);
-    }
-  } catch (err) {
-    console.warn("⚠️ CT seen prune failed:", err.message);
+  if (stateDirty) {
+    console.log("💾 Persisting pruned CT state to JSONBin");
+    await saveState(STATE);
   }
 
+  // ---- fetch rss ----
   const items = await fetchCTRSS();
-  if (!Array.isArray(items)) return;
+  if (!Array.isArray(items) || items.length === 0) return;
 
-  console.log("ctNewsPollingLoop..1");
-
+  // ---- select candidate ----
   const sorted = items
     .filter(isCTArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
@@ -66,13 +65,17 @@ export async function ctNewsPollingLoop() {
     if (ageMin > MAX_AGE_MIN) continue;
 
     const cleanLink = normalizeCTLink(item.link);
+    if (!cleanLink) continue;
+
     if (STATE.cricktracker.seen[cleanLink]) continue;
 
-    if (isBlockedCAHeadline(item.title)) {
-      STATE.cricktracker.seen[cleanLink] = Date.now();
-      console.log("⛔ CT utility headline blocked:", item.title);
-      continue;
-    }
+    //temproray commented
+
+    // if (isBlockedCAHeadline(item.title)) {
+    //   STATE.cricktracker.seen[cleanLink] = Date.now();
+    //   console.log("⛔ CT utility headline blocked:", item.title);
+    //   continue;
+    // }
 
     selected = item;
     break;
@@ -80,114 +83,240 @@ export async function ctNewsPollingLoop() {
 
   if (!selected) return;
 
-  /* -------------------- PARSE ARTICLE -------------------- */
+  const cleanLink = normalizeCTLink(selected.link);
+
+  // ---- parse ----
   const parsed = parseCTArticle(selected);
   if (!parsed?.body || parsed.body.length < 80) return;
 
-  /* -------------------- CONTEXT DEDUPE -------------------- */
+  // ---- coverage check ----
   let decision = null;
   try {
     decision = await judgeNewsContext({
-      //   articleText: parsed.body,
       articleText: `${parsed.headline}\n${parsed.body}`,
       existingContexts:
         STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
     });
 
-    // if (decision?.isAlreadyCovered && decision.confidence >= 0.8) {
-    if (decision?.isAlreadyCovered && decision.confidence >= 0.8) {
-      console.log("🔴 news neglected because already covered");
-      STATE.cricktracker.seen[normalizeCTLink(selected.link)] = Date.now();
-      await saveState(STATE);
-      return;
-    }
-  } catch (_) {}
-
-  /* -------------------- GENERATE TWEET -------------------- */
-  let tweetText;
-  try {
-    tweetText = await generateGeminiCAtweet(
-      parsed.headline + "\n" + parsed.body
-    );
-  } catch {}
-
-  if (!tweetText || tweetText.length < 30) {
-    console.log("⚠️ CT tweet too short, skipping");
-    STATE.cricktracker.seen[normalizeCTLink(selected.link)] = Date.now();
-    await saveState(STATE);
-    return;
-  }
-
-  const imageUrl = getCTImageUrl(selected);
-  const cleanLink = normalizeCTLink(selected.link);
-
-  console.log("imageUrl::", imageUrl);
-  console.log("cleanLink::", cleanLink);
-
-  if (!STATE.usedImages) STATE.usedImages = {};
-
-  /* -------------------- IMAGE / TEXT DECISION -------------------- */
-  if (!CONSOLE_ONLY) {
-    console.log("ready for web..");
-    let useImage = false;
-
-    if (imageUrl) {
-      if (STATE.usedImages[imageUrl]) {
-        console.log("🖼️ CT image already used — forcing text-only");
-      } else {
-        try {
-          const localImagePath = await downloadImageToTemp(imageUrl);
-          const ocrResult = await isRiskyTwitterImage(localImagePath);
-
-          if (!ocrResult.risky) {
-            useImage = true;
-          } else {
-            console.log("⚠️ CT OCR flagged image:", ocrResult.reason);
-          }
-        } catch (err) {
-          console.warn("⚠️ CT OCR failed, fallback to text-only:", err.message);
-        }
-      }
-    }
-
-    if (!useImage && isBlockedCAHeadline(selected.title)) {
-      console.log("⛔ CT duplicate image + utility headline — skipping");
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      console.log("🔴🔴 News neglected by CT because already covered 🔴🔴");
       STATE.cricktracker.seen[cleanLink] = Date.now();
       await saveState(STATE);
       return;
     }
+  } catch (err) {
+    console.warn("⚠️ CT judgeNewsContext failed:", err?.message || err);
+  }
 
-    if (useImage) {
-      console.log("eligible for CT tweet with image");
-      //   await tweetWithNativeImage({ text: tweetText, imageUrl });
-      STATE.usedImages[imageUrl] = Date.now();
-    } else {
-      console.log("eligible for CT text-only tweet");
-      //   await postTweet_ie_web({ text: tweetText });
+  let tweetGeminiText = null;
+  let tweetGPTText = null;
+
+  try {
+    tweetGeminiText = await generateGeminiCAtweet(
+      `${parsed.headline}\n${parsed.body}`
+    );
+  } catch (err) {
+    console.warn("⚠️ Gemini failed, falling back to GPT:", err?.message || err);
+  }
+
+  if (!tweetGeminiText) {
+    try {
+      tweetGPTText = await generateGPTCAtweet(
+        `${parsed.headline}\n${parsed.body}`
+      );
+    } catch (err) {
+      console.error("❌ GPT also failed:", err?.message || err);
     }
   }
 
-  /* -------------------- SAVE CONTEXT -------------------- */
-  if (decision?.newContext) {
-    if (!STATE.dailyContext) {
-      STATE.dailyContext = {
-        date: new Date().toISOString().slice(0, 10),
-        contexts: [],
-      };
-    }
+  const tweetText = tweetGeminiText || tweetGPTText;
 
-    STATE.dailyContext.contexts.push({
-      summary: decision.newContext,
-      source: "CT",
-      link: cleanLink,
-      createdAt: new Date().toISOString(),
+  if (!tweetText) {
+    console.warn("⚠️ No tweet generated by either model");
+    return;
+  }
+
+  if (!tweetText || tweetText.length < 30) {
+    console.log("⚠️ Tweet text too short, skipping");
+    STATE.ca.seen[cleanLink] = Date.now();
+    await saveState(STATE);
+    return;
+  }
+
+  const imageUrl = getCAImageUrl(selected);
+
+  console.log("\n");
+  console.log("CT tweetGeminiText::", tweetGeminiText);
+  console.log("CT tweetGPTText::", tweetGPTText);
+  console.log("CT imageUrl::", imageUrl);
+  console.log("CT link::", selected.link);
+  if (!CONSOLE_ONLY) {
+    const { useImage, reason } = await decideImageUsage({
+      imageUrl,
+      usedImages: STATE.usedImages,
     });
+
+    console.log("tweetText CT::", tweetText);
+    console.log("imageUrl CT::", imageUrl);
+    if (!useImage) {
+      if (reason) console.log(reason);
+
+      if (isBlockedCAHeadline(selected.title)) {
+        console.log("⛔ CT duplicate image + utility headline — skipping");
+        STATE.cricktracker.seen[cleanLink] = Date.now();
+        await saveState(STATE);
+        return;
+      }
+
+      console.log("eligible for CT text-only tweet");
+      await postTweet_ie_web({ text: tweetText });
+    } else {
+      console.log("eligible for CT tweet with image");
+      await tweetWithNativeImage({ text: tweetText, imageUrl });
+      STATE.usedImages[imageUrl] = Date.now();
+    }
   }
 
+  // ---- store new context ----
+  if (decision?.newContext) {
+    if (!contextExists(STATE, decision.newContext)) {
+      STATE.dailyContext.contexts.push({
+        summary: decision.newContext,
+        source: "CT",
+        link: cleanLink,
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      console.log("🧠 CT duplicate dailyContext skipped");
+    }
+  }
+
+  // ---- final persist ----
   STATE.cricktracker.seen[cleanLink] = Date.now();
   await saveState(STATE);
 }
 
+/* ---------------- helpers ---------------- */
+
 function getPubDate(item) {
   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
+}
+
+function pruneCTSeen(STATE, retentionMs) {
+  try {
+    const now = Date.now();
+    let pruned = 0;
+
+    for (const [link, ts] of Object.entries(STATE.cricktracker?.seen || {})) {
+      if (now - ts > retentionMs) {
+        delete STATE.cricktracker.seen[link];
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      console.log(`🧹 Pruned ${pruned} old CT seen entries`);
+      return true;
+    }
+  } catch (err) {
+    console.warn("⚠️ CT seen prune failed:", err?.message || err);
+  }
+  return false;
+}
+
+function pruneDailyContext(STATE, retentionMs) {
+  try {
+    const ctx = STATE.dailyContext?.contexts;
+    if (!Array.isArray(ctx) || ctx.length === 0) return false;
+
+    const now = Date.now();
+    const before = ctx.length;
+
+    STATE.dailyContext.contexts = ctx.filter((c) => {
+      const t = new Date(c.createdAt).getTime();
+      return Number.isFinite(t) && now - t <= retentionMs;
+    });
+
+    if (before !== STATE.dailyContext.contexts.length) {
+      console.log(
+        `🧹 Pruned ${
+          before - STATE.dailyContext.contexts.length
+        } old dailyContext entries`
+      );
+      return true;
+    }
+  } catch (err) {
+    console.warn("⚠️ CT dailyContext prune failed:", err?.message || err);
+  }
+  return false;
+}
+
+function pruneUsedImages(STATE, retentionMs) {
+  try {
+    const now = Date.now();
+    let pruned = 0;
+
+    for (const [imgUrl, ts] of Object.entries(STATE.usedImages || {})) {
+      if (now - ts > retentionMs) {
+        delete STATE.usedImages[imgUrl];
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      console.log(`🧹 Pruned ${pruned} old usedImages entries`);
+      return true;
+    }
+  } catch (err) {
+    console.warn("⚠️ CT usedImages prune failed:", err?.message || err);
+  }
+  return false;
+}
+
+async function decideImageUsage({ imageUrl, usedImages }) {
+  if (!imageUrl)
+    return { useImage: false, reason: "🖼️ No imageUrl — text-only" };
+
+  if (usedImages?.[imageUrl]) {
+    return {
+      useImage: false,
+      reason: "🖼️ Image already used — forcing text-only",
+    };
+  }
+
+  try {
+    const localImagePath = await downloadImageToTemp(imageUrl);
+    const ocrResult = await isRiskyTwitterImage(localImagePath);
+
+    if (!ocrResult?.risky) return { useImage: true, reason: "" };
+
+    return {
+      useImage: false,
+      reason: `⚠️ OCR flagged image as risky: ${ocrResult.reason || "unknown"}`,
+    };
+  } catch (err) {
+    return {
+      useImage: false,
+      reason: `⚠️ OCR check failed, fallback to text-only: ${
+        err?.message || err
+      }`,
+    };
+  }
+}
+
+function contextExists(STATE, summary) {
+  if (!STATE.dailyContext?.contexts?.length) return false;
+
+  const norm = normalizeSummary(summary);
+  return STATE.dailyContext.contexts.some(
+    (c) => normalizeSummary(c.summary) === norm
+  );
+}
+
+function normalizeSummary(text = "") {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

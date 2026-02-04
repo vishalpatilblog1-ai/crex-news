@@ -1,6 +1,7 @@
 // cricket-addictor/caNewsPollingLoop.js
 
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -56,7 +57,7 @@ export async function caNewsPollingLoop() {
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   let selected = null;
-  // console.log("sorted::", sorted);
+  console.log("sorted::", sorted);
 
   for (const item of sorted) {
     const pubMs = getPubDate(item);
@@ -173,31 +174,29 @@ export async function caNewsPollingLoop() {
   console.log("CA imageUrl::", imageUrl);
   console.log("CA link::", item.link);
 
-  if (!CONSOLE_ONLY) {
-    const { useImage, reason } = await decideImageUsage({
-      imageUrl,
-      usedImages: STATE.usedImages,
-    });
-
-    if (!useImage) {
-      if (reason) console.log(reason);
-
-      // if (isBlockedCAHeadline(item.title)) {
-      //   console.log("⛔ Duplicate image + utility headline — skipping");
-      //   STATE.ca.seen[cleanLink] = Date.now();
-      //   await saveState(STATE);
-      //   return;
-      // }
-
-      console.log("eligible for only text");
-      await postTweet_ie_web({ text: tweetText });
-    } else {
-      console.log("eligible for text with image");
-      await tweetWithNativeImage({ text: tweetText, imageUrl });
-      STATE.usedImages[imageUrl] = Date.now();
-    }
-  } else {
+  if (CONSOLE_ONLY) {
     console.log("🧪 CONSOLE_ONLY=true — not posting to X");
+  } else {
+    enqueueTweet({
+      source: "CA",
+      link: cleanLink,
+      headline: parsed.headline,
+      createdAt: Date.now(),
+      publish: async () => {
+        const { useImage, reason } = await decideImageUsage({
+          imageUrl,
+          usedImages: STATE.usedImages,
+        });
+
+        if (!useImage) {
+          if (reason) console.log(reason);
+          await postTweet_ie_web({ text: tweetText });
+        } else {
+          await tweetWithNativeImage({ text: tweetText, imageUrl });
+          STATE.usedImages[imageUrl] = Date.now();
+        }
+      },
+    });
   }
 
   if (decision?.newContext) {

@@ -7,6 +7,7 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { generateGPTCAtweet } from "./ai/generateGPTCAtweet.js";
 
 import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
+// import { generateGeminiCAtweetSignal } from "./ai/generateGeminiCAtweetSignal.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
@@ -69,17 +70,21 @@ export async function caNewsPollingLoop() {
 
     if (STATE.ca.seen[cleanLink]) continue;
 
-    if (isBlockedCAHeadline(item.title)) {
-      STATE.ca.seen[cleanLink] = Date.now();
-      console.log("⛔ skipped utility headline (blocked):", item.title);
-      continue;
-    }
+    //temproray commented
+
+    // if (isBlockedCAHeadline(item.title)) {
+    //   STATE.ca.seen[cleanLink] = Date.now();
+    //   console.log("⛔ skipped utility headline (blocked):", item.title);
+    //   continue;
+    // }
 
     const isUtilityHeadline = isBlockedCAHeadline(item.title);
+    // console.log("isUtilityHeadline");
     selected = {
       item,
       mode: isUtilityHeadline ? "SIGNAL" : "ANALYSIS",
     };
+    // selected = item;
     break;
   }
 
