@@ -87,45 +87,43 @@ export async function caNewsPollingLoop() {
 
   if (!selected) return;
 
-  // const cleanLink = normalizeCALink(selected.link);
-  // const parsed = parseCAArticle(selected);
   const { item } = selected;
   const cleanLink = normalizeCALink(item.link);
-  // console.log("item::", item);
+
   const parsed = parseCAArticle(item);
   if (!parsed?.body || parsed.body.length < 80) return;
 
   // temporary commented
 
-  let decision = null;
-  try {
-    decision = await judgeNewsContext({
-      articleText: `${parsed.headline}\n${parsed.body}`,
-      existingContexts:
-        STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-    });
+  // let decision = null;
+  // try {
+  //   decision = await judgeNewsContext({
+  //     articleText: `${parsed.headline}\n${parsed.body}`,
+  //     existingContexts:
+  //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+  //   });
 
-    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
+  //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+  //     console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
 
-      if (
-        typeof decision.matchedIndex === "number" &&
-        STATE.dailyContext?.contexts?.[decision.matchedIndex]
-      ) {
-        console.log(
-          "🧠 Matched dailyContext object:",
-          STATE.dailyContext.contexts[decision.matchedIndex]
-        );
-      } else {
-        console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
-      }
-      STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE);
-      return;
-    }
-  } catch (err) {
-    console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-  }
+  //     if (
+  //       typeof decision.matchedIndex === "number" &&
+  //       STATE.dailyContext?.contexts?.[decision.matchedIndex]
+  //     ) {
+  //       console.log(
+  //         "🧠 Matched dailyContext object:",
+  //         STATE.dailyContext.contexts[decision.matchedIndex]
+  //       );
+  //     } else {
+  //       console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
+  //     }
+  //     STATE.ca.seen[cleanLink] = Date.now();
+  //     await saveState(STATE);
+  //     return;
+  //   }
+  // } catch (err) {
+  //   console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+  // }
 
   let tweetGeminiText = null;
   let tweetGPTText = null;
