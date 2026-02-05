@@ -75,11 +75,11 @@ export async function caNewsPollingLoop() {
     //   continue;
     // }
 
-    const isUtilityHeadline = isBlockedCAHeadline(item.title);
+    // const isUtilityHeadline = isBlockedCAHeadline(item.title);
     // console.log("isUtilityHeadline");
     selected = {
       item,
-      mode: isUtilityHeadline ? "SIGNAL" : "ANALYSIS",
+      // mode: "ANALYSIS",
     };
     // selected = item;
     break;
@@ -89,7 +89,7 @@ export async function caNewsPollingLoop() {
 
   // const cleanLink = normalizeCALink(selected.link);
   // const parsed = parseCAArticle(selected);
-  const { item, mode } = selected;
+  const { item } = selected;
   const cleanLink = normalizeCALink(item.link);
   // console.log("item::", item);
   const parsed = parseCAArticle(item);

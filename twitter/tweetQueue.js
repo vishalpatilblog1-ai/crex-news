@@ -3,11 +3,10 @@
 let queue = [];
 let isPublishing = false;
 
-const MIN_TWEET_GAP_MS = 1000 * 60 * 5; // 5 mins (World Cup safe)
+const MIN_TWEET_GAP_MS = 1000 * 60 * 5;
 let lastTweetAt = 0;
 
 export function enqueueTweet(payload) {
-  console.log("payload::", payload);
   queue.push({
     ...payload,
     enqueuedAt: Date.now(),
@@ -31,6 +30,7 @@ async function processQueue() {
 
   setTimeout(async () => {
     const job = queue.shift();
+    console.log("job>>", job);
 
     try {
       await job.publish();

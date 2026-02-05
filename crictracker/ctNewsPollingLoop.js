@@ -136,10 +136,8 @@ export async function ctNewsPollingLoop() {
   }
 
   if (!tweetText || tweetText.length < 30) {
-    // console.log("⚠️ Tweet text too short, skipping");
     STATE.cricktracker.seen[cleanLink] = Date.now();
 
-    // STATE.ca.seen[cleanLink] = Date.now();
     await saveState(STATE);
     return;
   }

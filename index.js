@@ -138,7 +138,7 @@ async function bootstrap() {
     setTimeout(() => {
       console.log("🧠 cricktracker news polling enabled for crex-news");
       safeCtPolling();
-      setInterval(safeCtPolling, 1000 * 60 * 7);
+      setInterval(safeCtPolling, 1000 * 60 * 3);
     }, 1000 * 60 * 6);
   }
 }
