@@ -23,19 +23,16 @@ export async function ctNewsPollingLoop() {
 
   const STATE = global.STATE;
 
-  // ---- init state buckets ----
   STATE.cricktracker ??= {};
   STATE.cricktracker.seen ??= {};
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
-  // ---- config ----
   const MAX_AGE_MIN = 45;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
   const COVERED_RETENTION_HOURS = 4;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
 
-  // ---- GC / pruning ----
   let stateDirty = false;
   stateDirty ||= pruneCTSeen(STATE, COVERED_RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, COVERED_RETENTION_MS);
