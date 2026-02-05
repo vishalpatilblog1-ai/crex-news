@@ -1,12 +1,12 @@
 // cricket-addictor/caNewsPollingLoop.js
 
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
-import { generateGPTCAtweet } from "./ai/generateGPTCAtweet.js";
-
-import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
 
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
@@ -32,7 +32,7 @@ export async function caNewsPollingLoop() {
   const MAX_AGE_MIN = 60;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-  const COVERED_RETENTION_HOURS = 2;
+  const COVERED_RETENTION_HOURS = 4;
   const COVERED_RETENTION_HOURS_IMAGES = 4;
   const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
   let stateDirty = false;
@@ -41,13 +41,12 @@ export async function caNewsPollingLoop() {
   stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_HOURS_IMAGES);
 
   if (stateDirty) {
-    // console.log("💾 Persisting pruned state to JSONBin");
     await saveState(STATE);
   }
 
   // ---- fetch rss ----
   const items = await fetchCARSS();
-  // console.log("items", items);
+  // console.log("items::", items);
   if (!Array.isArray(items) || items.length === 0) return;
 
   // ---- select candidate ----
@@ -56,7 +55,6 @@ export async function caNewsPollingLoop() {
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   let selected = null;
-  // console.log("sorted::", sorted);
 
   for (const item of sorted) {
     const pubMs = getPubDate(item);
@@ -72,17 +70,17 @@ export async function caNewsPollingLoop() {
 
     //temproray commented
 
-    // if (isBlockedCAHeadline(item.title)) {
-    //   STATE.ca.seen[cleanLink] = Date.now();
-    //   console.log("⛔ skipped utility headline (blocked):", item.title);
-    //   continue;
-    // }
+    if (isBlockedCAHeadline(item.title)) {
+      STATE.ca.seen[cleanLink] = Date.now();
+      console.log("⛔ skipped utility headline (blocked):", item.title);
+      continue;
+    }
 
-    const isUtilityHeadline = isBlockedCAHeadline(item.title);
+    // const isUtilityHeadline = isBlockedCAHeadline(item.title);
     // console.log("isUtilityHeadline");
     selected = {
       item,
-      mode: isUtilityHeadline ? "SIGNAL" : "ANALYSIS",
+      // mode: "ANALYSIS",
     };
     // selected = item;
     break;
@@ -90,11 +88,10 @@ export async function caNewsPollingLoop() {
 
   if (!selected) return;
 
-  // const cleanLink = normalizeCALink(selected.link);
-  // const parsed = parseCAArticle(selected);
-  const { item, mode } = selected;
+  const { item } = selected;
+
   const cleanLink = normalizeCALink(item.link);
-  // console.log("item::", item);
+
   const parsed = parseCAArticle(item);
   if (!parsed?.body || parsed.body.length < 80) return;
 
@@ -133,8 +130,10 @@ export async function caNewsPollingLoop() {
   let tweetGeminiText = null;
   let tweetGPTText = null;
 
+  console.log("came here ..");
+
   try {
-    tweetGeminiText = await generateGeminiCAtweet(
+    tweetGeminiText = await generateGeminiTweet(
       `${parsed.headline}\n${parsed.body}`
     );
   } catch (err) {
@@ -143,7 +142,7 @@ export async function caNewsPollingLoop() {
 
   if (!tweetGeminiText) {
     try {
-      tweetGPTText = await generateGPTCAtweet(
+      tweetGPTText = await generateGPTTweet(
         `${parsed.headline}\n${parsed.body}`
       );
     } catch (err) {
@@ -173,31 +172,29 @@ export async function caNewsPollingLoop() {
   console.log("CA imageUrl::", imageUrl);
   console.log("CA link::", item.link);
 
-  if (!CONSOLE_ONLY) {
-    const { useImage, reason } = await decideImageUsage({
-      imageUrl,
-      usedImages: STATE.usedImages,
-    });
-
-    if (!useImage) {
-      if (reason) console.log(reason);
-
-      // if (isBlockedCAHeadline(item.title)) {
-      //   console.log("⛔ Duplicate image + utility headline — skipping");
-      //   STATE.ca.seen[cleanLink] = Date.now();
-      //   await saveState(STATE);
-      //   return;
-      // }
-
-      console.log("eligible for only text");
-      await postTweet_ie_web({ text: tweetText });
-    } else {
-      console.log("eligible for text with image");
-      await tweetWithNativeImage({ text: tweetText, imageUrl });
-      STATE.usedImages[imageUrl] = Date.now();
-    }
-  } else {
+  if (CONSOLE_ONLY) {
     console.log("🧪 CONSOLE_ONLY=true — not posting to X");
+  } else {
+    enqueueTweet({
+      source: "CA",
+      link: cleanLink,
+      headline: parsed.headline,
+      createdAt: Date.now(),
+      publish: async () => {
+        const { useImage, reason } = await decideImageUsage({
+          imageUrl,
+          usedImages: STATE.usedImages,
+        });
+
+        if (!useImage) {
+          if (reason) console.log(reason);
+          await postTweet_ie_web({ text: tweetText });
+        } else {
+          await tweetWithNativeImage({ text: tweetText, imageUrl });
+          STATE.usedImages[imageUrl] = Date.now();
+        }
+      },
+    });
   }
 
   if (decision?.newContext) {

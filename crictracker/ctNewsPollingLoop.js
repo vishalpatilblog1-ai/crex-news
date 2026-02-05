@@ -1,4 +1,4 @@
-// cricket-addictor/ctNewsPollingLoop.js
+// crictracker/ctNewsPollingLoop.js
 
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
@@ -10,46 +10,54 @@ import { isCTArticle, normalizeCTLink } from "./ctFilters.js";
 import { fetchCTRSS } from "./fetchCTRSS.js";
 import { parseCTArticle } from "./parseCTArticle.js";
 
-import { generateGPTCAtweet } from "../cricket-addictor/ai/generateGPTCAtweet.js";
-import { generateGeminiCAtweet } from "../cricket-addictor/ai/generateGeminiCAtweet.js";
-import { getCAImageUrl } from "../cricket-addictor/getCAImageUrl.js";
+// import { getCAImageUrl } from "../cricket-addictor/getCAImageUrl.js";
 import { isRiskyTwitterImage } from "../cricket-addictor/ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
+
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 
 export async function ctNewsPollingLoop() {
   console.log("ctNewsPollingLoop..");
-  if (!global.STATE) return;
+  if (!global.STATE) return false;
 
   const STATE = global.STATE;
 
+  /* ---------------- init state ---------------- */
   STATE.cricktracker ??= {};
   STATE.cricktracker.seen ??= {};
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
-  const MAX_AGE_MIN = 45;
+  /* ---------------- config ---------------- */
+  const MAX_AGE_MIN = 60;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const COVERED_RETENTION_HOURS = 4;
-  const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
+  const RETENTION_MS = 4 * 60 * 60 * 1000;
 
   let stateDirty = false;
-  stateDirty ||= pruneCTSeen(STATE, COVERED_RETENTION_MS);
-  stateDirty ||= pruneDailyContext(STATE, COVERED_RETENTION_MS);
-  stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_MS);
+  stateDirty ||= pruneCTSeen(STATE, RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
+  stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
   if (stateDirty) {
     console.log("💾 Persisting pruned CT state to JSONBin");
     await saveState(STATE);
   }
 
-  // ---- fetch rss ----
-  const items = await fetchCTRSS();
-  if (!Array.isArray(items) || items.length === 0) return;
+  /* ---------------- fetch RSS (guarded) ---------------- */
+  let items;
+  try {
+    items = await fetchCTRSS();
+  } catch (err) {
+    console.warn("⚠️ CT RSS fetch failed:", err?.message || err);
+    return false;
+  }
 
-  // ---- select candidate ----
+  if (!Array.isArray(items) || items.length === 0) return false;
+
+  /* ---------------- select candidate ---------------- */
   const sorted = items
     .filter(isCTArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
@@ -68,27 +76,28 @@ export async function ctNewsPollingLoop() {
 
     if (STATE.cricktracker.seen[cleanLink]) continue;
 
-    //temproray commented
-
-    // if (isBlockedCAHeadline(item.title)) {
-    //   STATE.cricktracker.seen[cleanLink] = Date.now();
-    //   console.log("⛔ CT utility headline blocked:", item.title);
-    //   continue;
-    // }
+    if (isBlockedCAHeadline(item.title)) {
+      STATE.cricktracker.seen[cleanLink] = Date.now();
+      continue;
+    }
 
     selected = item;
     break;
   }
 
-  if (!selected) return;
+  if (!selected) return false;
 
   const cleanLink = normalizeCTLink(selected.link);
 
-  // ---- parse ----
+  /* ---------------- parse ---------------- */
   const parsed = parseCTArticle(selected);
-  if (!parsed?.body || parsed.body.length < 80) return;
+  if (!parsed?.body || parsed.body.length < 80) {
+    STATE.cricktracker.seen[cleanLink] = Date.now();
+    await saveState(STATE);
+    return true;
+  }
 
-  // ---- coverage check ----
+  /* ---------------- coverage check ---------------- */
   let decision = null;
   try {
     decision = await judgeNewsContext({
@@ -98,64 +107,39 @@ export async function ctNewsPollingLoop() {
     });
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      console.log("🔴🔴 News neglected by CT because already covered 🔴🔴");
       STATE.cricktracker.seen[cleanLink] = Date.now();
       await saveState(STATE);
-      return;
+      return true;
     }
   } catch (err) {
     console.warn("⚠️ CT judgeNewsContext failed:", err?.message || err);
   }
 
-  let tweetGeminiText = null;
-  let tweetGPTText = null;
+  /* ---------------- generate tweet ---------------- */
+  let tweetText = null;
 
   try {
-    tweetGeminiText = await generateGeminiTweet(
-      `${parsed.headline}\n${parsed.body}`
-    );
+    tweetText = await generateGeminiTweet(`${parsed.headline}\n${parsed.body}`);
   } catch (err) {
-    console.warn("⚠️ Gemini failed, falling back to GPT:", err?.message || err);
+    console.warn("⚠️ Gemini failed:", err?.message || err);
   }
-
-  if (!tweetGeminiText) {
-    try {
-      tweetGPTText = await generateGPTTweet(
-        `${parsed.headline}\n${parsed.body}`
-      );
-    } catch (err) {
-      console.error("❌ GPT also failed:", err?.message || err);
-    }
-  }
-
-  const tweetText = tweetGeminiText || tweetGPTText;
 
   if (!tweetText) {
-    console.warn("⚠️ No tweet generated by either model");
-    return;
+    try {
+      tweetText = await generateGPTTweet(`${parsed.headline}\n${parsed.body}`);
+    } catch (err) {
+      console.warn("❌ GPT failed:", err?.message || err);
+    }
   }
 
   if (!tweetText || tweetText.length < 30) {
     STATE.cricktracker.seen[cleanLink] = Date.now();
-
     await saveState(STATE);
-    return;
+    return true;
   }
 
-  const imageUrl = getCAImageUrl(selected);
-
-  console.log("\n");
-  console.log("CT tweetGeminiText::", tweetGeminiText);
-  console.log("CT tweetGPTText::", tweetGPTText);
-  console.log("CT imageUrl::", imageUrl);
-  console.log("CT link::", selected.link);
-
-  // if (isBlockedCAHeadline(selected.title)) {
-  //   console.log("⛔ CT duplicate image + utility headline — skipping");
-  //   STATE.cricktracker.seen[cleanLink] = Date.now();
-  //   await saveState(STATE);
-  //   return;
-  // }
+  /* ---------------- publish ---------------- */
+  const imageUrl = getCACTImageUrl(selected); // keep as-is for now if it works for CT
 
   if (CONSOLE_ONLY) {
     console.log("🧪 CONSOLE_ONLY=true — not posting to X");
@@ -173,7 +157,6 @@ export async function ctNewsPollingLoop() {
 
         if (!useImage) {
           if (reason) console.log(reason);
-
           await postTweet_ie_web({ text: tweetText });
         } else {
           await tweetWithNativeImage({ text: tweetText, imageUrl });
@@ -182,50 +165,22 @@ export async function ctNewsPollingLoop() {
       },
     });
   }
-  // if (!CONSOLE_ONLY) {
-  //   const { useImage, reason } = await decideImageUsage({
-  //     imageUrl,
-  //     usedImages: STATE.usedImages,
-  //   });
 
-  //   console.log("tweetText CT::", tweetText);
-  //   console.log("imageUrl CT::", imageUrl);
-  //   if (!useImage) {
-  //     if (reason) console.log(reason);
-
-  //     if (isBlockedCAHeadline(selected.title)) {
-  //       console.log("⛔ CT duplicate image + utility headline — skipping");
-  //       STATE.cricktracker.seen[cleanLink] = Date.now();
-  //       await saveState(STATE);
-  //       return;
-  //     }
-
-  //     console.log("eligible for CT text-only tweet");
-  //     await postTweet_ie_web({ text: tweetText });
-  //   } else {
-  //     console.log("eligible for CT tweet with image");
-  //     await tweetWithNativeImage({ text: tweetText, imageUrl });
-  //     STATE.usedImages[imageUrl] = Date.now();
-  //   }
-  // }
-
-  // ---- store new context ----
-  if (decision?.newContext) {
-    if (!contextExists(STATE, decision.newContext)) {
-      STATE.dailyContext.contexts.push({
-        summary: decision.newContext,
-        source: "CT",
-        link: cleanLink,
-        createdAt: new Date().toISOString(),
-      });
-    } else {
-      console.log("🧠 CT duplicate dailyContext skipped");
-    }
+  /* ---------------- store new context ---------------- */
+  if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+    STATE.dailyContext.contexts.push({
+      summary: decision.newContext,
+      source: "CT",
+      link: cleanLink,
+      createdAt: new Date().toISOString(),
+    });
   }
 
-  // ---- final persist ----
+  /* ---------------- final persist ---------------- */
   STATE.cricktracker.seen[cleanLink] = Date.now();
   await saveState(STATE);
+
+  return true;
 }
 
 /* ---------------- helpers ---------------- */
