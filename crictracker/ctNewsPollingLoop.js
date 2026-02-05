@@ -16,6 +16,8 @@ import { getCAImageUrl } from "../cricket-addictor/getCAImageUrl.js";
 import { isRiskyTwitterImage } from "../cricket-addictor/ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 
 export async function ctNewsPollingLoop() {
   console.log("ctNewsPollingLoop..");
@@ -109,7 +111,7 @@ export async function ctNewsPollingLoop() {
   let tweetGPTText = null;
 
   try {
-    tweetGeminiText = await generateGeminiCAtweet(
+    tweetGeminiText = await generateGeminiTweet(
       `${parsed.headline}\n${parsed.body}`
     );
   } catch (err) {
@@ -118,7 +120,7 @@ export async function ctNewsPollingLoop() {
 
   if (!tweetGeminiText) {
     try {
-      tweetGPTText = await generateGPTCAtweet(
+      tweetGPTText = await generateGPTTweet(
         `${parsed.headline}\n${parsed.body}`
       );
     } catch (err) {

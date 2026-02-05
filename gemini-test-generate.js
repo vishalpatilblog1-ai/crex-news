@@ -1,5 +1,5 @@
+import { generateGeminiTweet } from "./ai/generate-gemini-tweet.js";
 import { generateGPTCAtweet } from "./cricket-addictor/ai/generateGPTCAtweet.js";
-import { generateGeminiCAtweet } from "./cricket-addictor/ai/generateGeminiCAtweet.js";
 import { isCAArticle } from "./cricket-addictor/caFilters.js";
 import { fetchCARSS } from "./cricket-addictor/fetchCARss.js";
 import { getCAImageUrl } from "./cricket-addictor/getCAImageUrl.js";
@@ -37,7 +37,7 @@ async function runTest() {
   let tweetGeminiText = null;
   let tweetGPTText = null;
   try {
-    tweetGeminiText = await generateGeminiCAtweet(
+    tweetGeminiText = await generateGeminiTweet(
       `${parsed.headline}\n${parsed.body}`
     );
   } catch (err) {

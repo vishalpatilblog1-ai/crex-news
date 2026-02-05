@@ -1,14 +1,13 @@
 // cricket-addictor/caNewsPollingLoop.js
 
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
-import { generateGPTCAtweet } from "./ai/generateGPTCAtweet.js";
 
-import { generateGeminiCAtweet } from "./ai/generateGeminiCAtweet.js";
-// import { generateGeminiCAtweetSignal } from "./ai/generateGeminiCAtweetSignal.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
@@ -132,7 +131,7 @@ export async function caNewsPollingLoop() {
   let tweetGPTText = null;
 
   try {
-    tweetGeminiText = await generateGeminiCAtweet(
+    tweetGeminiText = await generateGeminiTweet(
       `${parsed.headline}\n${parsed.body}`
     );
   } catch (err) {
@@ -141,7 +140,7 @@ export async function caNewsPollingLoop() {
 
   if (!tweetGeminiText) {
     try {
-      tweetGPTText = await generateGPTCAtweet(
+      tweetGPTText = await generateGPTTweet(
         `${parsed.headline}\n${parsed.body}`
       );
     } catch (err) {

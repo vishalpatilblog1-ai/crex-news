@@ -1,7 +1,6 @@
 // ieNewsPollingLoop.js
 
-import { generateGeminiCAtweet } from "../cricket-addictor/ai/generateGeminiCAtweet.js";
-import { generateCommonStyleTweet } from "../twitter/generateCommonStyleTweet.js";
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -145,7 +144,7 @@ export async function ieNewsPollingLoop() {
       //   "Indian Express"
       // );
 
-      tweetBody = await generateGeminiCAtweet(
+      tweetBody = await generateGeminiTweet(
         parsed.headline + "\n" + parsed.body
       );
 

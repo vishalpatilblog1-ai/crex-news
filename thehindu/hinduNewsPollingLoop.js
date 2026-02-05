@@ -8,7 +8,7 @@ import { isHinduArticle, normalizeHinduLink } from "./hinduFilters.js";
 import { fetchHinduCricketRSS } from "./hinduRssFetcher.js";
 import { parseHinduArticle } from "./parseHinduArticle.js";
 
-import { generateGeminiCAtweet } from "../cricket-addictor/ai/generateGeminiCAtweet.js";
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 
@@ -133,7 +133,7 @@ export async function hinduNewsPollingLoop() {
     let tweetBody;
 
     try {
-      tweetBody = await generateGeminiCAtweet(
+      tweetBody = await generateGeminiTweet(
         parsed.headline + "\n" + parsed.body
       );
 
