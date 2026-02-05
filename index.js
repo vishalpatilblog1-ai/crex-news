@@ -86,16 +86,17 @@ async function bootstrap() {
     await saveState(global.STATE);
   }
 
-  /* ---------------- CA ---------------- */
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("🧠 CricketAddictor polling enabled");
 
-    safeCaPolling();
+    setTimeout(() => {
+      safeCaPolling();
 
-    setInterval(() => {
-      const jitter = Math.floor(Math.random() * 60_000);
-      setTimeout(safeCaPolling, jitter);
-    }, 1000 * 60 * 7);
+      setInterval(() => {
+        const jitter = Math.floor(Math.random() * 60_000);
+        setTimeout(safeCaPolling, jitter);
+      }, 1000 * 60 * 7);
+    }, 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
