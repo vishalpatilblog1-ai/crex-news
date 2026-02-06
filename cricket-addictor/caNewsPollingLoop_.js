@@ -2,6 +2,7 @@
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
@@ -11,52 +12,58 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
-import { getCAImageUrl } from "./getCAImageUrl.js";
+// import { getCAImageUrl } from "./getCAImageUrl.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticle } from "./parseCAArticle.js";
 
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
-  if (!global.STATE) return;
+  if (!global.STATE) return false;
 
   const STATE = global.STATE;
 
-  // ---- init state buckets ----
+  /* ---------------- init state ---------------- */
   STATE.ca ??= {};
   STATE.ca.seen ??= {};
+  STATE.ca.queued ??= {};
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
-  // ---- config ----
-  const MAX_AGE_MIN = 60;
+  /* ---------------- config ---------------- */
+  const MAX_AGE_MIN = 180;
+  const MAX_BATCH = 3; // 🔥 WC-safe batch size
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+  const RETENTION_MS = 4 * 60 * 60 * 1000;
 
-  const COVERED_RETENTION_HOURS = 4;
-  const COVERED_RETENTION_HOURS_IMAGES = 4;
-  const COVERED_RETENTION_MS = COVERED_RETENTION_HOURS * 60 * 60 * 1000;
   let stateDirty = false;
-  stateDirty ||= pruneSeen(STATE, COVERED_RETENTION_MS);
-  stateDirty ||= pruneDailyContext(STATE, COVERED_RETENTION_MS);
-  stateDirty ||= pruneUsedImages(STATE, COVERED_RETENTION_HOURS_IMAGES);
+  stateDirty ||= pruneSeen(STATE, RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
+  stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
-  if (stateDirty) {
-    await saveState(STATE);
+  if (stateDirty) await saveState(STATE);
+
+  /* ---------------- fetch RSS (guarded) ---------------- */
+  let items;
+  try {
+    items = await fetchCARSS();
+  } catch (err) {
+    console.warn("❌ CA RSS fetch failed:", err?.message || err);
+    throw err;
   }
 
-  // ---- fetch rss ----
-  const items = await fetchCARSS();
-  // console.log("items::", items);
-  if (!Array.isArray(items) || items.length === 0) return;
+  if (!Array.isArray(items) || items.length === 0) return false;
 
-  // ---- select candidate ----
+  /* ---------------- collect eligible articles ---------------- */
   const sorted = items
     .filter(isCAArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-  let selected = null;
+  const eligible = [];
 
   for (const item of sorted) {
+    if (eligible.length >= MAX_BATCH) break;
+
     const pubMs = getPubDate(item);
     if (!pubMs) continue;
 
@@ -67,152 +74,124 @@ export async function caNewsPollingLoop() {
     if (!cleanLink) continue;
 
     if (STATE.ca.seen[cleanLink]) continue;
-
-    //temproray commented
+    if (STATE.ca.queued[cleanLink]) continue;
 
     if (isBlockedCAHeadline(item.title)) {
       STATE.ca.seen[cleanLink] = Date.now();
-      console.log("⛔ skipped utility headline (blocked):", item.title);
       continue;
     }
 
-    // const isUtilityHeadline = isBlockedCAHeadline(item.title);
-    // console.log("isUtilityHeadline");
-    selected = {
-      item,
-      // mode: "ANALYSIS",
-    };
-    // selected = item;
-    break;
+    eligible.push(item);
+    STATE.ca.queued[cleanLink] = Date.now(); // prevent re-enqueue
   }
 
-  if (!selected) return;
+  if (eligible.length === 0) return false;
 
-  const { item } = selected;
+  /* ---------------- enqueue each article ---------------- */
+  for (const item of eligible) {
+    const cleanLink = normalizeCALink(item.link);
+    const parsed = parseCAArticle(item);
 
-  const cleanLink = normalizeCALink(item.link);
-
-  const parsed = parseCAArticle(item);
-  if (!parsed?.body || parsed.body.length < 80) return;
-
-  // temporary commented
-
-  let decision = null;
-  try {
-    decision = await judgeNewsContext({
-      articleText: `${parsed.headline}\n${parsed.body}`,
-      existingContexts:
-        STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-    });
-
-    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      console.log("🔴🔴 News neglected by CA because already covered 🔴🔴");
-
-      if (
-        typeof decision.matchedIndex === "number" &&
-        STATE.dailyContext?.contexts?.[decision.matchedIndex]
-      ) {
-        console.log(
-          "🧠 Matched dailyContext object:",
-          STATE.dailyContext.contexts[decision.matchedIndex]
-        );
-      } else {
-        console.log("⚠️ matchedIndex missing/out-of-bounds:", decision);
-      }
+    if (!parsed?.body || parsed.body.length < 80) {
       STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE);
-      return;
+      delete STATE.ca.queued[cleanLink];
+      continue;
     }
-  } catch (err) {
-    console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-  }
 
-  let tweetGeminiText = null;
-  let tweetGPTText = null;
-
-  console.log("came here ..");
-
-  try {
-    tweetGeminiText = await generateGeminiTweet(
-      `${parsed.headline}\n${parsed.body}`
-    );
-  } catch (err) {
-    console.warn("⚠️ Gemini failed, falling back to GPT:", err?.message || err);
-  }
-
-  if (!tweetGeminiText) {
+    /* -------- context check -------- */
+    let decision = null;
     try {
-      tweetGPTText = await generateGPTTweet(
+      decision = await judgeNewsContext({
+        articleText: `${parsed.headline}\n${parsed.body}`,
+        existingContexts:
+          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+      });
+
+      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+        STATE.ca.seen[cleanLink] = Date.now();
+        delete STATE.ca.queued[cleanLink];
+        continue;
+      }
+    } catch (err) {
+      console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+    }
+
+    /* -------- generate tweet -------- */
+    let tweetText = null;
+
+    try {
+      tweetText = await generateGeminiTweet(
         `${parsed.headline}\n${parsed.body}`
       );
     } catch (err) {
-      console.error("❌ GPT also failed:", err?.message || err);
+      console.warn("⚠️ Gemini failed:", err?.message || err);
     }
-  }
 
-  const tweetText = tweetGeminiText || tweetGPTText;
+    if (!tweetText) {
+      try {
+        tweetText = await generateGPTTweet(
+          `${parsed.headline}\n${parsed.body}`
+        );
+      } catch (err) {
+        console.warn("❌ GPT failed:", err?.message || err);
+      }
+    }
 
-  if (!tweetText) {
-    console.warn("⚠️ No tweet generated by either model");
-    return;
-  }
+    if (!tweetText || tweetText.length < 30) {
+      STATE.ca.seen[cleanLink] = Date.now();
+      delete STATE.ca.queued[cleanLink];
+      continue;
+    }
 
-  if (!tweetText || tweetText.length < 30) {
-    console.log("⚠️ Tweet text too short, skipping");
-    STATE.ca.seen[cleanLink] = Date.now();
-    await saveState(STATE);
-    return;
-  }
+    /* -------- enqueue publish -------- */
+    const imageUrl = getCACTImageUrl(item);
 
-  const imageUrl = getCAImageUrl(item);
-
-  console.log("\n");
-  console.log("CA tweetGeminiText::", tweetGeminiText);
-  console.log("CA tweetGPTText::", tweetGPTText);
-  console.log("CA imageUrl::", imageUrl);
-  console.log("CA link::", item.link);
-
-  if (CONSOLE_ONLY) {
-    console.log("🧪 CONSOLE_ONLY=true — not posting to X");
-  } else {
-    enqueueTweet({
-      source: "CA",
-      link: cleanLink,
-      headline: parsed.headline,
-      createdAt: Date.now(),
-      publish: async () => {
-        const { useImage, reason } = await decideImageUsage({
-          imageUrl,
-          usedImages: STATE.usedImages,
-        });
-
-        if (!useImage) {
-          if (reason) console.log(reason);
-          await postTweet_ie_web({ text: tweetText });
-        } else {
-          await tweetWithNativeImage({ text: tweetText, imageUrl });
-          STATE.usedImages[imageUrl] = Date.now();
-        }
-      },
-    });
-  }
-
-  if (decision?.newContext) {
-    if (!contextExists(STATE, decision.newContext)) {
-      STATE.dailyContext.contexts.push({
-        summary: decision.newContext,
+    if (!CONSOLE_ONLY) {
+      enqueueTweet({
         source: "CA",
         link: cleanLink,
-        createdAt: new Date().toISOString(),
+        headline: parsed.headline,
+        createdAt: Date.now(),
+
+        publish: async () => {
+          try {
+            const { useImage } = await decideImageUsage({
+              imageUrl,
+              usedImages: STATE.usedImages,
+            });
+
+            if (useImage) {
+              await tweetWithNativeImage({ text: tweetText, imageUrl });
+              STATE.usedImages[imageUrl] = Date.now();
+            } else {
+              await postTweet_ie_web({ text: tweetText });
+            }
+
+            // ✅ mark seen ONLY after successful publish
+            STATE.ca.seen[cleanLink] = Date.now();
+
+            if (
+              decision?.newContext &&
+              !contextExists(STATE, decision.newContext)
+            ) {
+              STATE.dailyContext.contexts.push({
+                summary: decision.newContext,
+                source: "CA",
+                link: cleanLink,
+                createdAt: new Date().toISOString(),
+              });
+            }
+
+            await saveState(STATE);
+          } finally {
+            delete STATE.ca.queued[cleanLink];
+          }
+        },
       });
-    } else {
-      console.log("🧠 Duplicate dailyContext skipped");
     }
   }
 
-  // ---- final persist ----
-  STATE.ca.seen[cleanLink] = Date.now();
-  await saveState(STATE);
+  return true;
 }
 
 function getPubDate(item) {
