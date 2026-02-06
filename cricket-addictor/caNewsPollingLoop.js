@@ -3,6 +3,7 @@
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+import { applySourceSignature } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -147,6 +148,8 @@ export async function caNewsPollingLoop() {
       usedImages: STATE.usedImages,
     });
 
+    tweetText = applySourceSignature(tweetText, "CA");
+
     if (CONSOLE_ONLY) {
       console.log("🧪 CONSOLE_ONLY would publish:", {
         headline: parsed.headline,
@@ -165,7 +168,6 @@ export async function caNewsPollingLoop() {
       await postTweet_ie_web({ text: tweetText });
     }
 
-    /* -------- mark seen AFTER success -------- */
     STATE.ca.seen[cleanLink] = Date.now();
 
     if (decision?.newContext && !contextExists(STATE, decision.newContext)) {

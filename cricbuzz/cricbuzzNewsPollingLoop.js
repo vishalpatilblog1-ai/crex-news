@@ -2,6 +2,7 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetNewsWithImage } from "../twitter/tweetNewsWithImage.js";
+import { applySourceSignature } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
@@ -117,10 +118,12 @@ export async function cricbuzzNewsPollingLoop() {
     }
 
     const imageId = selected.imageId || selected.coverImage?.id;
+    tweetText = applySourceSignature(tweetText, "CB");
 
     const imageUrl = imageId
       ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
       : null;
+
     if (CONSOLE_ONLY) {
       console.log("tweetText::", tweetText);
       console.log("imageUrl::", imageUrl);

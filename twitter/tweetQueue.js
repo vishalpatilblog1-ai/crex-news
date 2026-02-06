@@ -74,3 +74,13 @@ export async function tryFlushTweetQueue() {
     return false;
   }
 }
+
+export function applySourceSignature(text, source) {
+  const signatureMap = {
+    CA: ".",
+    CT: "!",
+    CB: "!.",
+  };
+
+  return text.replace(/[.!]+$/, "") + signatureMap[source];
+}

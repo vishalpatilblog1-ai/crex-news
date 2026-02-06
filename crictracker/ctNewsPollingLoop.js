@@ -13,7 +13,7 @@ import { parseCTArticle } from "./parseCTArticle.js";
 // import { getCAImageUrl } from "../cricket-addictor/getCAImageUrl.js";
 import { isRiskyTwitterImage } from "../cricket-addictor/ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
-import { enqueueTweet } from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
@@ -139,8 +139,8 @@ export async function ctNewsPollingLoop() {
   }
 
   /* ---------------- publish ---------------- */
-  const imageUrl = getCACTImageUrl(selected); // keep as-is for now if it works for CT
-
+  const imageUrl = getCACTImageUrl(selected);
+  tweetText = applySourceSignature(tweetText, "CT");
   if (CONSOLE_ONLY) {
     console.log("🧪 CONSOLE_ONLY=true — not posting to X");
   } else {
