@@ -1,81 +1,181 @@
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetNewsWithImage } from "../twitter/tweetNewsWithImage.js";
 import { createLogger } from "../utils/logger.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { generateCrickBuzzNewsTweet } from "./ai/generateCrickBuzzNewsTweet.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
-const BASE_URL = "https://static.cricbuzz.com";
-
+const BASE_IMAGE_URL = "https://static.cricbuzz.com";
 const log = createLogger("prod");
+
+/**
+ * Cricbuzz News Polling Loop
+ * - CA-style rolling window (no latest-only)
+ * - No MAX_BATCH
+ * - JSONBin is the single source of truth
+ */
+const MAX_AGE_MIN = 180; // 3 hours
+
+const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
+const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
 export async function cricbuzzNewsPollingLoop() {
   if (!global.STATE) {
-    console.log("⚠️ global.STATE not ready yet. Skipping news polling.");
-    return;
+    console.log("⚠️ global.STATE not ready yet. Skipping Cricbuzz polling.");
+    return false;
   }
+
   const STATE = global.STATE;
+  STATE.cricbuzz ??= {};
+  STATE.cricbuzz.seen ??= {};
+
+  await pruneSeen(STATE, RETENTION_MS);
 
   try {
-    const news = await getLiveNewsList();
-    const latestNews = getTopNews(news);
+    const newsIndex = await getLiveNewsList();
+    const storyList = newsIndex?.storyList || [];
 
-    if (!latestNews) return;
+    if (storyList.length === 0) return false;
 
-    const latestNewsId = latestNews.id;
+    let selected = null;
 
-    log("crickBuzzNews:::", latestNews);
+    /* ---------------- CT-style selection ---------------- */
+    for (const item of storyList) {
+      const story = item.story;
+      if (!story) continue;
 
-    const imageId = latestNews?.imageId || latestNews?.coverImage?.id;
+      const newsId = story.id;
+      if (!newsId) continue;
 
-    const imageUrl = `${BASE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`;
+      const newsKey = `cricbuzz_${newsId}`;
+      if (STATE.cricbuzz.seen[newsKey]) continue;
 
-    const newsKey = `news_${latestNewsId}`;
+      const pubMs = story.pubTime ? Number(story.pubTime) : null;
 
-    if (STATE[newsKey]) {
-      console.log(`🟡 Cricbuzz already tweeted: ${latestNewsId}`);
-      return;
+      if (pubMs) {
+        const ageMin = (Date.now() - pubMs) / 60000;
+        if (ageMin > MAX_AGE_MIN) continue;
+      }
+
+      selected = story;
+      break; // 🔑 SINGLE ITEM ONLY
     }
 
-    STATE[newsKey] = true;
-    saveState(STATE);
+    if (!selected) return false;
 
-    const detailNews = await getNewsDetailsByNewsId(latestNewsId);
-    if (!detailNews) {
-      console.log("⚠ No detailNews found");
-      return;
+    /* ---------------- process selected ---------------- */
+    const newsId = selected.id;
+    const newsKey = `cricbuzz_${newsId}`;
+
+    const detailNews = await getNewsDetailsByNewsId(newsId);
+    if (!detailNews?.content) {
+      STATE.cricbuzz.seen[newsKey] = Date.now();
+      await saveState(STATE);
+      return false;
     }
 
     const fullText = buildFullArticleText(detailNews);
+    if (fullText.length < 80) {
+      STATE.cricbuzz.seen[newsKey] = Date.now();
+      await saveState(STATE);
+      return false;
+    }
 
-    const tweetText = await generateCrickBuzzNewsTweet(fullText);
+    /* -------- context check (CA-style) -------- */
+    let decision = null;
+    try {
+      decision = await judgeNewsContext({
+        articleText: fullText,
+        existingContexts:
+          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+      });
 
-    console.log("📝 News Tweet Preview:\n", tweetText);
+      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+        console.log("🔴 Cricbuzz skipped — already covered context");
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        await saveState(STATE);
+        return false;
+      }
+    } catch (err) {
+      console.warn("⚠️ Cricbuzz judgeNewsContext failed:", err?.message || err);
+    }
 
-    await tweetNewsWithImage(tweetText, imageUrl);
-    console.log(`🟢 Posted NEWS tweet with IMAGE for ID ${latestNewsId}`);
+    // const tweetText = await generateCrickBuzzNewsTweet(fullText);
+    /* -------- generate tweet (Gemini → GPT fallback) -------- */
+    let tweetText = null;
 
-    console.log(`🟢 Posted NEWS tweet for ID ${latestNewsId}`);
+    try {
+      tweetText = await generateGeminiTweet(fullText);
+    } catch (err) {
+      console.warn("⚠️ Gemini failed:", err?.message || err);
+    }
 
-    STATE[newsKey] = true;
-    await saveState(STATE);
-    console.log("💾 State saved to JSONBin successfully");
+    if (!tweetText) {
+      try {
+        tweetText = await generateGPTTweet(fullText);
+      } catch (err) {
+        console.warn("❌ GPT failed:", err?.message || err);
+      }
+    }
+
+    if (!tweetText || tweetText.length < 30) {
+      console.warn("⚠️ Cricbuzz tweet generation failed / too short");
+      STATE.cricbuzz.seen[newsKey] = Date.now();
+      await saveState(STATE);
+      return false;
+    }
+
+    const imageId = selected.imageId || selected.coverImage?.id;
+
+    const imageUrl = imageId
+      ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
+      : null;
+    if (CONSOLE_ONLY) {
+      console.log("tweetText::", tweetText);
+      console.log("imageUrl::", imageUrl);
+      STATE.cricbuzz.seen[newsKey] = Date.now();
+      await saveState(STATE);
+    } else {
+      await tweetNewsWithImage(tweetText, imageUrl);
+      STATE.cricbuzz.seen[newsKey] = Date.now();
+      await saveState(STATE);
+
+      console.log(`✅ Cricbuzz published: ${selected.hline}`);
+    }
+
+    return true;
   } catch (err) {
-    console.error("❌ ERROR in cricbuzzNewsPollingLoop:", err);
+    console.error("❌ Cricbuzz polling failed:", err);
+    return false;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Helpers */
+/* ------------------------------------------------------------------ */
 
 function buildFullArticleText(detailNews) {
-  if (!detailNews?.content) return "";
-
   return detailNews.content
-    .filter((block) => block.content?.contentType === "text")
-    .map((block) => block.content.contentValue)
+    .filter((b) => b?.content?.contentType === "text")
+    .map((b) => b.content.contentValue)
     .join(" ");
 }
-function getTopNews(newsResponse) {
-  if (!newsResponse?.storyList) return null;
 
-  for (const item of newsResponse.storyList) {
-    if (item.story) return item.story;
+async function pruneSeen(STATE, retentionMs) {
+  const now = Date.now();
+  let pruned = 0;
+
+  for (const [key, ts] of Object.entries(STATE.cricbuzz.seen || {})) {
+    if (now - ts > retentionMs) {
+      delete STATE.cricbuzz.seen[key];
+      pruned++;
+    }
   }
-  return null;
+
+  if (pruned > 0) {
+    console.log(`🧹 Pruned ${pruned} old Cricbuzz seen entries`);
+    await saveState(STATE);
+  }
 }

@@ -96,7 +96,6 @@ export async function caNewsPollingLoop() {
       return false;
     }
 
-    /* -------- context check -------- */
     let decision = null;
     try {
       decision = await judgeNewsContext({
@@ -114,7 +113,6 @@ export async function caNewsPollingLoop() {
       console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
     }
 
-    /* -------- generate tweet -------- */
     let tweetText = null;
 
     try {
