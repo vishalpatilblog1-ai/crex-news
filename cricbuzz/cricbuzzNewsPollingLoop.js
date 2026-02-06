@@ -2,20 +2,11 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetNewsWithImage } from "../twitter/tweetNewsWithImage.js";
-import { createLogger } from "../utils/logger.js";
 import { saveState } from "../utils/stateStoreCloud.js";
-import { generateCrickBuzzNewsTweet } from "./ai/generateCrickBuzzNewsTweet.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const BASE_IMAGE_URL = "https://static.cricbuzz.com";
-const log = createLogger("prod");
 
-/**
- * Cricbuzz News Polling Loop
- * - CA-style rolling window (no latest-only)
- * - No MAX_BATCH
- * - JSONBin is the single source of truth
- */
 const MAX_AGE_MIN = 180; // 3 hours
 
 const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -102,8 +93,6 @@ export async function cricbuzzNewsPollingLoop() {
       console.warn("⚠️ Cricbuzz judgeNewsContext failed:", err?.message || err);
     }
 
-    // const tweetText = await generateCrickBuzzNewsTweet(fullText);
-    /* -------- generate tweet (Gemini → GPT fallback) -------- */
     let tweetText = null;
 
     try {
@@ -151,10 +140,6 @@ export async function cricbuzzNewsPollingLoop() {
     return false;
   }
 }
-
-/* ------------------------------------------------------------------ */
-/* Helpers */
-/* ------------------------------------------------------------------ */
 
 function buildFullArticleText(detailNews) {
   return detailNews.content

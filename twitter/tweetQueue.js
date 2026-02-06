@@ -1,47 +1,76 @@
 // twitter/tweetQueue.js
 
-let queue = [];
-let isPublishing = false;
+import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
+import { saveState } from "../utils/stateStoreCloud.js";
 
-const MIN_TWEET_GAP_MS = 1000 * 60 * 5;
-let lastTweetAt = 0;
+const GLOBAL_TWEET_COOLDOWN_MS = 60 * 1000; // 1 minute
 
-export function enqueueTweet(payload) {
-  queue.push({
-    ...payload,
-    enqueuedAt: Date.now(),
-  });
+function canTweetNow(source) {
+  const now = Date.now();
+  const diff = now - (global.LAST_TWEET_AT || 0);
 
-  console.log(
-    `📥 Tweet enqueued | source=${payload.source} | queue=${queue.length}`
-  );
+  if (diff < GLOBAL_TWEET_COOLDOWN_MS) {
+    console.log(
+      `⏳ Global tweet cooldown (${Math.ceil(
+        (GLOBAL_TWEET_COOLDOWN_MS - diff) / 1000
+      )}s left) — ${source} skipped`
+    );
+    return false;
+  }
 
-  processQueue();
+  return true;
 }
 
-async function processQueue() {
-  if (isPublishing) return;
-  if (queue.length === 0) return;
+function markTweeted(source) {
+  global.LAST_TWEET_AT = Date.now();
+  console.log(`🟢 Global tweet lock acquired by ${source}`);
+}
 
-  const now = Date.now();
-  const waitMs = Math.max(0, MIN_TWEET_GAP_MS - (now - lastTweetAt));
+/* -------------------------------------------------
+   Queue Operations (JSONBin-backed)
+-------------------------------------------------- */
 
-  isPublishing = true;
+export function enqueueTweet({ id, source, text, imageUrl }) {
+  const STATE = global.STATE;
 
-  setTimeout(async () => {
-    const job = queue.shift();
-    console.log("job>>", job);
+  if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
-    try {
-      await job.publish();
-      lastTweetAt = Date.now();
-      console.log("✅ Tweet published from queue");
-    } catch (err) {
-      console.error("❌ Tweet publish failed, requeueing", err);
-      queue.unshift(job);
-    }
+  if (STATE.tweetQueue.some((t) => t.id === id)) return;
 
-    isPublishing = false;
-    processQueue();
-  }, waitMs);
+  STATE.tweetQueue.push({
+    id,
+    source,
+    text,
+    imageUrl,
+    createdAt: Date.now(),
+  });
+
+  console.log(`📥 Queued tweet from ${source}: ${id}`);
+}
+
+export async function tryFlushTweetQueue() {
+  const STATE = global.STATE;
+
+  if (!STATE?.tweetQueue?.length) return false;
+  if (!canTweetNow("QUEUE")) return false;
+
+  const next = STATE.tweetQueue.shift();
+
+  try {
+    await tweetNewsWithImage(next.text, next.imageUrl);
+    markTweeted("QUEUE");
+
+    // 🔑 Source already marked as seen BEFORE enqueue
+    await saveState(STATE);
+
+    console.log(`🚀 Flushed queued tweet: ${next.id}`);
+    return true;
+  } catch (err) {
+    console.error("❌ Queue tweet failed, requeueing:", err);
+
+    // Put it back at the front
+    STATE.tweetQueue.unshift(next);
+    await saveState(STATE);
+    return false;
+  }
 }

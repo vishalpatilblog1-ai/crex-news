@@ -75,6 +75,7 @@ async function bootstrap() {
 
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
+  global.STATE.tweetQueue ??= [];
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -92,28 +93,28 @@ async function bootstrap() {
     setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
   }
 
-  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-  //   console.log("🧠 CricketAddictor polling enabled");
+  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+    console.log("🧠 CricketAddictor polling enabled");
 
-  //   setTimeout(() => {
-  //     safeCaPolling();
+    setTimeout(() => {
+      safeCaPolling();
 
-  //     setInterval(() => {
-  //       const jitter = Math.floor(Math.random() * 60_000);
-  //       setTimeout(safeCaPolling, jitter);
-  //     }, 1000 * 60 * 7);
-  //   }, 1000 * 60 * 3);
-  // }
+      setInterval(() => {
+        const jitter = Math.floor(Math.random() * 60_000);
+        setTimeout(safeCaPolling, jitter);
+      }, 1000 * 60 * 7);
+    }, 1000 * 60 * 3);
+  }
 
-  // if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
-  //   setTimeout(() => {
-  //     console.log("🧠 CricTracker fallback polling enabled");
+  if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
+    setTimeout(() => {
+      console.log("🧠 CricTracker fallback polling enabled");
 
-  //     safeCtPolling();
+      safeCtPolling();
 
-  //     setInterval(safeCtPolling, 1000 * 60 * 6);
-  //   }, 1000 * 60 * 10);
-  // }
+      setInterval(safeCtPolling, 1000 * 60 * 6);
+    }, 1000 * 60 * 10);
+  }
 }
 
 bootstrap();
