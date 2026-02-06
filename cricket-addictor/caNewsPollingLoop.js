@@ -2,9 +2,7 @@
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
-import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -12,12 +10,15 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCAHomeHtml } from "./fetchCAHtml.js";
-import { fetchCARSS } from "./fetchCARss.js";
-// import { getCAImageUrl } from "./getCAImageUrl.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticle } from "./parseCAArticle.js";
 
+/**
+ * CA polling loop (HTML discovery mode)
+ * - No enqueue queue: publishes inline for deterministic behavior on Railway/AWS.
+ * - Uses STATE.ca.queued as an in-flight guard only.
+ */
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
   if (!global.STATE) return false;
@@ -27,16 +28,17 @@ export async function caNewsPollingLoop() {
   /* ---------------- init state ---------------- */
   STATE.ca ??= {};
   STATE.ca.seen ??= {};
-  STATE.ca.queued ??= {};
+  // STATE.ca.queued ??= {};
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 180;
-  const MAX_BATCH = 3; // 🔥 WC-safe batch size
+  const MAX_AGE_MIN = 180; // 3 hours
+  // const MAX_BATCH = 10;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const RETENTION_MS = 4 * 60 * 60 * 1000;
+  const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
 
+  /* ---------------- prune state ---------------- */
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
@@ -44,40 +46,29 @@ export async function caNewsPollingLoop() {
 
   if (stateDirty) await saveState(STATE);
 
-  /* ---------------- fetch RSS (guarded) ---------------- */
+  /* ---------------- fetch CA homepage items ---------------- */
   let items;
   try {
-    // items = await fetchCARSS();
     items = await fetchCAHomeHtml({ limit: 15 });
+    // console.log("items>>>::", items);
   } catch (err) {
-    console.warn("❌ CA RSS fetch failed:", err?.message || err);
+    console.warn("❌ CA HTML fetch failed:", err?.message || err);
     throw err;
   }
 
   if (!Array.isArray(items) || items.length === 0) return false;
 
   /* ---------------- collect eligible articles ---------------- */
-  // const sorted = items
-  //   .filter(isCAArticle)
-  //   .sort((a, b) => getPubDate(b) - getPubDate(a));
-
   const sorted = [...items].filter(isCAArticle);
 
-  // console.log("sorted::", sorted);
   const eligible = [];
 
   for (const item of sorted) {
-    if (eligible.length >= MAX_BATCH) break;
-
-    // const pubMs = getPubDate(item);
-    // if (!pubMs) continue;
-
-    // const ageMin = (Date.now() - pubMs) / 60000;
-    // if (ageMin > MAX_AGE_MIN) continue;
+    // if (eligible.length >= MAX_BATCH) break;
 
     const pubMs = getPubDate(item);
 
-    // If pubDate exists, enforce age
+    // If pubDate exists, enforce freshness window
     if (pubMs) {
       const ageMin = (Date.now() - pubMs) / 60000;
       if (ageMin > MAX_AGE_MIN) continue;
@@ -88,148 +79,135 @@ export async function caNewsPollingLoop() {
     if (!cleanLink) continue;
 
     if (STATE.ca.seen[cleanLink]) continue;
-    if (STATE.ca.queued[cleanLink]) continue;
+    // if (STATE.ca.queued[cleanLink]) continue;
 
     if (isBlockedCAHeadline(item.headline)) {
       STATE.ca.seen[cleanLink] = Date.now();
       continue;
     }
 
-    // console.log("item>>>>>>>", item);
-
     eligible.push(item);
-    STATE.ca.queued[cleanLink] = Date.now(); // prevent re-enqueue
+    // STATE.ca.queued[cleanLink] = Date.now();
   }
 
+  // console.log("eligible::", eligible);
   if (eligible.length === 0) return false;
+
+  /* ---------------- process eligible articles sequentially ---------------- */
 
   for (const item of eligible) {
     const cleanLink = normalizeCALink(item.link);
-    // console.log("item::", item);
-    const parsed = await parseCAArticle(item);
 
-    // console.log("parsed:::", parsed);
-
-    if (!parsed?.body || parsed.body.length < 80) {
-      STATE.ca.seen[cleanLink] = Date.now();
-      delete STATE.ca.queued[cleanLink];
-      continue;
-    }
-
-    let decision = null;
-
-    // console.log("item eligible::", item);
     try {
-      decision = await judgeNewsContext({
-        articleText: `${parsed.headline}\n${parsed.body}`,
-        existingContexts:
-          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-      });
+      const parsed = await parseCAArticle(item);
 
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
         STATE.ca.seen[cleanLink] = Date.now();
-        delete STATE.ca.queued[cleanLink];
         continue;
       }
-    } catch (err) {
-      console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-    }
 
-    /* -------- generate tweet -------- */
-    let tweetText = null;
-
-    try {
-      tweetText = await generateGeminiTweet(
-        `${parsed.headline}\n${parsed.body}`
-      );
-    } catch (err) {
-      console.warn("⚠️ Gemini failed:", err?.message || err);
-    }
-
-    if (!tweetText) {
+      /* -------- context check -------- */
+      let decision = null;
       try {
-        tweetText = await generateGPTTweet(
+        decision = await judgeNewsContext({
+          articleText: `${parsed.headline}\n${parsed.body}`,
+          existingContexts:
+            STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+        });
+
+        if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+          STATE.ca.seen[cleanLink] = Date.now();
+          continue;
+        }
+      } catch (err) {
+        console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+      }
+
+      /* -------- generate tweet -------- */
+      let tweetText = null;
+
+      try {
+        tweetText = await generateGeminiTweet(
           `${parsed.headline}\n${parsed.body}`
         );
       } catch (err) {
-        console.warn("❌ GPT failed:", err?.message || err);
+        console.warn("⚠️ Gemini failed:", err?.message || err);
       }
-    }
 
-    if (!tweetText || tweetText.length < 30) {
-      STATE.ca.seen[cleanLink] = Date.now();
-      delete STATE.ca.queued[cleanLink];
-      continue;
-    }
+      if (!tweetText) {
+        try {
+          tweetText = await generateGPTTweet(
+            `${parsed.headline}\n${parsed.body}`
+          );
+        } catch (err) {
+          console.warn("❌ GPT failed:", err?.message || err);
+        }
+      }
 
-    /* -------- enqueue publish -------- */
-    // console.log("parsed::", parsed);
-    // const imageUrl = getCACTImageUrl(item);
-    const imageUrl = parsed.imageUrl;
+      if (!tweetText || tweetText.length < 30) {
+        STATE.ca.seen[cleanLink] = Date.now();
+        continue;
+      }
 
-    if (!CONSOLE_ONLY) {
-      enqueueTweet({
-        source: "CA",
-        link: cleanLink,
-        headline: parsed.headline,
-        createdAt: Date.now(),
+      /* -------- decide image usage + publish inline -------- */
+      const imageUrl = parsed.imageUrl || null;
 
-        publish: async () => {
-          try {
-            const { useImage } = await decideImageUsage({
-              imageUrl,
-              usedImages: STATE.usedImages,
-            });
-
-            if (useImage) {
-              await tweetWithNativeImage({ text: tweetText, imageUrl });
-              STATE.usedImages[imageUrl] = Date.now();
-            } else {
-              await postTweet_ie_web({ text: tweetText });
-            }
-
-            // ✅ mark seen ONLY after successful publish
-            STATE.ca.seen[cleanLink] = Date.now();
-
-            if (
-              decision?.newContext &&
-              !contextExists(STATE, decision.newContext)
-            ) {
-              STATE.dailyContext.contexts.push({
-                summary: decision.newContext,
-                source: "CA",
-                link: cleanLink,
-                createdAt: new Date().toISOString(),
-              });
-            }
-
-            await saveState(STATE);
-          } finally {
-            delete STATE.ca.queued[cleanLink];
-          }
-        },
-      });
-    } else {
-      console.log("🧪 CONSOLE_ONLY would publish:", {
-        headline: parsed.headline,
-        link: cleanLink,
-        tweetText,
+      const { useImage, reason } = await decideImageUsage({
         imageUrl,
+        usedImages: STATE.usedImages,
       });
 
-      // mimic successful publish
-      // STATE.ca.seen[cleanLink] = Date.now();
+      console.log("tweetText:", tweetText);
+      console.log("imageUrl:", imageUrl);
+      console.log("useImage:", useImage);
+
+      if (CONSOLE_ONLY) {
+        console.log("🧪 CONSOLE_ONLY would publish:", {
+          headline: parsed.headline,
+          link: cleanLink,
+          tweetText,
+          imageUrl,
+          useImage,
+          reason,
+        });
+
+        // In console-only mode, do NOT mark as seen (keeps prod behaviour separate)
+        continue;
+      }
+
+      if (useImage) {
+        await tweetWithNativeImage({ text: tweetText, imageUrl });
+        if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
+      } else {
+        await postTweet_ie_web({ text: tweetText });
+      }
+
+      // ✅ mark seen ONLY after successful publish
+      STATE.ca.seen[cleanLink] = Date.now();
+
+      // store new context if any
+      if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+        STATE.dailyContext.contexts.push({
+          summary: decision.newContext,
+          source: "CA",
+          link: cleanLink,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      await saveState(STATE);
+      console.log(`✅ CA published: ${parsed.headline}`);
+    } catch (err) {
+      // if publish fails, we do NOT mark as seen, so it can retry next cycle
+      console.warn("⚠️ CA item processing failed:", err?.message || err);
+    } finally {
+      // always release in-flight guard
       // delete STATE.ca.queued[cleanLink];
-      // await saveState(STATE);
     }
   }
 
   return true;
 }
-
-// function getPubDate(item) {
-//   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
-// }
 
 function getPubDate(item) {
   const d = item?.pubDate || item?.publishedAt;

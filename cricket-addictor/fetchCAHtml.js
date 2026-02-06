@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 import { setTimeout as delay } from "timers/promises";
 
-const CA_HOME = "https://cricketaddictor.com/";
+const CA_HOME = "https://cricketaddictor.com/cricket-news/";
 
 const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
@@ -23,10 +23,9 @@ function absolutizeUrl(href) {
 }
 
 /**
- * Returns: [{ headline, link, publishedAt? }]
+ * Returns: [{ headline, link, publishedAt }]
  */
 export async function fetchCAHomeHtml({ limit = 20 } = {}) {
-  // small jitter
   await delay(Math.floor(Math.random() * 700));
 
   const controller = new AbortController();
@@ -44,15 +43,9 @@ export async function fetchCAHomeHtml({ limit = 20 } = {}) {
         "Accept-Language": "en-US,en;q=0.9",
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
-        // these sometimes help with CDNs:
         "Upgrade-Insecure-Requests": "1",
       },
     });
-  } catch (err) {
-    clearTimeout(timeout);
-    throw new Error(
-      `CA HTML network error: ${err?.name || ""} ${err?.message || err}`
-    );
   } finally {
     clearTimeout(timeout);
   }
@@ -64,10 +57,11 @@ export async function fetchCAHomeHtml({ limit = 20 } = {}) {
   const html = await res.text();
   const $ = cheerio.load(html);
 
-  // CA layout changes over time; we implement a "multi-selector" strategy.
   const candidates = [];
 
-  // Strategy A: common WP patterns - article cards with h2/h3 titles
+  /* -------------------------------------------------
+     Strategy A: Standard <article> blocks
+  -------------------------------------------------- */
   $("article").each((_, el) => {
     const $el = $(el);
     const a = $el.find("h1 a, h2 a, h3 a").first();
@@ -75,17 +69,38 @@ export async function fetchCAHomeHtml({ limit = 20 } = {}) {
     const headline = a.text()?.trim();
     const link = absolutizeUrl(a.attr("href"));
 
-    // optional time (best effort)
     const timeEl = $el.find("time").first();
     const publishedAt =
       timeEl.attr("datetime") || timeEl.text()?.trim() || null;
 
+    // console.log("link::", link);
     if (headline && link) {
       candidates.push({ headline, link, publishedAt });
     }
   });
 
-  // Strategy B: fallback – scan any prominent title anchors
+  /* -------------------------------------------------
+     Strategy C: CA homepage card modules (CRITICAL)
+  -------------------------------------------------- */
+  $(".td_module_wrap, .tdb_module_loop, .td_module_10, .td_module_11").each(
+    (_, el) => {
+      const $el = $(el);
+      const a = $el.find("h3 a, h2 a").first();
+
+      const headline = a.text()?.trim();
+      const link = absolutizeUrl(a.attr("href"));
+
+      if (!headline || headline.length < 25) return;
+      if (!link || !link.includes("cricketaddictor.com")) return;
+
+      candidates.push({ headline, link, publishedAt: null });
+    }
+  );
+
+  // console.log("candidates::", candidates);
+  /* -------------------------------------------------
+     Strategy B: Fallback – prominent anchors
+  -------------------------------------------------- */
   if (candidates.length < 5) {
     $("a").each((_, el) => {
       const $a = $(el);
@@ -95,32 +110,33 @@ export async function fetchCAHomeHtml({ limit = 20 } = {}) {
       if (!text || text.length < 25) return;
       if (!href || !href.includes("cricketaddictor.com")) return;
 
-      // avoid nav/footer junk
-      const bad =
+      if (
         /privacy|terms|about|contact|facebook|twitter|instagram|youtube|whatsapp/i.test(
           text
-        );
-      if (bad) return;
+        )
+      ) {
+        return;
+      }
 
       candidates.push({ headline: text, link: href, publishedAt: null });
     });
   }
 
-  // Deduplicate by link
+  /* -------------------------------------------------
+     Deduplicate by URL
+  -------------------------------------------------- */
   const uniq = [];
   const seen = new Set();
+
   for (const item of candidates) {
     if (seen.has(item.link)) continue;
     seen.add(item.link);
     uniq.push(item);
   }
 
-  // Keep only actual article URLs (basic filter)
-  //   const filtered = uniq.filter((x) => {
-  //     // many WP posts have date or slug; keep it loose
-  //     return /cricketaddictor\.com\/.+/.test(x.link) && x.headline.length >= 25;
-  //   });
-
+  /* -------------------------------------------------
+     Kill fantasy / prediction spam
+  -------------------------------------------------- */
   const filtered = uniq.filter(isPublishableCA);
 
   return filtered.slice(0, limit);
@@ -130,7 +146,6 @@ function isPublishableCA(item) {
   const h = item.headline.toLowerCase();
   const u = item.link.toLowerCase();
 
-  // kill fantasy & prediction content
   if (
     h.includes("dream11") ||
     h.includes("prediction") ||
@@ -141,7 +156,6 @@ function isPublishableCA(item) {
     return false;
   }
 
-  // optional: skip very old IPL stuff
   if (h.includes("ipl 2024")) return false;
 
   return true;
