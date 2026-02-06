@@ -41,7 +41,7 @@ async function safeCaPolling() {
 
     // Backoff CA aggressively on failure
     global.CA_COOLDOWN_UNTIL = Date.now() + 15 * 60 * 1000;
-    console.log("🛑 CA cooldown activated — 15 min");
+    console.log("🛑 CA cooldown activated — 15 min...");
   }
 }
 
