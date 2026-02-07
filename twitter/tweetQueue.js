@@ -60,7 +60,6 @@ export async function tryFlushTweetQueue() {
     await tweetNewsWithImage(next.text, next.imageUrl);
     markTweeted("QUEUE");
 
-    // 🔑 Source already marked as seen BEFORE enqueue
     await saveState(STATE);
 
     console.log(`🚀 Flushed queued tweet: ${next.id}`);

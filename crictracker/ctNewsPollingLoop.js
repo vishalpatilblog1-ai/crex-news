@@ -32,9 +32,9 @@ export async function ctNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 60;
+  const MAX_AGE_MIN = 120;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const RETENTION_MS = 4 * 60 * 60 * 1000;
+  const RETENTION_MS = 6 * 60 * 60 * 1000;
 
   let stateDirty = false;
   stateDirty ||= pruneCTSeen(STATE, RETENTION_MS);
@@ -116,6 +116,12 @@ export async function ctNewsPollingLoop() {
   }
 
   /* ---------------- generate tweet ---------------- */
+  const imageUrl = getCACTImageUrl(selected);
+  const { useImage } = await decideImageUsage({
+    imageUrl,
+    usedImages: STATE.usedImages,
+  });
+
   let tweetText = null;
 
   try {
@@ -139,34 +145,53 @@ export async function ctNewsPollingLoop() {
   }
 
   /* ---------------- publish ---------------- */
-  const imageUrl = getCACTImageUrl(selected);
-  tweetText = applySourceSignature(tweetText, "CT");
-  if (CONSOLE_ONLY) {
-    console.log("🧪 CONSOLE_ONLY=true — not posting to X");
-  } else {
-    enqueueTweet({
-      source: "CT",
-      link: cleanLink,
-      headline: parsed.headline,
-      createdAt: Date.now(),
-      publish: async () => {
-        const { useImage, reason } = await decideImageUsage({
-          imageUrl,
-          usedImages: STATE.usedImages,
-        });
 
-        if (!useImage) {
-          if (reason) console.log(reason);
-          await postTweet_ie_web({ text: tweetText });
-        } else {
-          await tweetWithNativeImage({ text: tweetText, imageUrl });
-          STATE.usedImages[imageUrl] = Date.now();
-        }
-      },
+  tweetText = applySourceSignature(tweetText, "CT");
+
+  if (CONSOLE_ONLY) {
+    console.log("🧪 CONSOLE_ONLY would publish:", {
+      headline: parsed.headline,
+      link: cleanLink,
+      tweetText,
+      imageUrl,
+      useImage,
     });
+    return false;
   }
+  if (useImage) {
+    await tweetWithNativeImage({ text: tweetText, imageUrl });
+    if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
+  } else {
+    await postTweet_ie_web({ text: tweetText });
+  }
+  // STATE.ca.seen[cleanLink] = Date.now();
+  // if (CONSOLE_ONLY) {
+  //   console.log("🧪 CONSOLE_ONLY=true — not posting to X");
+  // } else {
+  //   enqueueTweet({
+  //     source: "CT",
+  //     link: cleanLink,
+  //     headline: parsed.headline,
+  //     createdAt: Date.now(),
+  //     publish: async () => {
+  //       const { useImage, reason } = await decideImageUsage({
+  //         imageUrl,
+  //         usedImages: STATE.usedImages,
+  //       });
+
+  //       if (!useImage) {
+  //         if (reason) console.log(reason);
+  //         await postTweet_ie_web({ text: tweetText });
+  //       } else {
+  //         await tweetWithNativeImage({ text: tweetText, imageUrl });
+  //         STATE.usedImages[imageUrl] = Date.now();
+  //       }
+  //     },
+  //   });
+  // }
 
   /* ---------------- store new context ---------------- */
+  STATE.cricktracker.seen[cleanLink] = Date.now();
   if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
     STATE.dailyContext.contexts.push({
       summary: decision.newContext,
@@ -177,7 +202,7 @@ export async function ctNewsPollingLoop() {
   }
 
   /* ---------------- final persist ---------------- */
-  STATE.cricktracker.seen[cleanLink] = Date.now();
+
   await saveState(STATE);
 
   return true;

@@ -15,11 +15,6 @@ import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticle } from "./parseCAArticle.js";
 
-/**
- * CA polling loop (HTML discovery mode)
- * - No enqueue queue: publishes inline for deterministic behavior on Railway/AWS.
- * - Uses STATE.ca.queued as an in-flight guard only.
- */
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
   if (!global.STATE) return false;
@@ -33,9 +28,9 @@ export async function caNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 90; // 3 hours
+  const MAX_AGE_MIN = 120; // 3 hours
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
+  const RETENTION_MS = 6 * 60 * 60 * 1000; // 4 hours
 
   /* ---------------- prune state ---------------- */
   let stateDirty = false;

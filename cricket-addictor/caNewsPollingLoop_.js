@@ -143,7 +143,6 @@ export async function caNewsPollingLoop() {
       continue;
     }
 
-    /* -------- enqueue publish -------- */
     const imageUrl = getCACTImageUrl(item);
 
     if (!CONSOLE_ONLY) {
