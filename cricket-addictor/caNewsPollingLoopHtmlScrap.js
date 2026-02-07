@@ -11,11 +11,9 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCAHomeHtml } from "./fetchCAHtml.js";
-import { fetchCARSS } from "./fetchCARss.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticle } from "./parseCAArticle.js";
-import { parseCAArticleRss } from "./parseCAArticleRss.js";
 
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
@@ -30,7 +28,7 @@ export async function caNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 180; // 3 hours
+  const MAX_AGE_MIN = 120; // 3 hours
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
   const RETENTION_MS = 6 * 60 * 60 * 1000; // 4 hours
 
@@ -45,8 +43,7 @@ export async function caNewsPollingLoop() {
   /* ---------------- fetch CA homepage items ---------------- */
   let items;
   try {
-    // items = await fetchCAHomeHtml({ limit: 15 });
-    items = await fetchCARSS();
+    items = await fetchCAHomeHtml({ limit: 15 });
   } catch (err) {
     console.warn("❌ CA HTML fetch failed:", err?.message || err);
     throw err;
@@ -87,8 +84,7 @@ export async function caNewsPollingLoop() {
 
   /* ---------------- parse article ---------------- */
   try {
-    // const parsed = await parseCAArticle(selected);
-    const parsed = parseCAArticleRss(selected);
+    const parsed = await parseCAArticle(selected);
 
     if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
       STATE.ca.seen[cleanLink] = Date.now();
@@ -146,8 +142,6 @@ export async function caNewsPollingLoop() {
       imageUrl,
       usedImages: STATE.usedImages,
     });
-
-    console.log("imageUrl::", imageUrl);
 
     tweetText = applySourceSignature(tweetText, "CA");
 
