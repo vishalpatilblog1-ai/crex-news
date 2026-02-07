@@ -6,7 +6,7 @@ import { postTweet_ie_web } from "./twitter.js";
 
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-const MIN_TWEET_DELAY = 5 * 60 * 1000; // 5 min
+const MIN_TWEET_DELAY = 3 * 60 * 1000; // 5 min
 const MAX_TWEET_DELAY = 8 * 60 * 1000; // 8 min
 
 function randomTweetDelay() {
