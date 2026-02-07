@@ -33,7 +33,9 @@ export async function fetchCARSS() {
         Accept:
           "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Cache-Control": "no-cache",
+        // "Cache-Control": "no-cache",
+        Referer: "https://www.google.com/",
+        Connection: "keep-alive",
       },
     });
   } catch (err) {
