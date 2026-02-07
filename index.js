@@ -144,10 +144,10 @@ async function bootstrap() {
   //   setTimeout(scheduleCaPolling, 5 * 60 * 1000);
   // }
 
-  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-    console.log("🧠 CricketAddictor polling enabled");
-    setTimeout(caNewsPollingLoop, 15 * 60 * 1000);
-  }
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(caNewsPollingLoop, 15 * 60 * 1000);
+  // }
 
   // if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
   //   console.log("📰 Cricbuzz news polling enabled");
