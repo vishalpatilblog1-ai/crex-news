@@ -8,6 +8,13 @@ import { createLogger } from "./utils/logger.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
+import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
+import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
+// import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
+
+// setInterval(() => {
+//   tryFlushTweetQueue();
+// }, 15 * 1000);
 
 const log = createLogger("prod");
 
@@ -39,7 +46,6 @@ async function safeCaPolling() {
   try {
     const didPost = await caNewsPollingLoop();
 
-    // caNewsPollingLoop should return true if it posted / processed news
     if (didPost) {
       global.LAST_CA_SUCCESS_AT = Date.now();
       console.log("✅ CA success recorded");
@@ -47,7 +53,6 @@ async function safeCaPolling() {
   } catch (err) {
     console.warn("⚠️ CA polling error:", err?.message || err);
 
-    // Backoff CA aggressively on failure
     global.CA_COOLDOWN_UNTIL = Date.now() + 15 * 60 * 1000;
     console.log("🛑 CA cooldown activated — 15 min...");
   }
@@ -61,7 +66,6 @@ async function safeCtPolling() {
 
   const sinceLastCA = Date.now() - (global.LAST_CA_SUCCESS_AT || 0);
 
-  // CT only runs if CA inactive for 30 min
   if (sinceLastCA < 30 * 60 * 1000) {
     console.log("⏭️ CT skipped — CA active recently");
     return;
@@ -80,8 +84,7 @@ async function scheduleCaPolling() {
   } catch (err) {
     console.error("❌ CA polling error, backing off:", err.message);
 
-    // hard backoff on any error
-    setTimeout(scheduleCaPolling, 6 * 60 * 60 * 1000); // 6 hours
+    setTimeout(scheduleCaPolling, 6 * 60 * 60 * 1000);
     return;
   }
 
@@ -95,6 +98,16 @@ async function scheduleCaPolling() {
 
 async function bootstrap() {
   global.STATE = await loadState();
+
+  // Start global tweet queue flusher AFTER state is ready
+  setInterval(async () => {
+    try {
+      console.log("tryFlushTweetQueue::");
+      await tryFlushTweetQueue();
+    } catch (err) {
+      console.error("❌ Queue flush error:", err?.message || err);
+    }
+  }, 15 * 1000);
 
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
@@ -111,30 +124,25 @@ async function bootstrap() {
     await saveState(global.STATE);
   }
 
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(scheduleCaPolling, 5 * 60 * 1000);
+  // }
+
+  // if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
+  //   console.log("📰 Indian Express news polling enabled");
+  //   setInterval(ieNewsPollingLoop, 1000 * 60 * 0.15);
+  // }
+
+  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+    console.log("🧠 CricketAddictor polling enabled");
+    setTimeout(scheduleCaPolling, 5 * 60 * 1000);
+  }
+
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
     setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
   }
-
-  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-    console.log("🧠 CricketAddictor polling enabled");
-
-    // initial warm-up delay
-    setTimeout(scheduleCaPolling, 5 * 60 * 1000);
-  }
-
-  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-  //   console.log("🧠 CricketAddictor polling enabled");
-
-  //   setTimeout(() => {
-  //     safeCaPolling();
-
-  //     setInterval(() => {
-  //       const jitter = Math.floor(Math.random() * 60_000);
-  //       setTimeout(safeCaPolling, jitter);
-  //     }, 1000 * 60 * 7);
-  //   }, 1000 * 60 * 3);
-  // }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     setTimeout(() => {
@@ -145,6 +153,27 @@ async function bootstrap() {
       setInterval(safeCtPolling, 1000 * 60 * 6);
     }, 1000 * 60 * 10);
   }
+
+  // enque tested
+  // if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
+  //   setTimeout(() => {
+  //     console.log("🧠 CricTracker fallback polling enabled");
+
+  //     safeCtPolling();
+
+  //     setInterval(safeCtPolling, 1000 * 60 * 0.2);
+  //   }, 0);
+  // }
+
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(scheduleCaPolling, 5 * 60 * 0.1);
+  // }
+
+  // if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
+  //   console.log("📰 Cricbuzz news polling enabled");
+  //   setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 0.1);
+  // }
 }
 
 bootstrap();

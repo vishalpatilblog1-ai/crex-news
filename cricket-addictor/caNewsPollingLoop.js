@@ -3,7 +3,7 @@
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import { applySourceSignature } from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -145,23 +145,36 @@ export async function caNewsPollingLoop() {
 
     tweetText = applySourceSignature(tweetText, "CA");
 
-    if (CONSOLE_ONLY) {
-      console.log("🧪 CONSOLE_ONLY would publish:", {
-        headline: parsed.headline,
-        link: cleanLink,
-        tweetText,
-        imageUrl,
-        useImage,
-      });
-      return false;
-    }
+    const tweetId = `CA:${cleanLink}`;
 
-    if (useImage) {
-      await tweetWithNativeImage({ text: tweetText, imageUrl });
-      if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
-    } else {
-      await postTweet_ie_web({ text: tweetText });
-    }
+    enqueueTweet({
+      id: tweetId,
+      source: "CA",
+      text: tweetText,
+      imageUrl: useImage ? imageUrl : null,
+      seenKey: cleanLink, // 🔑 important for later mark-seen-after-flush
+    });
+
+    console.log(`📥 Queued CA tweet: ${parsed.headline}`);
+
+    // temporary commented in case enque logic fails below will be uncommented
+    // if (CONSOLE_ONLY) {
+    //   console.log("🧪 CONSOLE_ONLY would publish:", {
+    //     headline: parsed.headline,
+    //     link: cleanLink,
+    //     tweetText,
+    //     imageUrl,
+    //     useImage,
+    //   });
+    //   return false;
+    // }
+
+    // if (useImage) {
+    //   await tweetWithNativeImage({ text: tweetText, imageUrl });
+    //   if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
+    // } else {
+    //   await postTweet_ie_web({ text: tweetText });
+    // }
 
     STATE.ca.seen[cleanLink] = Date.now();
 

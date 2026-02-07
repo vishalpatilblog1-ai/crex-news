@@ -46,7 +46,6 @@ export async function ctNewsPollingLoop() {
     await saveState(STATE);
   }
 
-  /* ---------------- fetch RSS (guarded) ---------------- */
   let items;
   try {
     items = await fetchCTRSS();
@@ -57,7 +56,6 @@ export async function ctNewsPollingLoop() {
 
   if (!Array.isArray(items) || items.length === 0) return false;
 
-  /* ---------------- select candidate ---------------- */
   const sorted = items
     .filter(isCTArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
@@ -148,46 +146,30 @@ export async function ctNewsPollingLoop() {
 
   tweetText = applySourceSignature(tweetText, "CT");
 
-  if (CONSOLE_ONLY) {
-    console.log("🧪 CONSOLE_ONLY would publish:", {
-      headline: parsed.headline,
-      link: cleanLink,
-      tweetText,
-      imageUrl,
-      useImage,
-    });
-    return false;
-  }
-  if (useImage) {
-    await tweetWithNativeImage({ text: tweetText, imageUrl });
-    if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
-  } else {
-    await postTweet_ie_web({ text: tweetText });
-  }
-  // STATE.ca.seen[cleanLink] = Date.now();
-  // if (CONSOLE_ONLY) {
-  //   console.log("🧪 CONSOLE_ONLY=true — not posting to X");
-  // } else {
-  //   enqueueTweet({
-  //     source: "CT",
-  //     link: cleanLink,
-  //     headline: parsed.headline,
-  //     createdAt: Date.now(),
-  //     publish: async () => {
-  //       const { useImage, reason } = await decideImageUsage({
-  //         imageUrl,
-  //         usedImages: STATE.usedImages,
-  //       });
+  const tweetId = `CT:${cleanLink}`;
 
-  //       if (!useImage) {
-  //         if (reason) console.log(reason);
-  //         await postTweet_ie_web({ text: tweetText });
-  //       } else {
-  //         await tweetWithNativeImage({ text: tweetText, imageUrl });
-  //         STATE.usedImages[imageUrl] = Date.now();
-  //       }
-  //     },
+  enqueueTweet({
+    id: tweetId,
+    source: "CT",
+    text: tweetText,
+    imageUrl: useImage ? imageUrl : null,
+  });
+
+  // if (CONSOLE_ONLY) {
+  //   console.log("🧪 CONSOLE_ONLY would publish:", {
+  //     headline: parsed.headline,
+  //     link: cleanLink,
+  //     tweetText,
+  //     imageUrl,
+  //     useImage,
   //   });
+  //   return false;
+  // }
+  // if (useImage) {
+  //   await tweetWithNativeImage({ text: tweetText, imageUrl });
+  //   if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
+  // } else {
+  //   await postTweet_ie_web({ text: tweetText });
   // }
 
   /* ---------------- store new context ---------------- */

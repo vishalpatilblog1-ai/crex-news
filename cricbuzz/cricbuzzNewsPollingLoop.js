@@ -2,7 +2,7 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetNewsWithImage } from "../twitter/tweetNewsWithImage.js";
-import { applySourceSignature } from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
@@ -22,6 +22,7 @@ export async function cricbuzzNewsPollingLoop() {
   const STATE = global.STATE;
   STATE.cricbuzz ??= {};
   STATE.cricbuzz.seen ??= {};
+  // STATE.cricbuzz.queued ??= {};
 
   await pruneSeen(STATE, RETENTION_MS);
 
@@ -75,7 +76,6 @@ export async function cricbuzzNewsPollingLoop() {
       return false;
     }
 
-    /* -------- context check (CA-style) -------- */
     let decision = null;
     try {
       decision = await judgeNewsContext({
@@ -124,18 +124,30 @@ export async function cricbuzzNewsPollingLoop() {
       ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
       : null;
 
-    if (CONSOLE_ONLY) {
-      console.log("tweetText::", tweetText);
-      console.log("imageUrl::", imageUrl);
-      STATE.cricbuzz.seen[newsKey] = Date.now();
-      await saveState(STATE);
-    } else {
-      await tweetNewsWithImage(tweetText, imageUrl);
-      STATE.cricbuzz.seen[newsKey] = Date.now();
-      await saveState(STATE);
+    const tweetId = `CB:${newsKey}`;
 
-      console.log(`✅ Cricbuzz published: ${selected.hline}`);
-    }
+    enqueueTweet({
+      id: tweetId,
+      source: "CB",
+      text: tweetText,
+      imageUrl,
+      seenKey: newsKey,
+    });
+    STATE.cricbuzz.seen[newsKey] = Date.now();
+    // STATE.cricbuzz.queued[newsKey] = Date.now();
+
+    // STATE.cricktracker.seen[cleanLink] = Date.now();
+    // if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+    //   STATE.dailyContext.contexts.push({
+    //     summary: decision.newContext,
+    //     source: "CT",
+    //     link: cleanLink,
+    //     createdAt: new Date().toISOString(),
+    //   });
+    // }
+
+    await saveState(STATE);
+    console.log(`📥 Queued Cricbuzz tweet: ${selected.hline}`);
 
     return true;
   } catch (err) {
