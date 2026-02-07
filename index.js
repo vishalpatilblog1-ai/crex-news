@@ -29,8 +29,11 @@ global.CA_COOLDOWN_UNTIL = 0;
    Safe CA polling
 ------------------------------------------------------------------- */
 
-const MIN_CA_INTERVAL = 20 * 60 * 1000; // 20 min
-const MAX_CA_INTERVAL = 35 * 60 * 1000; // 35 min
+// const MIN_CA_INTERVAL = 20 * 60 * 1000;
+// const MAX_CA_INTERVAL = 35 * 60 * 1000;
+
+const MIN_CA_INTERVAL = 15 * 60 * 1000;
+const MAX_CA_INTERVAL = 20 * 60 * 1000;
 
 function randomDelay(min, max) {
   return min + Math.floor(Math.random() * (max - min));
@@ -146,9 +149,14 @@ async function bootstrap() {
     setTimeout(caNewsPollingLoop, 15 * 60 * 1000);
   }
 
-  if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
-    console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
+  // if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
+  //   console.log("📰 Cricbuzz news polling enabled");
+  //   setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
+  // }
+
+  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+    console.log("🧠 CricketAddictor polling enabled");
+    setTimeout(scheduleCaPolling, 5 * 60 * 1000);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
