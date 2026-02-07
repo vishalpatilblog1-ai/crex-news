@@ -21,6 +21,13 @@ global.CA_COOLDOWN_UNTIL = 0;
 /* ------------------------------------------------------------------
    Safe CA polling
 ------------------------------------------------------------------- */
+
+const MIN_CA_INTERVAL = 20 * 60 * 1000; // 20 min
+const MAX_CA_INTERVAL = 35 * 60 * 1000; // 35 min
+
+function randomDelay(min, max) {
+  return min + Math.floor(Math.random() * (max - min));
+}
 async function safeCaPolling() {
   console.log("inside safeCaPolling ...");
 
@@ -67,9 +74,25 @@ async function safeCtPolling() {
   }
 }
 
-/* ------------------------------------------------------------------
-   Bootstrap
-------------------------------------------------------------------- */
+async function scheduleCaPolling() {
+  try {
+    await safeCaPolling();
+  } catch (err) {
+    console.error("❌ CA polling error, backing off:", err.message);
+
+    // hard backoff on any error
+    setTimeout(scheduleCaPolling, 6 * 60 * 60 * 1000); // 6 hours
+    return;
+  }
+
+  const nextDelay = randomDelay(MIN_CA_INTERVAL, MAX_CA_INTERVAL);
+  console.log(
+    `⏳ Next CricketAddictor poll in ${Math.round(nextDelay / 60000)} min`
+  );
+
+  setTimeout(scheduleCaPolling, nextDelay);
+}
+
 async function bootstrap() {
   global.STATE = await loadState();
 
@@ -96,15 +119,22 @@ async function bootstrap() {
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("🧠 CricketAddictor polling enabled");
 
-    setTimeout(() => {
-      safeCaPolling();
-
-      setInterval(() => {
-        const jitter = Math.floor(Math.random() * 60_000);
-        setTimeout(safeCaPolling, jitter);
-      }, 1000 * 60 * 7);
-    }, 1000 * 60 * 3);
+    // initial warm-up delay
+    setTimeout(scheduleCaPolling, 5 * 60 * 1000);
   }
+
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+
+  //   setTimeout(() => {
+  //     safeCaPolling();
+
+  //     setInterval(() => {
+  //       const jitter = Math.floor(Math.random() * 60_000);
+  //       setTimeout(safeCaPolling, jitter);
+  //     }, 1000 * 60 * 7);
+  //   }, 1000 * 60 * 3);
+  // }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     setTimeout(() => {
