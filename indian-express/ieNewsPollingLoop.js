@@ -1,6 +1,7 @@
 // ieNewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
@@ -145,9 +146,27 @@ export async function ieNewsPollingLoop() {
       //   "Indian Express"
       // );
 
-      tweetBody = await generateGeminiTweet(
-        parsed.headline + "\n" + parsed.body
-      );
+      // tweetBody = await generateGeminiTweet(
+      //   parsed.headline + "\n" + parsed.body
+      // );
+
+      try {
+        tweetBody = await generateGeminiTweet(
+          `${parsed.headline}\n${parsed.body}`
+        );
+      } catch (err) {
+        console.warn("⚠️ Gemini failed:", err?.message || err);
+      }
+
+      if (!tweetBody) {
+        try {
+          tweetBody = await generateGPTTweet(
+            `${parsed.headline}\n${parsed.body}`
+          );
+        } catch (err) {
+          console.warn("❌ GPT failed:", err?.message || err);
+        }
+      }
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
