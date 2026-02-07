@@ -98,6 +98,7 @@ export function applySourceSignature(text, source) {
     CA: ".",
     CT: "!",
     CB: "!.",
+    IE: "!!",
   };
 
   return text.replace(/[.!]+$/, "") + signatureMap[source];

@@ -1,6 +1,7 @@
 // ieNewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -114,11 +115,11 @@ export async function ieNewsPollingLoop() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log(
-          "🔁 IE context already covered — skipping",
-          STATE.dailyContext.contexts.map((c) => c.summary)
-        );
-        console.log("↳ Context:", contextDecision.newContext);
+        // console.log(
+        //   "🔁 IE context already covered — skipping",
+        //   STATE.dailyContext.contexts.map((c) => c.summary)
+        // );
+        // console.log("↳ Context:", contextDecision.newContext);
 
         const cleanLink = normalizeIELink(selected.link);
         STATE.ie.seen[cleanLink] = Date.now();
@@ -156,29 +157,45 @@ export async function ieNewsPollingLoop() {
       tweetBody = generateIEFallbackTweet(selected);
     }
 
-    const cleanUrl = normalizeIELink(selected.link);
+    // const cleanUrl = normalizeIELink(selected.link);
     let tweetText = tweetBody;
     const imageUrl = getIEImageUrl(selected);
 
-    tweetText = `🔵 ${tweetText}`;
-    if (CONSOLE_ONLY) {
-      console.log("🔵 CONSOLE MODE — Tweet skipped");
-      console.log(tweetText);
-    } else {
-      try {
-        if (imageUrl) {
-          await tweetWithNativeImage({ text: tweetText, imageUrl });
-        } else {
-          await postTweet_ie_web({ text: tweetText });
-        }
-      } catch (err) {
-        console.warn(
-          "⚠️ IE native image failed, fallback to text-only:",
-          err.message
-        );
-        await postTweet_ie_web({ text: tweetText });
-      }
-    }
+    // tweetText = `🔵 ${tweetText}`;
+
+    tweetText = applySourceSignature(tweetText, "IE");
+
+    const cleanUrl = normalizeIELink(selected.link);
+    const tweetId = `IE:${cleanUrl}`;
+
+    enqueueTweet({
+      id: tweetId,
+      source: "IE",
+      text: tweetText,
+      imageUrl: imageUrl || null,
+      seenKey: cleanUrl,
+    });
+
+    console.log(`📥 Queued IE tweet: ${selected.title}`);
+
+    // if (CONSOLE_ONLY) {
+    //   console.log("🔵 CONSOLE MODE — Tweet skipped");
+    //   console.log(tweetText);
+    // } else {
+    //   try {
+    //     if (imageUrl) {
+    //       await tweetWithNativeImage({ text: tweetText, imageUrl });
+    //     } else {
+    //       await postTweet_ie_web({ text: tweetText });
+    //     }
+    //   } catch (err) {
+    //     console.warn(
+    //       "⚠️ IE native image failed, fallback to text-only:",
+    //       err.message
+    //     );
+    //     await postTweet_ie_web({ text: tweetText });
+    //   }
+    // }
 
     STATE.ie.seen[cleanUrl] = Date.now();
     STATE.ie.lastLink = cleanUrl;

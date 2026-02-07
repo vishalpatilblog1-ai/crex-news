@@ -32,8 +32,8 @@ global.CA_COOLDOWN_UNTIL = 0;
 // const MIN_CA_INTERVAL = 20 * 60 * 1000;
 // const MAX_CA_INTERVAL = 35 * 60 * 1000;
 
-const MIN_CA_INTERVAL = 15 * 60 * 1000;
-const MAX_CA_INTERVAL = 20 * 60 * 1000;
+const MIN_CA_INTERVAL = 5 * 60 * 1000;
+const MAX_CA_INTERVAL = 10 * 60 * 1000;
 
 function randomDelay(min, max) {
   return min + Math.floor(Math.random() * (max - min));
@@ -134,7 +134,7 @@ async function bootstrap() {
 
   // if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
   //   console.log("📰 Indian Express news polling enabled");
-  //   setInterval(ieNewsPollingLoop, 1000 * 60 * 0.15);
+  //   setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
   // }
 
   //================================================================================
@@ -154,9 +154,14 @@ async function bootstrap() {
   //   setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
   // }
 
+  if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
+    console.log("📰 Indian Express news polling enabled");
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
+  }
+
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("🧠 CricketAddictor polling enabled");
-    setTimeout(scheduleCaPolling, 5 * 60 * 1000);
+    setTimeout(scheduleCaPolling, 60 * 1000 * 10);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
