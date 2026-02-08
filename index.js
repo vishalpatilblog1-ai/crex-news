@@ -158,9 +158,18 @@ async function bootstrap() {
     setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
   }
 
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(scheduleCaPolling, 60 * 1000 * 10);
+  // }
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-    console.log("🧠 CricketAddictor polling enabled");
-    setTimeout(scheduleCaPolling, 60 * 1000 * 10);
+    setTimeout(() => {
+      console.log("🧠 CricketAddictor fallback polling enabled");
+
+      safeCaPolling();
+
+      setInterval(safeCaPolling, 1000 * 60 * 6);
+    }, 1000 * 60 * 10);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
