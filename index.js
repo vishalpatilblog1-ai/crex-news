@@ -169,7 +169,7 @@ async function bootstrap() {
       safeCaPolling();
 
       setInterval(safeCaPolling, 1000 * 60 * 6);
-    }, 1000 * 60 * 10);
+    }, 0);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
