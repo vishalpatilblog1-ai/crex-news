@@ -1,239 +1,267 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import * as cheerio from "cheerio";
 
-import { judgeNewsContext } from "../../indian-express/ai/judgeNewsContext.js";
-import { loadState, saveState } from "../../utils/stateStoreCloud.js";
+import { loadState } from "../../utils/stateStoreCloud.js";
 import { buildDiscoveryPrompt } from "./discoveryPrompt.js";
+
+import {
+  dedupeBySource,
+  extractArticleText,
+  extractGeminiText,
+  extractPublishedAt,
+  isWithinTimeWindow,
+  safeParseGeminiJSON,
+  getOgImage,
+  resolveFinalUrl,
+  normalizePublishedAt,
+  // shouldAcceptByTime,
+} from "../utils/google-utils.js";
 
 dotenv.config();
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
+const DEBUG_FORCE_FIRST_RESULT = false;
 
-function stripCodeFences(text) {
-  return text
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-}
-
-function extractGeminiText(response) {
-  if (typeof response.text === "string" && response.text.trim()) {
-    return response.text;
-  }
-
-  return response.candidates?.[0]?.content?.parts
-    ?.map((p) => p.text)
-    ?.join("")
-    ?.trim();
-}
-
-async function getOgImage(articleUrl) {
-  if (!articleUrl) return null;
-
-  try {
-    const res = await fetch(articleUrl, { redirect: "follow" });
-    const html = await res.text();
-    const $ = cheerio.load(html);
-
-    return (
-      $('meta[property="og:image"]').attr("content") ||
-      $('meta[name="twitter:image"]').attr("content") ||
-      null
-    );
-  } catch {
-    return null;
-  }
-}
-
-function dedupeBySource(items) {
-  const seen = new Set();
-  return items.filter((item) => {
-    if (seen.has(item.sourceUrl)) return false;
-    seen.add(item.sourceUrl);
-    return true;
-  });
-}
-
-const MAX_AGE_MINUTES = 60;
-
-function isWithinTimeWindow(publishedAt) {
+function shouldAcceptByTime(publishedAt) {
   if (!publishedAt) return false;
 
-  const publishedTime = new Date(publishedAt).getTime();
-  if (Number.isNaN(publishedTime)) return false;
+  if (isWithinTimeWindow(publishedAt)) return true;
 
-  const now = Date.now();
-  const diffMs = now - publishedTime;
-
-  if (diffMs < 0) return false;
-
-  return diffMs <= MAX_AGE_MINUTES * 60 * 1000;
+  return DEBUG_FORCE_FIRST_RESULT;
 }
 
+const ALLOWED_DOMAINS = [
+  // Indian & subcontinent
+  "cricketaddictor.com",
+  "indianexpress.com",
+  "dawn.com",
+  "economictimes.com",
+  "ndtv.com",
+  "sports.ndtv.com",
+  "indiatimes.com",
+  "outlookindia.com",
+  "india.com",
+  "insidesport.in",
+  "hindustantimes.com",
+  "thehindu.com",
+  "news18.com",
+  "scroll.in",
+  "firstpost.com",
+  "espncricinfo.com",
+  "cricbuzz.com",
+  "bbc.com/sport",
+  "reuters.com",
+  "deccanherald.com",
+];
+
+const NON_ARTICLE_PATTERNS = [
+  "/live",
+  "/live-score",
+  "/commentary",
+  "/ball-by-ball",
+  "/score",
+  "/scorecard",
+  "/match",
+  "/matches",
+  "/points-table",
+  "/head-to-head",
+];
+
+const UA = {
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  },
+};
+
 export async function geminiDiscoveryLoop() {
+  console.log("geminiDiscoveryLoop...");
+
   if (!global.STATE) {
     global.STATE = await loadState();
   }
 
-  const STATE = global.STATE;
-
-  const NOW = Date.now();
-  const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-  // Ensure dailyContext exists and is valid
-  if (!STATE.dailyContext || !Array.isArray(STATE.dailyContext.contexts)) {
-    STATE.dailyContext = { contexts: [] };
-  }
-
-  // ⛏️ Prune contexts older than 24 hours
-  STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter((c) => {
-    if (!c.createdAt) return false;
-    const age = NOW - new Date(c.createdAt).getTime();
-    return age >= 0 && age <= TTL_MS;
-  });
-
-  const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
-
   const discoveryPrompt = buildDiscoveryPrompt({
     nowUtc: new Date().toISOString(),
+    windowHours: 1,
   });
+
+  const siteFilter = ALLOWED_DOMAINS.map((s) => `site:${s}`).join(" OR ");
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
+      systemInstruction: {
+        parts: [
+          {
+            text: `
+You are a specialized Cricket News Discovery Agent.
+
+CRITICAL RULES:
+- ONLY return cricket-related NEWS articles.
+- ONLY use URLs from approved domains.
+- ONLY articles published in the last 1 hours.
+- NO opinions, previews, live pages, or scorecards.
+- Return STRICT JSON array or [].
+            `,
+          },
+        ],
+      },
       contents: [
         {
           role: "user",
-          parts: [{ text: discoveryPrompt }],
+          parts: [
+            {
+              text: `Search using: (${siteFilter}) ${discoveryPrompt}`,
+            },
+          ],
         },
       ],
       config: {
         tools: [{ googleSearch: {} }],
         response_mime_type: "application/json",
-
         response_schema: {
           type: "array",
           items: {
             type: "object",
             properties: {
-              isNewsworthy: { type: "boolean" },
-              newContext: { type: "string" },
-              topic: { type: "string" },
-              reasoning: { type: "string" },
               sourceUrl: { type: "string" },
-              publishedAt: {
-                type: "string",
-                description:
-                  "Full ISO timestamp with minutes, e.g. 2026-01-13T05:22:00Z",
-              },
+              publishedAt: { type: "string" },
             },
-            required: [
-              "isNewsworthy",
-              "newContext",
-              "topic",
-              "reasoning",
-              "sourceUrl",
-              "publishedAt",
-            ],
+            required: ["sourceUrl"],
           },
         },
       },
     });
 
     const rawText = extractGeminiText(response);
+    let items = safeParseGeminiJSON(rawText);
 
-    if (!rawText) return null;
-
-    let items;
-    try {
-      items = JSON.parse(stripCodeFences(rawText));
-    } catch (e) {
-      console.error("❌ Failed to parse Gemini JSON", e);
-      return null;
-    }
-
-    if (!Array.isArray(items) || items.length === 0) return null;
-
-    items = dedupeBySource(items);
-
-    items = items.map((item) => {
-      const withinTime = isWithinTimeWindow(item.publishedAt);
-
-      console.log("withinTime:::", withinTime, item.isNewsworthy);
-
-      return {
-        ...item,
-        isNewsworthy: withinTime && item.isNewsworthy === true,
-      };
-    });
-
-    items = items.filter((item) => item.isNewsworthy === true);
-
-    if (items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       console.log("🟡 No new Gemini news to tweet");
       return null;
     }
 
-    // console.log("🔍 CLEANED GEMINI OUTPUT:\n", items);
+    items = dedupeBySource(items);
 
     for (const decision of items) {
-      const { newContext, topic, reasoning } = decision;
-      if (decision.isNewsworthy !== true) continue;
+      // const finalUrl = decision.sourceUrl;
+      // 🔁 Resolve Google / Vertex redirect → real publisher URL
+      let finalUrl = await resolveFinalUrl(decision.sourceUrl);
 
-      const contextDecision = await judgeNewsContext({
-        articleText: newContext + " " + topic + " " + reasoning,
-        existingContexts,
-      });
+      // Normalize junk commas Gemini sometimes adds
+      if (finalUrl) {
+        finalUrl = finalUrl.replace(/,+$/, "");
+      }
+
+      if (!finalUrl) continue;
+
+      // 1️⃣ Domain allowlist
+      // if (!ALLOWED_DOMAINS.some((d) => finalUrl.includes(d))) {
+      //   continue;
+      // }
+
+      const hostname = new URL(finalUrl).hostname;
 
       if (
-        contextDecision?.isAlreadyCovered &&
-        contextDecision?.confidence >= 0.8
+        !ALLOWED_DOMAINS.some(
+          (d) => hostname === d || hostname.endsWith(`.${d}`)
+        )
       ) {
         continue;
       }
 
-      const imageSearchQuery = `${decision.topic} ${decision.newContext}`;
+      // 2️⃣ Non-article pages
+      const path = new URL(finalUrl).pathname;
 
-      const imageResponse = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: `Find a relevant news image for: ${imageSearchQuery}` },
-            ],
-          },
-        ],
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
+      if (NON_ARTICLE_PATTERNS.some((p) => path.startsWith(p))) {
+        console.log("⛔ Non-article page detected, skipping:", finalUrl);
+        continue;
+      }
+      // if (NON_ARTICLE_PATTERNS.some((p) => finalUrl.includes(p))) {
+      //   console.log("⛔ Non-article page detected, skipping:", finalUrl);
+      //   continue;
+      // }
 
-      const imgMetadata =
-        imageResponse.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      // 3️⃣ Published time validation
+      // const publishedAt = await extractPublishedAt(finalUrl);
+      // let publishedAt = await extractPublishedAt(finalUrl);
+      // publishedAt = normalizePublishedAt(publishedAt);
+      // if (!publishedAt || !isWithinTimeWindow(publishedAt)) {
+      //   console.log("⏰ Skipping old or invalid news:", finalUrl);
+      //   continue;
+      // }
+      // if (!publishedAt) {
+      //   console.log("⛔ No publishedAt, skipping:", finalUrl);
+      //   continue;
+      // }
 
-      const primarySourceUrl =
-        imgMetadata.find((c) => c.web?.uri)?.web?.uri || null;
+      // if (!isWithinTimeWindow(publishedAt)) {
+      //   console.log("⚠️ Old news, but allowing for DEBUG:", finalUrl);
 
-      let imageUrl = await getOgImage(primarySourceUrl);
+      //   if (!DEBUG_FORCE_FIRST_RESULT) {
+      //     continue;
+      //   }
+      // }
 
-      STATE.dailyContext.contexts.push({
-        summary: contextDecision?.newContext || decision.newContext,
+      let publishedAt = await extractPublishedAt(finalUrl);
+      publishedAt = normalizePublishedAt(publishedAt);
+
+      if (!shouldAcceptByTime(publishedAt)) {
+        console.log(
+          DEBUG_FORCE_FIRST_RESULT
+            ? "⚠️ Old news allowed due to DEBUG:"
+            : "⏰ Skipping old or invalid news:",
+          finalUrl
+        );
+        continue;
+      }
+
+      // 4️⃣ Fetch article HTML
+      const res = await fetch(finalUrl, UA);
+      if (!res.ok) {
+        console.log("⛔ Failed to fetch article:", res.status, finalUrl);
+        continue;
+      }
+
+      const html = await res.text();
+
+      // 5️⃣ Extract clean article text
+      const articleText = extractArticleText(html, finalUrl);
+      // if (!articleText || articleText.length < 1200) {
+      //   console.log("⛔ Not a real article, skipping:", finalUrl);
+      //   continue;
+      // }
+
+      if (!articleText || articleText.length < 400) {
+        console.log("⚠️ Short article, but allowing for DEBUG:", finalUrl);
+
+        if (!DEBUG_FORCE_FIRST_RESULT) {
+          continue;
+        }
+      }
+
+      // 6️⃣ Extract OG image
+      const imageUrl = await getOgImage(finalUrl);
+
+      if (DEBUG_FORCE_FIRST_RESULT) {
+        console.log("🧪 DEBUG MODE: Forcing first valid article through");
+      }
+
+      // ✅ Final validated decision
+      return {
+        sourceUrl: finalUrl,
+        publishedAt,
+        articleFullText: articleText,
         imageUrl,
-        sourceUrl: primarySourceUrl,
-        createdAt: new Date().toISOString(),
-      });
-
-      await saveState(STATE);
-
-      return { ...decision, sourceUrl: primarySourceUrl, imageUrl };
+      };
     }
   } catch (err) {
     console.error("❌ Gemini discovery error:", err);
   }
+
+  return null;
 }

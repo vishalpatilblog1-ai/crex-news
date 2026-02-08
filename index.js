@@ -10,11 +10,7 @@ import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
 import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
-// import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
-
-// setInterval(() => {
-//   tryFlushTweetQueue();
-// }, 15 * 1000);
+import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
 
 const log = createLogger("prod");
 
@@ -67,12 +63,12 @@ async function safeCaPolling() {
 async function safeCtPolling() {
   console.log("inside safeCtPolling ...");
 
-  const sinceLastCA = Date.now() - (global.LAST_CA_SUCCESS_AT || 0);
+  // const sinceLastCA = Date.now() - (global.LAST_CA_SUCCESS_AT || 0);
 
-  if (sinceLastCA < 30 * 60 * 1000) {
-    console.log("⏭️ CT skipped — CA active recently");
-    return;
-  }
+  // if (sinceLastCA < 30 * 60 * 1000) {
+  //   console.log("⏭️ CT skipped — CA active recently");
+  //   return;
+  // }
 
   try {
     await ctNewsPollingLoop();
@@ -173,6 +169,38 @@ async function bootstrap() {
       setInterval(safeCtPolling, 1000 * 60 * 6);
     }, 1000 * 60 * 10);
   }
+
+  // if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
+  //   console.log("🧠 Gemini discovery polling enabled for crex-news");
+  //   setInterval(googleNewsPollingLoop, 1000 * 60 * 0.3);
+  // }
+
+  // if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
+  //   console.log("🧠 Gemini discovery polling enabled for crex-news");
+
+  //   const MIN_DELAY = 5 * 60 * 1000; // 5 min
+  //   const MAX_DELAY = 10 * 60 * 1000; // 15 min
+
+  //   function randomDelay(min, max) {
+  //     return min + Math.floor(Math.random() * (max - min));
+  //   }
+
+  //   async function scheduleGeminiPolling() {
+  //     try {
+  //       await googleNewsPollingLoop();
+  //     } catch (err) {
+  //       console.error("❌ Gemini polling error:", err?.message || err);
+  //     }
+
+  //     const nextDelay = randomDelay(MIN_DELAY, MAX_DELAY);
+  //     console.log(
+  //       `⏳ Next Gemini poll in ~${Math.round(nextDelay / 60000)} min`
+  //     );
+
+  //     setTimeout(scheduleGeminiPolling, nextDelay);
+  //   }
+  //   scheduleGeminiPolling();
+  // }
 
   //================================================================================
 

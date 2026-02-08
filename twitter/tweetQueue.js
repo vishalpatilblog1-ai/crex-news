@@ -4,11 +4,26 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
 import { postTweet_ie_web } from "./twitter.js";
 
+/**
+ * Global timing controls
+ * These survive across polling cycles
+ */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-const MIN_TWEET_DELAY = 3 * 60 * 1000; // 5 min
-const MAX_TWEET_DELAY = 8 * 60 * 1000; // 8 min
+/**
+ * Tweet delay window (human-like)
+ */
+const MIN_TWEET_DELAY = 3 * 60 * 1000; // 3 minutes
+const MAX_TWEET_DELAY = 8 * 60 * 1000; // 8 minutes
 
+/**
+ * Console-only mode (no real posting)
+ */
+const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
+/**
+ * Generate random delay between MIN and MAX
+ */
 function randomTweetDelay() {
   return (
     MIN_TWEET_DELAY +
@@ -16,6 +31,9 @@ function randomTweetDelay() {
   );
 }
 
+/**
+ * Check if tweeting is allowed right now
+ */
 function canTweetNow(source) {
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
@@ -32,6 +50,9 @@ function canTweetNow(source) {
   return true;
 }
 
+/**
+ * Mark tweet as sent and apply next cooldown
+ */
 function markTweeted(source) {
   const delay = randomTweetDelay();
 
@@ -45,11 +66,14 @@ function markTweeted(source) {
   );
 }
 
+/**
+ * Add tweet to queue (id-deduped)
+ */
 export function enqueueTweet({ id, source, text, imageUrl }) {
   const STATE = global.STATE;
-
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
+  // Prevent duplicate queueing
   if (STATE.tweetQueue.some((t) => t.id === id)) return;
 
   STATE.tweetQueue.push({
@@ -63,6 +87,9 @@ export function enqueueTweet({ id, source, text, imageUrl }) {
   console.log(`📥 Queued tweet from ${source}: ${id}`);
 }
 
+/**
+ * Try to flush one tweet from queue
+ */
 export async function tryFlushTweetQueue() {
   const STATE = global.STATE;
 
@@ -72,13 +99,32 @@ export async function tryFlushTweetQueue() {
   const next = STATE.tweetQueue.shift();
 
   try {
+    /**
+     * Console-only simulation mode
+     */
+    if (CONSOLE_ONLY) {
+      console.log("🧪 CONSOLE_ONLY — tweet skipped");
+      console.log({
+        source: next.source,
+        text: next.text,
+        imageUrl: next.imageUrl,
+      });
+
+      markTweeted("CONSOLE_ONLY");
+      await saveState(STATE);
+      return true;
+    }
+
+    /**
+     * Real tweet posting
+     */
     if (next.imageUrl) {
       await tweetNewsWithImage(next.text, next.imageUrl);
     } else {
       await postTweet_ie_web({ text: next.text });
     }
-    markTweeted("QUEUE");
 
+    markTweeted("QUEUE");
     await saveState(STATE);
 
     console.log(`🚀 Flushed queued tweet: ${next.id}`);
@@ -86,20 +132,25 @@ export async function tryFlushTweetQueue() {
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);
 
-    // Put it back at the front
+    // Put tweet back at the front
     STATE.tweetQueue.unshift(next);
     await saveState(STATE);
     return false;
   }
 }
 
+/**
+ * Append punctuation-based source signature
+ */
 export function applySourceSignature(text, source) {
   const signatureMap = {
     CA: ".",
     CT: "!",
     CB: "!.",
     IE: "!!",
+    GN: "..",
   };
 
-  return text.replace(/[.!]+$/, "") + signatureMap[source];
+  const signature = signatureMap[source] || ".";
+  return text.replace(/[.!]+$/, "") + signature;
 }
