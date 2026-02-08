@@ -34,28 +34,28 @@ const MAX_CA_INTERVAL = 10 * 60 * 1000;
 function randomDelay(min, max) {
   return min + Math.floor(Math.random() * (max - min));
 }
-async function safeCaPolling() {
-  console.log("inside safeCaPolling ...");
+// async function safeCaPolling() {
+//   console.log("inside safeCaPolling ...");
 
-  if (Date.now() < global.CA_COOLDOWN_UNTIL) {
-    console.log("⏳ CA cooldown active — skipping");
-    return;
-  }
+//   if (Date.now() < global.CA_COOLDOWN_UNTIL) {
+//     console.log("⏳ CA cooldown active — skipping");
+//     return;
+//   }
 
-  try {
-    const didPost = await caNewsPollingLoop();
+//   try {
+//     const didPost = await caNewsPollingLoop();
 
-    if (didPost) {
-      global.LAST_CA_SUCCESS_AT = Date.now();
-      console.log("✅ CA success recorded");
-    }
-  } catch (err) {
-    console.warn("⚠️ CA polling error:", err?.message || err);
+//     if (didPost) {
+//       global.LAST_CA_SUCCESS_AT = Date.now();
+//       console.log("✅ CA success recorded");
+//     }
+//   } catch (err) {
+//     console.warn("⚠️ CA polling error:", err?.message || err);
 
-    global.CA_COOLDOWN_UNTIL = Date.now() + 15 * 60 * 1000;
-    console.log("🛑 CA cooldown activated — 15 min...");
-  }
-}
+//     global.CA_COOLDOWN_UNTIL = Date.now() + 15 * 60 * 1000;
+//     console.log("🛑 CA cooldown activated — 15 min...");
+//   }
+// }
 
 /* ------------------------------------------------------------------
    Safe CT polling (fallback)
@@ -63,17 +63,20 @@ async function safeCaPolling() {
 async function safeCtPolling() {
   console.log("inside safeCtPolling ...");
 
-  // const sinceLastCA = Date.now() - (global.LAST_CA_SUCCESS_AT || 0);
-
-  // if (sinceLastCA < 30 * 60 * 1000) {
-  //   console.log("⏭️ CT skipped — CA active recently");
-  //   return;
-  // }
-
   try {
     await ctNewsPollingLoop();
   } catch (err) {
     console.warn("⚠️ CT polling error:", err?.message || err);
+  }
+}
+
+async function safeCaPolling() {
+  console.log("inside safeCaPolling ...");
+
+  try {
+    await caNewsPollingLoop();
+  } catch (err) {
+    console.warn("⚠️ CA polling error:", err, err?.message);
   }
 }
 
