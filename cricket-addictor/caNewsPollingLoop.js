@@ -4,17 +4,13 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
-import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
-import { fetchCAHomeHtml } from "./fetchCAHtml.js";
 import { fetchCARSS } from "./fetchCARss.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
-import { parseCAArticle } from "./parseCAArticle.js";
 import { parseCAArticleRss } from "./parseCAArticleRss.js";
 
 export async function caNewsPollingLoop() {
@@ -32,7 +28,7 @@ export async function caNewsPollingLoop() {
   /* ---------------- config ---------------- */
   const MAX_AGE_MIN = 180; // 3 hours
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-  const RETENTION_MS = 6 * 60 * 60 * 1000; // 4 hours
+  const RETENTION_MS = 6 * 60 * 60 * 1000;
 
   /* ---------------- prune state ---------------- */
   let stateDirty = false;

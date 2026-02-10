@@ -190,7 +190,7 @@ async function bootstrap() {
     setTimeout(() => {
       console.log("🧠 SPORTSKEEDA fallback polling enabled");
 
-      setInterval(sportskeedaNewsPollingLoop, 1000 * 60 * 10);
+      setInterval(sportskeedaNewsPollingLoop, 1000 * 60 * 6);
     }, 0);
   }
 
