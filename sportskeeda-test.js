@@ -16,7 +16,7 @@ async function run() {
   const STATE = global.STATE;
 
   const link =
-    "https://www.sportskeeda.com/cricket/news-former-rcb-star-ruled-t20-world-cup-2026-due-hamstring-injury";
+    "https://www.sportskeeda.com/cricket/news-steal-auction-fans-react-kkr-overseas-stars-go-berserk-nz-vs-uae-t20-world-cup-2026-match";
 
   if (!link) {
     console.error("❌ Please provide a Sportskeeda article URL");

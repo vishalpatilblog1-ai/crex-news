@@ -11,6 +11,8 @@ export async function parseSportskeedaArticle(item) {
   const link = item?.link || item?.url;
   if (!link) return null;
 
+  console.log("link:::::", link);
+
   let res;
   try {
     res = await fetch(link, {
@@ -23,9 +25,11 @@ export async function parseSportskeedaArticle(item) {
     return null;
   }
 
+  console.log("res:::", res);
   if (!res.ok) return null;
 
   const html = await res.text();
+  console.log("html:::", html);
   const $ = cheerio.load(html);
 
   /* ---------------- headline ---------------- */
@@ -55,20 +59,34 @@ export async function parseSportskeedaArticle(item) {
   ).each((_, el) => {
     const text = $(el).text().trim();
 
-    if (
-      text.length < 40 ||
-      text.toLowerCase().includes("read more") ||
-      text.toLowerCase().includes("also read") ||
-      text.toLowerCase().includes("advertisement") ||
-      text.toLowerCase().includes("subscribe") ||
-      text.toLowerCase().includes("follow us")
-    ) {
-      return;
-    }
+    // if (
+    //   text.length < 40 ||
+    //   text.toLowerCase().includes("read more") ||
+    //   text.toLowerCase().includes("also read") ||
+    //   text.toLowerCase().includes("advertisement") ||
+    //   text.toLowerCase().includes("subscribe") ||
+    //   text.toLowerCase().includes("follow us")
+    // ) {
+    //   return;
+    // }
+
+    // $("p").each((_, el) => {
+    //   const text = $(el).text().trim();
+    //   if (
+    //     text.length < 40 ||
+    //     text.toLowerCase().includes("read also") ||
+    //     text.toLowerCase().includes("fantasy") ||
+    //     text.toLowerCase().includes("dream11")
+    //   ) {
+    //     return;
+    //   }
+    //   paragraphs.push(text);
+    // });
 
     paragraphs.push(text);
   });
 
+  console.log("paragraphs::", paragraphs);
   if (paragraphs.length === 0) return null;
 
   return {
