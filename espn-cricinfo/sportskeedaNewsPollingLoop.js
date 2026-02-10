@@ -29,7 +29,7 @@ export async function sportskeedaNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 90; // 3 hours
+  const MAX_AGE_MIN = 120; // 3 hours
   const RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
   /* ---------------- prune state ---------------- */
@@ -67,7 +67,7 @@ export async function sportskeedaNewsPollingLoop() {
     }
 
     selected = item;
-    break; // 🔑 CT-style: FIRST valid article only
+    break;
   }
 
   if (!selected) return false;
@@ -84,7 +84,7 @@ export async function sportskeedaNewsPollingLoop() {
     console.warn("❌ Sportskeeda parse failed:", err?.message || err);
   }
 
-  if (!parsed?.headline || !parsed?.body || parsed.body.length < 120) {
+  if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
     STATE.sportskeeda.seen[cleanUrl] = Date.now();
     await saveState(STATE);
     return false;
@@ -110,7 +110,7 @@ export async function sportskeedaNewsPollingLoop() {
 
   /* ---------------- generate tweet ---------------- */
   let tweetText = null;
-  // console.log("parsed.body::", parsed.body);
+
   try {
     tweetText = await generateGeminiTweet(`${parsed.headline}\n${parsed.body}`);
   } catch (err) {
@@ -131,7 +131,6 @@ export async function sportskeedaNewsPollingLoop() {
     return false;
   }
 
-  /* ---------------- image decision ---------------- */
   const imageUrl = selected["media:thumbnail"]?.url || parsed.imageUrl || null;
 
   const { useImage } = await decideImageUsage({
@@ -140,7 +139,7 @@ export async function sportskeedaNewsPollingLoop() {
   });
 
   tweetText = applySourceSignature(tweetText, "SK");
-  /* ---------------- enqueue ---------------- */
+
   enqueueTweet({
     id: `SPORTSKEEDA:${cleanUrl}`,
     source: "SPORTSKEEDA",
@@ -165,29 +164,26 @@ export async function sportskeedaNewsPollingLoop() {
   return true;
 }
 
-function getPubDate(item) {
-  const d = item?.pubDate || item?.publishedAt;
-  return d ? new Date(d).getTime() : 0;
-}
-
 function pruneSeen(STATE, retentionMs) {
   try {
     const now = Date.now();
     let pruned = 0;
 
-    for (const [link, ts] of Object.entries(STATE.ca?.seen || {})) {
+    // for (const [link, ts] of Object.entries(STATE.ca?.seen || {})) {
+    for (const [link, ts] of Object.entries(STATE.sportskeeda?.seen || {})) {
       if (now - ts > retentionMs) {
-        delete STATE.ca.seen[link];
+        // delete STATE.ca.seen[link];
+        delete STATE.sportskeeda.seen[link];
         pruned++;
       }
     }
 
     if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old CA seen entries`);
+      console.log(`🧹 Pruned ${pruned} old SK seen entries`);
       return true;
     }
   } catch (err) {
-    console.warn("⚠️ CA seen prune failed:", err?.message || err);
+    console.warn("⚠️ SK seen prune failed:", err?.message || err);
   }
   return false;
 }
