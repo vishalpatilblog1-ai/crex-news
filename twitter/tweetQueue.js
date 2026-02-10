@@ -87,9 +87,6 @@ export function enqueueTweet({ id, source, text, imageUrl }) {
   console.log(`📥 Queued tweet from ${source}: ${id}`);
 }
 
-/**
- * Try to flush one tweet from queue
- */
 export async function tryFlushTweetQueue() {
   const STATE = global.STATE;
 
@@ -99,9 +96,6 @@ export async function tryFlushTweetQueue() {
   const next = STATE.tweetQueue.shift();
 
   try {
-    /**
-     * Console-only simulation mode
-     */
     if (CONSOLE_ONLY) {
       console.log("🧪 CONSOLE_ONLY — tweet skipped");
       console.log({
@@ -149,6 +143,7 @@ export function applySourceSignature(text, source) {
     CB: "!.",
     IE: "!!",
     GN: "..",
+    SK: "_",
   };
 
   const signature = signatureMap[source] || ".";

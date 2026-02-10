@@ -182,7 +182,9 @@ export async function ieNewsPollingLoop() {
 
     // tweetText = `🔵 ${tweetText}`;
 
-    tweetText = applySourceSignature(tweetText, "IE");
+    // tweetText = applySourceSignature(tweetText, "IE");
+    tweetText += "\n\n[Source – Indian Express]";
+    // tweetText += `${tweetText}[Source – Indian Express]`;
 
     const cleanUrl = normalizeIELink(selected.link);
     const tweetId = `IE:${cleanUrl}`;

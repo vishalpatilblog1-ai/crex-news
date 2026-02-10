@@ -78,7 +78,7 @@ export async function caNewsPollingLoop() {
     }
 
     selected = item;
-    break; // 🔑 CT-style: pick FIRST valid article only
+    break;
   }
 
   if (!selected) return false;
@@ -162,25 +162,6 @@ export async function caNewsPollingLoop() {
     });
 
     console.log(`📥 Queued CA tweet: ${parsed.headline}`);
-
-    // temporary commented in case enque logic fails below will be uncommented
-    // if (CONSOLE_ONLY) {
-    //   console.log("🧪 CONSOLE_ONLY would publish:", {
-    //     headline: parsed.headline,
-    //     link: cleanLink,
-    //     tweetText,
-    //     imageUrl,
-    //     useImage,
-    //   });
-    //   return false;
-    // }
-
-    // if (useImage) {
-    //   await tweetWithNativeImage({ text: tweetText, imageUrl });
-    //   if (imageUrl) STATE.usedImages[imageUrl] = Date.now();
-    // } else {
-    //   await postTweet_ie_web({ text: tweetText });
-    // }
 
     STATE.ca.seen[cleanLink] = Date.now();
 
