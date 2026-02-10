@@ -19,6 +19,8 @@ import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp
 export async function sportskeedaNewsPollingLoop() {
   console.log("🟢 sportskeedaNewsPollingLoop started");
 
+  console.log("---------------------- 1 ---------------------- ");
+
   if (!global.STATE) return false;
   const STATE = global.STATE;
 
@@ -83,6 +85,7 @@ export async function sportskeedaNewsPollingLoop() {
   } catch (err) {
     console.warn("❌ Sportskeeda parse failed:", err?.message || err);
   }
+  console.log("---------------------- 100 ---------------------- ", parsed);
 
   if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
     STATE.sportskeeda.seen[cleanUrl] = Date.now();
@@ -90,7 +93,8 @@ export async function sportskeedaNewsPollingLoop() {
     return false;
   }
 
-  /* ---------------- context dedupe ---------------- */
+  console.log("---------------------- 2 ---------------------- ");
+
   let decision = null;
   try {
     decision = await judgeNewsContext({
@@ -107,8 +111,8 @@ export async function sportskeedaNewsPollingLoop() {
   } catch (err) {
     console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
   }
+  console.log("---------------------- 3 ---------------------- ");
 
-  /* ---------------- generate tweet ---------------- */
   let tweetText = null;
 
   try {
@@ -116,6 +120,7 @@ export async function sportskeedaNewsPollingLoop() {
   } catch (err) {
     console.warn("⚠️ Gemini failed:", err?.message || err);
   }
+  console.log("---------------------- 5 ---------------------- ");
 
   if (!tweetText) {
     try {
@@ -131,6 +136,7 @@ export async function sportskeedaNewsPollingLoop() {
     return false;
   }
 
+  console.log("---------------------- 6 ---------------------- ");
   const imageUrl = selected["media:thumbnail"]?.url || parsed.imageUrl || null;
 
   const { useImage } = await decideImageUsage({
@@ -139,6 +145,10 @@ export async function sportskeedaNewsPollingLoop() {
   });
 
   tweetText = applySourceSignature(tweetText, "SK");
+  console.log("---------------------- 7 ---------------------- ");
+
+  console.log("tweetText:::", tweetText);
+  console.log("imageUrl:::", imageUrl);
 
   enqueueTweet({
     id: `SPORTSKEEDA:${cleanUrl}`,
