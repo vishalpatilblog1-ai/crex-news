@@ -49,11 +49,15 @@ export async function sportskeedaNewsPollingLoop() {
   /* ---------------- select ONE eligible article ---------------- */
   let selected = null;
 
-  console.log("items::", items);
+  // console.log("items::", items);
 
   for (const item of items) {
     console.log("-------------- A ------------");
-    if (!isSportskeedaArticle(item)) continue;
+    // if (!isSportskeedaArticle(item)) continue;
+    if (!isSportskeedaArticle(item)) {
+      console.log("SK rejected:", item.category, item.title, item.link);
+      continue;
+    }
     console.log("-------------- B ------------");
     const pubMs = item.pubDate ? new Date(item.pubDate).getTime() : 0;
     console.log("-------------- C ------------");
