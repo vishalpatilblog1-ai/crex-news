@@ -55,7 +55,7 @@ export async function sportskeedaNewsPollingLoop() {
     console.log("-------------- A ------------");
     // if (!isSportskeedaArticle(item)) continue;
     if (!isSportskeedaArticle(item)) {
-      console.log("SK rejected:", item.category, item.title, item.link);
+      // console.log("SK rejected:", item.category, item.title, item.link);
       continue;
     }
     console.log("-------------- B ------------");
