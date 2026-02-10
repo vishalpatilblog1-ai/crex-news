@@ -31,7 +31,7 @@ export async function sportskeedaNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 180; // 3 hours
+  const MAX_AGE_MIN = 300; // 3 hours
   const RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
   /* ---------------- prune state ---------------- */
@@ -49,24 +49,33 @@ export async function sportskeedaNewsPollingLoop() {
   /* ---------------- select ONE eligible article ---------------- */
   let selected = null;
 
-  for (const item of items) {
-    if (!isSportskeedaArticle(item)) continue;
+  console.log("items::", items);
 
+  for (const item of items) {
+    console.log("-------------- A ------------");
+    if (!isSportskeedaArticle(item)) continue;
+    console.log("-------------- B ------------");
     const pubMs = item.pubDate ? new Date(item.pubDate).getTime() : 0;
+    console.log("-------------- C ------------");
     if (!pubMs) continue;
+    console.log("-------------- D ------------");
 
     const ageMin = (Date.now() - pubMs) / 60000;
+    console.log("-------------- E ------------");
     if (ageMin > MAX_AGE_MIN) continue;
-
+    console.log("-------------- F ------------");
     const cleanUrl = normalizeSportskeedaLink(item.link);
     if (!cleanUrl) continue;
+    console.log("-------------- G ------------");
 
     if (STATE.sportskeeda.seen[cleanUrl]) continue;
+    console.log("-------------- H ------------");
 
     if (isBlockedCAHeadline(item.title)) {
       STATE.sportskeeda.seen[cleanUrl] = Date.now();
       continue;
     }
+    console.log("-------------- I ------------");
 
     selected = item;
     break;
