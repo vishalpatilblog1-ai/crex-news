@@ -25,11 +25,11 @@ export async function parseSportskeedaArticle(item) {
     return null;
   }
 
-  console.log("res:::", res);
+  // console.log("res:::", res);
   if (!res.ok) return null;
 
   const html = await res.text();
-  console.log("html:::", html);
+  // console.log("html:::", html);
   const $ = cheerio.load(html);
 
   /* ---------------- headline ---------------- */
