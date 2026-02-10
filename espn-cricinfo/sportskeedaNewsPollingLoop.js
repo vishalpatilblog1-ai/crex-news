@@ -29,7 +29,7 @@ export async function sportskeedaNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   /* ---------------- config ---------------- */
-  const MAX_AGE_MIN = 180; // 3 hours
+  const MAX_AGE_MIN = 90; // 3 hours
   const RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
   /* ---------------- prune state ---------------- */
