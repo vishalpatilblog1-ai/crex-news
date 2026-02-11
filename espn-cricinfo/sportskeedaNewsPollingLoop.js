@@ -52,35 +52,32 @@ export async function sportskeedaNewsPollingLoop() {
   // console.log("items::", items);
 
   for (const item of items) {
-    console.log("-------------- A ------------");
-    // if (!isSportskeedaArticle(item)) continue;
-    if (!isSportskeedaArticle(item)) {
-      // console.log("SK rejected:", item.category, item.title, item.link);
-      continue;
-    }
-    console.log("-------------- B ------------");
-    const pubMs = item.pubDate ? new Date(item.pubDate).getTime() : 0;
-    console.log("-------------- C ------------");
-    if (!pubMs) continue;
-    console.log("-------------- D ------------");
+    console.log("-------------- A --------------");
+    if (!isSportskeedaArticle(item)) continue;
 
+    console.log("-------------- B --------------");
+    const pubMs = item.pubDate ? new Date(item.pubDate).getTime() : 0;
+    if (!pubMs) continue;
+    console.log("-------------- C --------------");
     const ageMin = (Date.now() - pubMs) / 60000;
-    console.log("-------------- E ------------");
     if (ageMin > MAX_AGE_MIN) continue;
-    console.log("-------------- F ------------");
+
+    console.log("-------------- D --------------");
     const cleanUrl = normalizeSportskeedaLink(item.link);
     if (!cleanUrl) continue;
-    console.log("-------------- G ------------");
 
-    if (STATE.sportskeeda.seen[cleanUrl]) continue;
-    console.log("-------------- H ------------");
+    console.log("-------------- E --------------");
+    const seenKey = `${cleanUrl}:${item.pubDate}`;
+    if (STATE.sportskeeda.seen[seenKey]) continue;
 
+    console.log("-------------- F --------------");
+    console.log("item.title::", item.title);
     if (isBlockedCAHeadline(item.title)) {
-      STATE.sportskeeda.seen[cleanUrl] = Date.now();
+      STATE.sportskeeda.seen[seenKey] = Date.now();
       continue;
     }
-    console.log("-------------- I ------------");
 
+    console.log("-------------- G --------------");
     selected = item;
     break;
   }
@@ -90,30 +87,34 @@ export async function sportskeedaNewsPollingLoop() {
   console.log("📰 Selected Sportskeeda item:", selected);
 
   const cleanUrl = normalizeSportskeedaLink(selected.link);
+  const finalSeenKey = cleanUrl + ":" + selected.pubDate;
 
-  /* ---------------- parse FULL article ---------------- */
-  // let parsed;
-  // try {
-  //   parsed = await parseSportskeedaArticle({ link: selected.link });
-  // } catch (err) {
-  //   console.warn("❌ Sportskeeda parse failed:", err?.message || err);
-  // }
-  // if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
-  //   STATE.sportskeeda.seen[cleanUrl] = Date.now();
-  //   await saveState(STATE);
-  //   return false;
-  // }
+  let parsed = null;
+  let articleText = null;
 
-  const headline = selected.title?.trim();
-  const description = selected.description?.trim();
-
-  if (!headline || !description || description.length < 40) {
-    STATE.sportskeeda.seen[cleanUrl] = Date.now();
-    await saveState(STATE);
-    return false;
+  try {
+    parsed = await parseSportskeedaArticle({ link: selected.link });
+  } catch (err) {
+    console.warn("❌ Sportskeeda parse failed:", err?.message || err);
   }
+  console.log("Parsed length:", parsed?.body?.length);
+  if (parsed?.headline && parsed?.body && parsed.body.length > 120) {
+    articleText = `${parsed.headline}\n${parsed.body}`;
+    console.log("🟢 Using FULL parsed article");
+  } else {
+    const headline = selected.title?.trim();
+    const description = selected.description?.trim();
 
-  const articleText = `${headline}\n${description}`;
+    if (!headline || !description || description.length < 40) {
+      // STATE.sportskeeda.seen[cleanUrl] = Date.now();
+      STATE.sportskeeda.seen[finalSeenKey] = Date.now();
+      await saveState(STATE);
+      return false;
+    }
+
+    articleText = `${headline}\n${description}`;
+    console.log("🟡 Using RSS fallback");
+  }
 
   let decision = null;
   try {
@@ -124,7 +125,8 @@ export async function sportskeedaNewsPollingLoop() {
     });
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      STATE.sportskeeda.seen[cleanUrl] = Date.now();
+      // STATE.sportskeeda.seen[cleanUrl] = Date.now();
+      STATE.sportskeeda.seen[finalSeenKey] = Date.now();
       await saveState(STATE);
       return false;
     }
@@ -151,7 +153,8 @@ export async function sportskeedaNewsPollingLoop() {
   }
 
   if (!tweetText || tweetText.length < 30) {
-    STATE.sportskeeda.seen[cleanUrl] = Date.now();
+    // STATE.sportskeeda.seen[cleanUrl] = Date.now();
+    STATE.sportskeeda.seen[finalSeenKey] = Date.now();
     await saveState(STATE);
     return false;
   }
@@ -176,10 +179,10 @@ export async function sportskeedaNewsPollingLoop() {
     source: "SPORTSKEEDA",
     text: tweetText,
     imageUrl: useImage ? imageUrl : null,
-    seenKey: cleanUrl,
+    seenKey: finalSeenKey,
   });
 
-  STATE.sportskeeda.seen[cleanUrl] = Date.now();
+  STATE.sportskeeda.seen[finalSeenKey] = Date.now();
 
   if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
     STATE.dailyContext.contexts.push({
@@ -191,7 +194,7 @@ export async function sportskeedaNewsPollingLoop() {
   }
 
   await saveState(STATE);
-  console.log("✅ Sportskeeda published:", parsed.headline);
+  // console.log("✅ Sportskeeda published:", parsed.headline);
   return true;
 }
 
@@ -199,11 +202,8 @@ function pruneSeen(STATE, retentionMs) {
   try {
     const now = Date.now();
     let pruned = 0;
-
-    // for (const [link, ts] of Object.entries(STATE.ca?.seen || {})) {
     for (const [link, ts] of Object.entries(STATE.sportskeeda?.seen || {})) {
       if (now - ts > retentionMs) {
-        // delete STATE.ca.seen[link];
         delete STATE.sportskeeda.seen[link];
         pruned++;
       }
