@@ -50,7 +50,7 @@ export async function fetchCARSS() {
   }
 
   clearTimeout(timeout);
-  console.log("-------- F1 --------");
+  console.log("-------- F1 --------", res);
 
   if (!res.ok) {
     throw new Error(`CA RSS HTTP ${res.status} ${res.statusText}`);
