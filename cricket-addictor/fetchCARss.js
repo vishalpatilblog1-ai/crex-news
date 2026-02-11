@@ -30,30 +30,15 @@ export async function fetchCARSS() {
   try {
     res = await fetch(CA_RSS, {
       signal: controller.signal,
+
       headers: {
         "User-Agent": pickUA(),
         Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br", // Crucial: browsers support compression
-        DNT: "1", // Do Not Track
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Cache-Control": "max-age=0",
+          "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
         Referer: "https://www.google.com/",
         Connection: "keep-alive",
       },
-      // headers: {
-      //   "User-Agent": pickUA(),
-      //   Accept:
-      //     "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
-      //   "Accept-Language": "en-US,en;q=0.9",
-      //   Referer: "https://www.google.com/",
-      //   Connection: "keep-alive",
-      // },
     });
     console.log("-------- D1 --------");
   } catch (err) {
@@ -65,7 +50,7 @@ export async function fetchCARSS() {
   }
 
   clearTimeout(timeout);
-  console.log("-------- F1 --------", res);
+  console.log("-------- F1 --------");
 
   if (!res.ok) {
     throw new Error(`CA RSS HTTP ${res.status} ${res.statusText}`);

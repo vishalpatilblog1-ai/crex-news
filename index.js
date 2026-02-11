@@ -172,7 +172,7 @@ async function bootstrap() {
 
       safeCaPolling();
 
-      setInterval(safeCaPolling, 1000 * 60 * 6);
+      setInterval(safeCaPolling, 1000 * 60 * 7);
     }, 0);
   }
 
