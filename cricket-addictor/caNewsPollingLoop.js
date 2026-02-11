@@ -36,12 +36,10 @@ export async function caNewsPollingLoop() {
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
-  if (stateDirty) await saveState(STATE);
+  if (stateDirty) await saveState(STATE, "prune cleanup");
 
-  /* ---------------- fetch CA homepage items ---------------- */
   let items;
   try {
-    // items = await fetchCAHomeHtml({ limit: 15 });
     items = await fetchCARSS();
   } catch (err) {
     console.warn("❌ CA HTML fetch failed_:", err?.message || err);
@@ -50,7 +48,6 @@ export async function caNewsPollingLoop() {
 
   if (!Array.isArray(items) || items.length === 0) return false;
 
-  /* ---------------- select ONE eligible article (CT style) ---------------- */
   const sorted = [...items].filter(isCAArticle);
 
   let selected = null;
@@ -81,14 +78,14 @@ export async function caNewsPollingLoop() {
 
   const cleanLink = normalizeCALink(selected.link);
 
-  /* ---------------- parse article ---------------- */
   try {
     // const parsed = await parseCAArticle(selected);
     const parsed = parseCAArticleRss(selected);
 
     if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
       STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE);
+
+      await saveState(STATE, "invalid article structure");
       return false;
     }
 
@@ -102,7 +99,8 @@ export async function caNewsPollingLoop() {
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         STATE.ca.seen[cleanLink] = Date.now();
-        await saveState(STATE);
+
+        await saveState(STATE, "duplicate context skipped");
         return false;
       }
     } catch (err) {
@@ -131,7 +129,8 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.length < 30) {
       STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE);
+
+      await saveState(STATE, "tweet generation failed or too short");
       return false;
     }
 

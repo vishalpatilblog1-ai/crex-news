@@ -17,6 +17,38 @@ const USER_AGENTS = [
 function pickUA() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
+// export async function fetchCARSS() {
+//   console.log("---- CA via gotScraping ----");
+
+//   try {
+//     const response = await gotScraping({
+//       url: CA_RSS,
+//       headerGeneratorOptions: {
+//         browsers: [
+//           { name: "chrome", minVersion: 120 },
+//           { name: "firefox", minVersion: 120 },
+//         ],
+//         devices: ["desktop"],
+//         locales: ["en-US"],
+//       },
+//       timeout: { request: 8000 },
+//     });
+
+//     if (!response?.body) {
+//       throw new Error("Empty body from CA");
+//     }
+
+//     const parsed = await parseStringPromise(response.body, {
+//       explicitArray: false,
+//       mergeAttrs: true,
+//       trim: true,
+//     });
+
+//     return parsed?.rss?.channel?.item || [];
+//   } catch (err) {
+//     throw new Error(`CA RSS via gotScraping failed: ${err.message || err}`);
+//   }
+// }
 
 export async function fetchCARSS() {
   console.log("-------- A1 --------");

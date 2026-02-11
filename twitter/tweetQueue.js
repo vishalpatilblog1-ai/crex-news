@@ -109,9 +109,6 @@ export async function tryFlushTweetQueue() {
       return true;
     }
 
-    /**
-     * Real tweet posting
-     */
     if (next.imageUrl) {
       await tweetNewsWithImage(next.text, next.imageUrl);
     } else {

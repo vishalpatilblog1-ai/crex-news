@@ -28,7 +28,8 @@ export async function loadState() {
   }
 }
 
-export async function saveState(stateObj) {
+export async function saveState(stateObj, reason = "no-reason-provided") {
+  console.log(`💾 Saving state to JSONBin | Reason: ${reason}`);
   try {
     const res = await fetch(`${BASE_URL}${BIN_ID}`, {
       method: "PUT",

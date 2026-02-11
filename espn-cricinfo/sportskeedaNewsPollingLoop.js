@@ -40,7 +40,7 @@ export async function sportskeedaNewsPollingLoop() {
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
-  if (stateDirty) await saveState(STATE);
+  if (stateDirty) await saveState(STATE, "prune cleanup");
 
   /* ---------------- fetch RSS ---------------- */
   const items = await fetchSportskeedaRss();
