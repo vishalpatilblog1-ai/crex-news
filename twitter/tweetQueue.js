@@ -141,8 +141,8 @@ export function applySourceSignature(text, source) {
     CA: ".",
     CT: "!",
     CB: "!.",
-    IE: "!!",
-    GN: "..",
+    // IE: "!!",
+    // GN: "..",
     SK: "_",
   };
 

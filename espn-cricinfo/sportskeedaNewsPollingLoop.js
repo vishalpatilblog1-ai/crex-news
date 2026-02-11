@@ -87,31 +87,38 @@ export async function sportskeedaNewsPollingLoop() {
 
   if (!selected) return false;
 
-  console.log("📰 Selected Sportskeeda item:", selected.title);
+  console.log("📰 Selected Sportskeeda item:", selected);
 
   const cleanUrl = normalizeSportskeedaLink(selected.link);
 
   /* ---------------- parse FULL article ---------------- */
-  let parsed;
-  try {
-    parsed = await parseSportskeedaArticle({ link: selected.link });
-  } catch (err) {
-    console.warn("❌ Sportskeeda parse failed:", err?.message || err);
-  }
-  console.log("---------------------- 100 ---------------------- ", parsed);
+  // let parsed;
+  // try {
+  //   parsed = await parseSportskeedaArticle({ link: selected.link });
+  // } catch (err) {
+  //   console.warn("❌ Sportskeeda parse failed:", err?.message || err);
+  // }
+  // if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
+  //   STATE.sportskeeda.seen[cleanUrl] = Date.now();
+  //   await saveState(STATE);
+  //   return false;
+  // }
 
-  if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
+  const headline = selected.title?.trim();
+  const description = selected.description?.trim();
+
+  if (!headline || !description || description.length < 40) {
     STATE.sportskeeda.seen[cleanUrl] = Date.now();
     await saveState(STATE);
     return false;
   }
 
-  console.log("---------------------- 2 ---------------------- ");
+  const articleText = `${headline}\n${description}`;
 
   let decision = null;
   try {
     decision = await judgeNewsContext({
-      articleText: `${parsed.headline}\n${parsed.body}`,
+      articleText,
       existingContexts:
         STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
     });
@@ -129,7 +136,7 @@ export async function sportskeedaNewsPollingLoop() {
   let tweetText = null;
 
   try {
-    tweetText = await generateGeminiTweet(`${parsed.headline}\n${parsed.body}`);
+    tweetText = await generateGeminiTweet(articleText);
   } catch (err) {
     console.warn("⚠️ Gemini failed:", err?.message || err);
   }
@@ -137,7 +144,7 @@ export async function sportskeedaNewsPollingLoop() {
 
   if (!tweetText) {
     try {
-      tweetText = await generateGPTTweet(`${parsed.headline}\n${parsed.body}`);
+      tweetText = await generateGPTTweet(articleText);
     } catch (err) {
       console.warn("❌ GPT failed:", err?.message || err);
     }
@@ -150,7 +157,8 @@ export async function sportskeedaNewsPollingLoop() {
   }
 
   console.log("---------------------- 6 ---------------------- ");
-  const imageUrl = selected["media:thumbnail"]?.url || parsed.imageUrl || null;
+  // const imageUrl = selected["media:thumbnail"]?.url || parsed.imageUrl || null;
+  const imageUrl = selected["media:thumbnail"]?.url || null;
 
   const { useImage } = await decideImageUsage({
     imageUrl,
