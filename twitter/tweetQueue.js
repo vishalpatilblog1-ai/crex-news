@@ -31,9 +31,6 @@ function randomTweetDelay() {
   );
 }
 
-/**
- * Check if tweeting is allowed right now
- */
 function canTweetNow(source) {
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
@@ -50,9 +47,6 @@ function canTweetNow(source) {
   return true;
 }
 
-/**
- * Mark tweet as sent and apply next cooldown
- */
 function markTweeted(source) {
   const delay = randomTweetDelay();
 
