@@ -44,7 +44,7 @@ export async function caNewsPollingLoop() {
     // items = await fetchCAHomeHtml({ limit: 15 });
     items = await fetchCARSS();
   } catch (err) {
-    console.warn("❌ CA HTML fetch failed:", err?.message || err);
+    console.warn("❌ CA HTML fetch failed_:", err?.message || err);
     throw err;
   }
 
