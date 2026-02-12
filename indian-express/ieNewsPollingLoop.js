@@ -178,14 +178,31 @@ export async function ieNewsPollingLoop() {
     }
 
     // const cleanUrl = normalizeIELink(selected.link);
+    // let tweetText = tweetBody;
+    // const imageUrl = getIEImageUrl(selected);
+    // let addSource = false;
+
+    // if (imageUrl) {
+    //   addSource = await isIEBrandedImage(imageUrl);
+    // }
+
+    // if (addSource) {
+    //   tweetText += "\n\n[Source – Indian Express]";
+    // }
+
     let tweetText = tweetBody;
     const imageUrl = getIEImageUrl(selected);
-
-    // tweetText += "\n\n[Source – Indian Express]";
     let addSource = false;
 
     if (imageUrl) {
-      addSource = await isIEBrandedImage(imageUrl);
+      const lowerUrl = imageUrl.toLowerCase();
+
+      if (
+        lowerUrl.includes("images.indianexpress.com") &&
+        !lowerUrl.includes("wp-content")
+      ) {
+        addSource = true;
+      }
     }
 
     if (addSource) {
