@@ -136,6 +136,13 @@ export async function generateGPTCAtweet(articleText) {
     BOOKMARK VALUE RULE:
     - Include at least one insight that feels reusable or memorable
     - The reader should notice similar patterns in future matches or selections
+
+    STRUCTURE RULE (STRICT):
+    - The tweet MUST contain at least ONE blank line.
+    - Use exactly 2 or 3 short paragraphs.
+    - Each paragraph must be separated by a single blank line.
+    - Do NOT output a single block of text.
+
     
     ANALYSIS BIAS (EDITOR-SELECTED):
     ${hookBiasInstruction}

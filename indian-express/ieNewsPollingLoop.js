@@ -177,19 +177,6 @@ export async function ieNewsPollingLoop() {
       tweetBody = generateIEFallbackTweet(selected);
     }
 
-    // const cleanUrl = normalizeIELink(selected.link);
-    // let tweetText = tweetBody;
-    // const imageUrl = getIEImageUrl(selected);
-    // let addSource = false;
-
-    // if (imageUrl) {
-    //   addSource = await isIEBrandedImage(imageUrl);
-    // }
-
-    // if (addSource) {
-    //   tweetText += "\n\n[Source – Indian Express]";
-    // }
-
     let tweetText = tweetBody;
     const imageUrl = getIEImageUrl(selected);
     let addSource = false;
