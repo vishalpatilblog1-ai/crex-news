@@ -9,6 +9,7 @@ import { saveState } from "../utils/stateStoreCloud.js";
 
 import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+import { isIEBrandedImage } from "./detectIEBranding.js";
 
 import { fetchIEArticle } from "./fetchIEArticle.js";
 import { getIEImageUrl } from "./getIEImageUrl.js";
@@ -180,12 +181,19 @@ export async function ieNewsPollingLoop() {
     let tweetText = tweetBody;
     const imageUrl = getIEImageUrl(selected);
 
-    // tweetText = `🔵 ${tweetText}`;
+    // tweetText += "\n\n[Source – Indian Express]";
+    let addSource = false;
 
-    // tweetText = applySourceSignature(tweetText, "IE");
-    tweetText += "\n\n[Source – Indian Express]";
-    // tweetText += `${tweetText}[Source – Indian Express]`;
+    if (imageUrl) {
+      addSource = await isIEBrandedImage(imageUrl);
+    }
 
+    if (addSource) {
+      tweetText += "\n\n[Source – Indian Express]";
+    }
+
+    console.log("imageUrl IE::", imageUrl);
+    console.log("addSource IE::", addSource);
     const cleanUrl = normalizeIELink(selected.link);
     const tweetId = `IE:${cleanUrl}`;
 
