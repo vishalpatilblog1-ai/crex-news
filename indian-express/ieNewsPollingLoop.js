@@ -178,7 +178,7 @@ export async function ieNewsPollingLoop() {
     }
 
     let tweetText = tweetBody;
-    const imageUrl = getIEImageUrl(selected);
+    let imageUrl = getIEImageUrl(selected);
     let addSource = false;
 
     if (imageUrl) {
