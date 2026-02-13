@@ -181,27 +181,27 @@ export async function ieNewsPollingLoop() {
     let imageUrl = getIEImageUrl(selected);
     let addSource = false;
 
-    if (imageUrl) {
-      const lowerUrl = imageUrl.toLowerCase();
-
-      // Block Indian Express branded CDN images
-      if (lowerUrl.includes("images.indianexpress.com")) {
-        console.log("🚫 Skipping IE branded image:", imageUrl);
-        imageUrl = null; // Prevent upload
-        // addSource = true;
-      }
-    }
-
+    // without images - IE
     // if (imageUrl) {
     //   const lowerUrl = imageUrl.toLowerCase();
 
-    //   if (
-    //     lowerUrl.includes("images.indianexpress.com") &&
-    //     !lowerUrl.includes("wp-content")
-    //   ) {
+    //   if (lowerUrl.includes("images.indianexpress.com")) {
+    //     console.log("🚫 Skipping IE branded image:", imageUrl);
+    //     imageUrl = null; // Prevent upload
     //     addSource = true;
     //   }
     // }
+
+    if (imageUrl) {
+      const lowerUrl = imageUrl.toLowerCase();
+
+      if (
+        lowerUrl.includes("images.indianexpress.com") &&
+        !lowerUrl.includes("wp-content")
+      ) {
+        addSource = true;
+      }
+    }
 
     if (addSource) {
       tweetText += "\n\n[Source – Indian Express]";
