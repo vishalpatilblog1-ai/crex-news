@@ -32,7 +32,7 @@ async function downloadImage(url) {
 
 export async function tweetNewsWithImage(text, imageUrl) {
   try {
-    const EXPERIMENT_TAGS = ["#T20WorldCup", "#T20WorldCup2026"];
+    // const EXPERIMENT_TAGS = ["#T20WorldCup", "#T20WorldCup2026"];
 
     let finalText = text;
 
