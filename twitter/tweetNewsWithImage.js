@@ -32,6 +32,17 @@ async function downloadImage(url) {
 
 export async function tweetNewsWithImage(text, imageUrl) {
   try {
+    const EXPERIMENT_TAGS = ["T20WorldCup", "#T20WorldCup2026"];
+    // or ["#GPExperiment", "#CricketNews"]
+
+    // Avoid duplicate hashtags
+    let finalText = text;
+
+    EXPERIMENT_TAGS.forEach((tag) => {
+      if (!finalText.includes(tag)) {
+        finalText += `\n\n${tag}`;
+      }
+    });
     console.log("⬇ Downloading image...");
     const downloadedPath = await downloadImage(imageUrl);
 
@@ -43,7 +54,7 @@ export async function tweetNewsWithImage(text, imageUrl) {
 
     console.log("📝 Tweeting...");
     const tweet = await rwClient.v2.tweet({
-      text,
+      text: finalText,
       media: { media_ids: [mediaId] },
     });
 
@@ -54,3 +65,28 @@ export async function tweetNewsWithImage(text, imageUrl) {
     console.error("❌ Error tweeting news image:", err);
   }
 }
+
+// export async function tweetNewsWithImage(text, imageUrl) {
+//   try {
+//     console.log("⬇ Downloading image...");
+//     const downloadedPath = await downloadImage(imageUrl);
+
+//     console.log("📤 Uploading image to Twitter...");
+//     const data = fs.readFileSync(downloadedPath);
+//     const mediaId = await rwClient.v1.uploadMedia(data, {
+//       mimeType: "image/jpeg",
+//     });
+
+//     console.log("📝 Tweeting...");
+//     const tweet = await rwClient.v2.tweet({
+//       text,
+//       media: { media_ids: [mediaId] },
+//     });
+
+//     console.log("🚀 Tweet Posted:", tweet.data.id);
+
+//     fs.unlinkSync(downloadedPath);
+//   } catch (err) {
+//     console.error("❌ Error tweeting news image:", err);
+//   }
+// }
