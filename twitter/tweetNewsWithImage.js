@@ -32,17 +32,17 @@ async function downloadImage(url) {
 
 export async function tweetNewsWithImage(text, imageUrl) {
   try {
-    const EXPERIMENT_TAGS = ["T20WorldCup", "#T20WorldCup2026"];
-    // or ["#GPExperiment", "#CricketNews"]
+    const EXPERIMENT_TAGS = ["#T20WorldCup", "#T20WorldCup2026"];
 
-    // Avoid duplicate hashtags
     let finalText = text;
 
-    EXPERIMENT_TAGS.forEach((tag) => {
-      if (!finalText.includes(tag)) {
-        finalText += `\n\n${tag}`;
-      }
-    });
+    const missingTags = EXPERIMENT_TAGS.filter(
+      (tag) => !finalText.includes(tag)
+    );
+
+    if (missingTags.length > 0) {
+      finalText += `\n\n${missingTags.join(" ")}`;
+    }
     console.log("⬇ Downloading image...");
     const downloadedPath = await downloadImage(imageUrl);
 
