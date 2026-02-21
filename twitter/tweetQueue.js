@@ -81,7 +81,6 @@ function canTweetNow(source) {
 // }
 
 function isSleepWindow() {
-  console.log("🕒 IST hour:", hour, "minute:", minute);
   const now = new Date();
 
   const istTime = new Date(
@@ -91,8 +90,10 @@ function isSleepWindow() {
   const hour = istTime.getHours();
   const minute = istTime.getMinutes();
 
-  // TEST WINDOW: 11:05 PM – 11:10 PM IST
-  return hour === 23 && minute >= 10 && minute < 15;
+  console.log("🕒 IST hour:", hour, "minute:", minute);
+
+  // TEST WINDOW: 11:10 PM – 11:15 PM IST
+  return hour === 23 && minute >= 11 && minute < 15;
 }
 
 function markTweeted(source) {
