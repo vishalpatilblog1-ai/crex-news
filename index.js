@@ -8,7 +8,7 @@ import { loadState, saveState } from "./utils/stateStoreCloud.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
-import { sportskeedaNewsPollingLoop } from "./espn-cricinfo/sportskeedaNewsPollingLoop.js";
+// import { sportskeedaNewsPollingLoop } from "./espn-cricinfo/sportskeedaNewsPollingLoop.js";
 import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
 import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
@@ -186,13 +186,13 @@ async function bootstrap() {
     }, 1000 * 60 * 10);
   }
 
-  if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
-    setTimeout(() => {
-      console.log("🧠 SPORTSKEEDA fallback polling enabled");
+  // if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
+  //   setTimeout(() => {
+  //     console.log("🧠 SPORTSKEEDA fallback polling enabled");
 
-      setInterval(sportskeedaNewsPollingLoop, 1000 * 60 * 6);
-    }, 0);
-  }
+  //     setInterval(sportskeedaNewsPollingLoop, 1000 * 60 * 6);
+  //   }, 0);
+  // }
 
   if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
     console.log("🧠 Gemini discovery polling enabled for crex-news");
