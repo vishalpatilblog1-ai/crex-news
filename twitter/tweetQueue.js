@@ -68,18 +68,6 @@ function canTweetNow(source) {
   return true;
 }
 
-// function isSleepWindow() {
-//   const now = new Date();
-
-//   const istTime = new Date(
-//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-//   );
-
-//   const hour = istTime.getHours();
-
-//   return hour >= 1 && hour < 6;
-// }
-
 function isSleepWindow() {
   const now = new Date();
 
@@ -88,12 +76,9 @@ function isSleepWindow() {
   );
 
   const hour = istTime.getHours();
-  const minute = istTime.getMinutes();
+  console.log("🕒 IST hour:", hour);
 
-  console.log("🕒 IST hour:", hour, "minute:", minute);
-
-  // TEST WINDOW: 11:10 PM – 11:15 PM IST
-  return hour === 23 && minute >= 11 && minute < 15;
+  return hour >= 1 && hour < 6;
 }
 
 function markTweeted(source) {
