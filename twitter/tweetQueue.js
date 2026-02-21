@@ -13,8 +13,8 @@ global.NEXT_TWEET_ALLOWED_AT ??= 0;
 /**
  * Tweet delay window (human-like)
  */
-const MIN_TWEET_DELAY = 3 * 60 * 1000; // 3 minutes
-const MAX_TWEET_DELAY = 8 * 60 * 1000; // 8 minutes
+const MIN_TWEET_DELAY = 5 * 60 * 1000; // 5 minutes
+const MAX_TWEET_DELAY = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Console-only mode (no real posting)
