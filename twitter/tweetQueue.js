@@ -88,9 +88,10 @@ function isSleepWindow() {
   );
 
   const hour = istTime.getHours();
+  const minute = istTime.getMinutes();
 
-  // TEST WINDOW: 11:00 PM – 11:59 PM IST
-  return hour === 23;
+  // TEST WINDOW: 11:05 PM – 11:10 PM IST
+  return hour === 23 && minute >= 5 && minute < 10;
 }
 
 function markTweeted(source) {
