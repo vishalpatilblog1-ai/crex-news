@@ -31,7 +31,28 @@ function randomTweetDelay() {
   );
 }
 
+// function canTweetNow(source) {
+//   const now = Date.now();
+//   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
+
+//   if (now < nextAllowed) {
+//     console.log(
+//       `⏳ Tweet cooldown (${Math.ceil(
+//         (nextAllowed - now) / 1000
+//       )}s left) — ${source} skipped`
+//     );
+//     return false;
+//   }
+
+//   return true;
+// }
+
 function canTweetNow(source) {
+  if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
+    console.log("🌙 Sleep window active — queue paused");
+    return false;
+  }
+
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
 
@@ -45,6 +66,31 @@ function canTweetNow(source) {
   }
 
   return true;
+}
+
+// function isSleepWindow() {
+//   const now = new Date();
+
+//   const istTime = new Date(
+//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+//   );
+
+//   const hour = istTime.getHours();
+
+//   return hour >= 1 && hour < 6;
+// }
+
+function isSleepWindow() {
+  const now = new Date();
+
+  const istTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+
+  const hour = istTime.getHours();
+
+  // TEST WINDOW: 11:00 PM – 11:59 PM IST
+  return hour === 23;
 }
 
 function markTweeted(source) {
