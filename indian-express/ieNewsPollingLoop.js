@@ -1,7 +1,14 @@
 // ieNewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+import fs from "fs";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import {
+  isRiskyTwitterImage,
+  isRiskyTwitterImageIE,
+} from "../cricket-addictor/ocr/detectTwitterReference.js";
+import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
+import { GULLYPOINT_NEWS_PLACEHOLDER } from "../google-news/utils.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
 import { postTweet_ie_web } from "../twitter/twitter.js";
@@ -117,12 +124,6 @@ export async function ieNewsPollingLoop() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        // console.log(
-        //   "🔁 IE context already covered — skipping",
-        //   STATE.dailyContext.contexts.map((c) => c.summary)
-        // );
-        // console.log("↳ Context:", contextDecision.newContext);
-
         const cleanLink = normalizeIELink(selected.link);
         STATE.ie.seen[cleanLink] = Date.now();
         STATE.ie.lastLink = cleanLink;
@@ -142,15 +143,6 @@ export async function ieNewsPollingLoop() {
     let tweetBody;
 
     try {
-      // tweetBody = await generateCommonStyleTweet(
-      //   parsed.headline + parsed.body,
-      //   "Indian Express"
-      // );
-
-      // tweetBody = await generateGeminiTweet(
-      //   parsed.headline + "\n" + parsed.body
-      // );
-
       try {
         tweetBody = await generateGeminiTweet(
           `${parsed.headline}\n${parsed.body}`
@@ -178,37 +170,38 @@ export async function ieNewsPollingLoop() {
     }
 
     let tweetText = tweetBody;
+
     let imageUrl = getIEImageUrl(selected);
-    let addSource = false;
 
-    // without images - IE
-    // if (imageUrl) {
-    //   const lowerUrl = imageUrl.toLowerCase();
+    if (!imageUrl) {
+      imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
+    } else {
+      const decision = await decideIEImageUsage(imageUrl);
 
-    //   if (lowerUrl.includes("images.indianexpress.com")) {
-    //     console.log("🚫 Skipping IE branded image:", imageUrl);
-    //     imageUrl = null; // Prevent upload
-    //     addSource = true;
-    //   }
-    // }
-
-    if (imageUrl) {
-      const lowerUrl = imageUrl.toLowerCase();
-
-      if (
-        lowerUrl.includes("images.indianexpress.com") &&
-        !lowerUrl.includes("wp-content")
-      ) {
-        addSource = true;
+      if (!decision.useImage) {
+        console.log("🚫 IE image blocked:", decision.reason);
+        imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
       }
     }
+    // let addSource = false;
 
-    if (addSource) {
-      tweetText += "\n\n[Source – Indian Express]";
-    }
+    // if (imageUrl) {
+    //   const decision = await decideIEImageUsage(imageUrl);
+
+    //   if (!decision.useImage) {
+    //     console.log("🚫 IE image blocked:", decision.reason);
+    //     imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
+    //   }
+    // } else {
+    //   imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
+    // }
+
+    // if (addSource) {
+    //   tweetText += "\n\n[Source – Indian Express]";
+    // }
 
     console.log("imageUrl IE::", imageUrl);
-    console.log("addSource IE::", addSource);
+    // console.log("addSource IE::", addSource);
     const cleanUrl = normalizeIELink(selected.link);
     const tweetId = `IE:${cleanUrl}`;
 
@@ -216,30 +209,13 @@ export async function ieNewsPollingLoop() {
       id: tweetId,
       source: "IE",
       text: tweetText,
-      imageUrl: imageUrl || null,
+      // imageUrl: imageUrl || null,
+      // imageUrl: useImage ? imageUrl : null,
+      imageUrl,
       seenKey: cleanUrl,
     });
 
     console.log(`📥 Queued IE tweet: ${selected.title}`);
-
-    // if (CONSOLE_ONLY) {
-    //   console.log("🔵 CONSOLE MODE — Tweet skipped");
-    //   console.log(tweetText);
-    // } else {
-    //   try {
-    //     if (imageUrl) {
-    //       await tweetWithNativeImage({ text: tweetText, imageUrl });
-    //     } else {
-    //       await postTweet_ie_web({ text: tweetText });
-    //     }
-    //   } catch (err) {
-    //     console.warn(
-    //       "⚠️ IE native image failed, fallback to text-only:",
-    //       err.message
-    //     );
-    //     await postTweet_ie_web({ text: tweetText });
-    //   }
-    // }
 
     STATE.ie.seen[cleanUrl] = Date.now();
     STATE.ie.lastLink = cleanUrl;
@@ -269,3 +245,88 @@ function getPubDate(item) {
 function getTodayUTC() {
   return new Date().toISOString().slice(0, 10);
 }
+
+export async function decideIEImageUsage(imageUrl) {
+  if (!imageUrl) {
+    return { useImage: false, reason: "No imageUrl" };
+  }
+
+  let localImagePath;
+
+  try {
+    localImagePath = await downloadImageToTemp(imageUrl);
+
+    if (await isIEBrandedImage(localImagePath)) {
+      return {
+        useImage: false,
+        reason: "IE branded image detected",
+      };
+    }
+
+    const ocrResult = await isRiskyTwitterImageIE(localImagePath);
+
+    if (ocrResult?.risky) {
+      return {
+        useImage: false,
+        reason: `OCR flagged risky: ${ocrResult.reason}`,
+      };
+    }
+
+    if (ocrResult?.text?.toLowerCase().includes("live")) {
+      return {
+        useImage: false,
+        reason: "LIVE badge detected via OCR",
+      };
+    }
+
+    return { useImage: true };
+  } catch (err) {
+    return {
+      useImage: false,
+      reason: `OCR check failed: ${err.message}`,
+    };
+  } finally {
+    if (localImagePath && fs.existsSync(localImagePath)) {
+      fs.unlinkSync(localImagePath);
+    }
+  }
+}
+// export async function decideIEImageUsage(imageUrl) {
+//   if (!imageUrl) {
+//     return { useImage: false, reason: "No imageUrl" };
+//   }
+
+//   try {
+//     const localImagePath = await downloadImageToTemp(imageUrl);
+
+//     if (await isIEBrandedImage(localImagePath)) {
+//       return {
+//         useImage: false,
+//         reason: "IE branded image detected",
+//       };
+//     }
+
+//     const ocrResult = await isRiskyTwitterImageIE(localImagePath);
+
+//     if (ocrResult?.risky) {
+//       return {
+//         useImage: false,
+//         reason: `OCR flagged risky: ${ocrResult.reason}`,
+//       };
+//     }
+
+//     if (ocrResult?.text && ocrResult.text.toLowerCase().includes("live")) {
+//       return {
+//         useImage: false,
+//         reason: "LIVE badge detected via OCR",
+//       };
+//     }
+
+//     return { useImage: true };
+//   } catch (err) {
+//     return {
+//       useImage: false,
+//       reason: `OCR check failed: ${err.message}`,
+//     };
+//   }
+// }

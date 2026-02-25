@@ -36,3 +36,6 @@ export const randomHooks = [
 ];
 
 export const raondomEmojis = ["🚨", "🗣️", "📢"];
+
+export const GULLYPOINT_NEWS_PLACEHOLDER =
+  "https://res.cloudinary.com/xxx/image/upload/v123/gp_placeholders/breaking.webp";
