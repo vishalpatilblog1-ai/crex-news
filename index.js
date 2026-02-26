@@ -154,18 +154,14 @@ async function bootstrap() {
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
+    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 5);
   }
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 5);
   }
 
-  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-  //   console.log("🧠 CricketAddictor polling enabled");
-  //   setTimeout(scheduleCaPolling, 60 * 1000 * 10);
-  // }
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     setTimeout(() => {
       console.log("🧠 CricketAddictor fallback polling enabled");
@@ -185,14 +181,6 @@ async function bootstrap() {
       setInterval(safeCtPolling, 1000 * 60 * 6);
     }, 1000 * 60 * 10);
   }
-
-  // if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
-  //   setTimeout(() => {
-  //     console.log("🧠 SPORTSKEEDA fallback polling enabled");
-
-  //     setInterval(sportskeedaNewsPollingLoop, 1000 * 60 * 6);
-  //   }, 0);
-  // }
 
   if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
     console.log("🧠 Gemini discovery polling enabled for crex-news");
