@@ -161,6 +161,8 @@ export async function ieNewsPollingLoop() {
         }
       }
 
+      console.log("tweetBody IE::", tweetBody);
+
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }
@@ -173,6 +175,8 @@ export async function ieNewsPollingLoop() {
 
     let imageUrl = getIEImageUrl(selected);
 
+    console.log("imageUrl IE before::", imageUrl);
+
     if (!imageUrl) {
       imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
     } else {
@@ -183,6 +187,7 @@ export async function ieNewsPollingLoop() {
         imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
       }
     }
+
     // let addSource = false;
 
     // if (imageUrl) {
@@ -200,7 +205,7 @@ export async function ieNewsPollingLoop() {
     //   tweetText += "\n\n[Source – Indian Express]";
     // }
 
-    console.log("imageUrl IE::", imageUrl);
+    console.log("imageUrl IE After::", imageUrl);
     // console.log("addSource IE::", addSource);
     const cleanUrl = normalizeIELink(selected.link);
     const tweetId = `IE:${cleanUrl}`;
