@@ -154,12 +154,12 @@ async function bootstrap() {
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 5);
+    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
   }
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 5);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 6);
   }
 
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
