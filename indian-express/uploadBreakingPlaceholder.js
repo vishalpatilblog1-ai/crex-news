@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 
 const LOCAL_IMAGE = path.resolve(
   __dirname,
-  "../../images/gully_point_default_news.webp"
+  "../../images/gully_point_default_match_result.webp"
 );
 
 async function upload() {
@@ -28,7 +28,7 @@ async function upload() {
 
     const result = await cloudinary.uploader.upload(LOCAL_IMAGE, {
       folder: "gp_placeholders",
-      public_id: "breaking",
+      public_id: "gully_point_default_match_result",
       overwrite: true,
     });
 

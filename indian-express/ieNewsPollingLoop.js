@@ -23,6 +23,7 @@ import { getIEImageUrl } from "./getIEImageUrl.js";
 import { isIEArticle, normalizeIELink } from "./ieFilters.js";
 import { fetchIECricketRSS } from "./ieRssFetcher.js";
 import { parseIEArticle } from "./parseIEArticle.js";
+import { detectBrandingWithVision } from "../cricket-addictor/ocr/detectBrandingWithVision.js";
 
 export async function ieNewsPollingLoop() {
   if (!global.STATE) {
@@ -281,6 +282,18 @@ export async function decideIEImageUsage(imageUrl) {
         useImage: false,
         reason: `OCR flagged risky: ${ocrResult.reason}`,
       };
+    }
+
+    // After OCR checks pass
+    if (imageUrl.includes("images.indianexpress.com")) {
+      const visionResult = await detectBrandingWithVision(localImagePath);
+
+      if (visionResult.hasBranding) {
+        return {
+          useImage: false,
+          reason: visionResult.reason,
+        };
+      }
     }
 
     if (ocrResult?.text?.toLowerCase().includes("live")) {

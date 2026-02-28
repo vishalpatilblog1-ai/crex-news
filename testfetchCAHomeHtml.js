@@ -4,7 +4,8 @@ import { decideIEImageUsage } from "./indian-express/ieNewsPollingLoop.js";
 
 async function run() {
   const imageUrl =
-    "https://indianexpress.com/wp-content/uploads/2026/02/rinku-singh-mother-father-express-photo-gajendra-yadav.jpg";
+    // "https://images.indianexpress.com/2026/02/pakistan-cricket.jpg?w=450";
+    "https://images.indianexpress.com/2026/02/rinku-singh-mother-father-express-photo-gajendra-yadav.jpg?w=450";
 
   console.log("Image URL:", imageUrl);
 
