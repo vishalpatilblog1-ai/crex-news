@@ -256,6 +256,12 @@ export async function decideIEImageUsage(imageUrl) {
     return { useImage: false, reason: "No imageUrl" };
   }
 
+  if (imageUrl.includes("indianexpress.com/wp-content/uploads/")) {
+    return {
+      useImage: false,
+      reason: "Blocked IE wp-content image pattern",
+    };
+  }
   let localImagePath;
 
   try {

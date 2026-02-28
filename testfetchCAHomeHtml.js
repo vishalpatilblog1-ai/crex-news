@@ -4,7 +4,7 @@ import { decideIEImageUsage } from "./indian-express/ieNewsPollingLoop.js";
 
 async function run() {
   const imageUrl =
-    "https://images.indianexpress.com/2026/02/marco-jansen-lungi-ngidi.jpg?w=450";
+    "https://indianexpress.com/wp-content/uploads/2026/02/rinku-singh-mother-father-express-photo-gajendra-yadav.jpg";
 
   console.log("Image URL:", imageUrl);
 

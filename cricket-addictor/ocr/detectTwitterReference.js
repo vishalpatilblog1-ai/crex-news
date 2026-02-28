@@ -51,8 +51,6 @@ export async function isRiskyTwitterImageIE(imagePath) {
 
   const hasTwitterUI = twitterKeywords.some((word) => text.includes(word));
 
-  /* ------------------ 2️⃣ LIVE / Broadcast Detection ------------------ */
-
   const broadcastKeywords = [
     "live",
     "breaking",
@@ -65,13 +63,9 @@ export async function isRiskyTwitterImageIE(imagePath) {
     text.includes(word)
   );
 
-  /* ------------------ 3️⃣ News Branding Detection ------------------ */
-
   const newsBrandKeywords = ["indian express", "express", "tv", "sports"];
 
   const hasNewsBranding = newsBrandKeywords.some((word) => text.includes(word));
-
-  /* ------------------ FINAL DECISION ------------------ */
 
   if (hasHandle) {
     return {
