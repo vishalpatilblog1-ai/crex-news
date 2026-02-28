@@ -4,8 +4,7 @@ import { decideIEImageUsage } from "./indian-express/ieNewsPollingLoop.js";
 
 async function run() {
   const imageUrl =
-    // "https://images.indianexpress.com/2026/02/pakistan-cricket.jpg?w=450";
-    "https://images.indianexpress.com/2026/02/rinku-singh-mother-father-express-photo-gajendra-yadav.jpg?w=450";
+    "https://images.indianexpress.com/2026/02/Sri-Lanka-vs-Pakistan.jpg-2.jpeg?w=450";
 
   console.log("Image URL:", imageUrl);
 

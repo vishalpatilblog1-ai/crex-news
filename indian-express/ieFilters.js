@@ -4,9 +4,6 @@ export function isIEArticle(item) {
   );
 }
 
-// export function normalizeIELink(url) {
-//   return url.split("?")[0].split("#")[0];
-// }
 export function normalizeIELink(link) {
   return link.split("?")[0].split("#")[0].replace(/\/$/, "");
 }
