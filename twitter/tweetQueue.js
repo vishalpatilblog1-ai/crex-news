@@ -31,22 +31,6 @@ function randomTweetDelay() {
   );
 }
 
-// function canTweetNow(source) {
-//   const now = Date.now();
-//   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
-
-//   if (now < nextAllowed) {
-//     console.log(
-//       `⏳ Tweet cooldown (${Math.ceil(
-//         (nextAllowed - now) / 1000
-//       )}s left) — ${source} skipped`
-//     );
-//     return false;
-//   }
-
-//   return true;
-// }
-
 function canTweetNow(source) {
   if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
     console.log("🌙 Sleep window active — queue paused");

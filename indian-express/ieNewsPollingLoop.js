@@ -1,29 +1,22 @@
 // ieNewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import fs from "fs";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
-import {
-  isRiskyTwitterImage,
-  isRiskyTwitterImageIE,
-} from "../cricket-addictor/ocr/detectTwitterReference.js";
-import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
-import { GULLYPOINT_NEWS_PLACEHOLDER } from "../google-news/utils.js";
-import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
-import { postTweet_ie_web } from "../twitter/twitter.js";
+import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
-import { isIEBrandedImage } from "./detectIEBranding.js";
 
 import { fetchIEArticle } from "./fetchIEArticle.js";
 import { getIEImageUrl } from "./getIEImageUrl.js";
-import { isIEArticle, normalizeIELink } from "./ieFilters.js";
+import {
+  decideIEImageUsage,
+  isIEArticle,
+  normalizeIELink,
+} from "./ieFilters.js";
 import { fetchIECricketRSS } from "./ieRssFetcher.js";
 import { parseIEArticle } from "./parseIEArticle.js";
-import { detectBrandingWithVision } from "../cricket-addictor/ocr/detectBrandingWithVision.js";
 
 export async function ieNewsPollingLoop() {
   if (!global.STATE) {
@@ -179,37 +172,45 @@ export async function ieNewsPollingLoop() {
     console.log("imageUrl IE before::", imageUrl);
 
     if (!imageUrl) {
-      imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
-    } else {
-      const decision = await decideIEImageUsage(imageUrl);
+      console.log("🚫 Skipping IE article — no image found");
+      const cleanUrl = normalizeIELink(selected.link);
+      STATE.ie.seen[cleanUrl] = Date.now();
+      STATE.ie.lastLink = cleanUrl;
+      STATE.ie.lastTitle = selected.title;
+      STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-      if (!decision.useImage) {
-        console.log("🚫 IE image blocked:", decision.reason);
-        imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
-      }
+      await saveState(STATE);
+      return;
     }
 
-    // let addSource = false;
+    const decision = await decideIEImageUsage(imageUrl);
 
-    // if (imageUrl) {
-    //   const decision = await decideIEImageUsage(imageUrl);
+    if (!decision.useImage) {
+      console.log(
+        "🚫 Skipping IE article due to risky image:",
+        decision.reason
+      );
 
-    //   if (!decision.useImage) {
-    //     console.log("🚫 IE image blocked:", decision.reason);
-    //     imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
-    //   }
-    // } else {
-    //   imageUrl = GULLYPOINT_NEWS_PLACEHOLDER;
-    // }
+      const cleanUrl = normalizeIELink(selected.link);
+      STATE.ie.seen[cleanUrl] = Date.now();
+      STATE.ie.lastLink = cleanUrl;
+      STATE.ie.lastTitle = selected.title;
+      STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-    // if (addSource) {
-    //   tweetText += "\n\n[Source – Indian Express]";
-    // }
+      await saveState(STATE);
+      return;
+    }
 
     console.log("imageUrl IE After::", imageUrl);
     // console.log("addSource IE::", addSource);
     const cleanUrl = normalizeIELink(selected.link);
     const tweetId = `IE:${cleanUrl}`;
+
+    if (CONSOLE_ONLY) {
+      console.log("tweetText::", tweetText);
+      console.log("🧪 CONSOLE_ONLY mode. Not enqueueing.");
+      return;
+    }
 
     enqueueTweet({
       id: tweetId,
@@ -251,106 +252,3 @@ function getPubDate(item) {
 function getTodayUTC() {
   return new Date().toISOString().slice(0, 10);
 }
-
-export async function decideIEImageUsage(imageUrl) {
-  if (!imageUrl) {
-    return { useImage: false, reason: "No imageUrl" };
-  }
-
-  if (imageUrl.includes("indianexpress.com/wp-content/uploads/")) {
-    return {
-      useImage: false,
-      reason: "Blocked IE wp-content image pattern",
-    };
-  }
-  let localImagePath;
-
-  try {
-    localImagePath = await downloadImageToTemp(imageUrl);
-
-    if (await isIEBrandedImage(localImagePath)) {
-      return {
-        useImage: false,
-        reason: "IE branded image detected",
-      };
-    }
-
-    const ocrResult = await isRiskyTwitterImageIE(localImagePath);
-
-    if (ocrResult?.risky) {
-      return {
-        useImage: false,
-        reason: `OCR flagged risky: ${ocrResult.reason}`,
-      };
-    }
-
-    // After OCR checks pass
-    if (imageUrl.includes("images.indianexpress.com")) {
-      const visionResult = await detectBrandingWithVision(localImagePath);
-
-      if (visionResult.hasBranding) {
-        return {
-          useImage: false,
-          reason: visionResult.reason,
-        };
-      }
-    }
-
-    if (ocrResult?.text?.toLowerCase().includes("live")) {
-      return {
-        useImage: false,
-        reason: "LIVE badge detected via OCR",
-      };
-    }
-
-    return { useImage: true };
-  } catch (err) {
-    return {
-      useImage: false,
-      reason: `OCR check failed: ${err.message}`,
-    };
-  } finally {
-    if (localImagePath && fs.existsSync(localImagePath)) {
-      fs.unlinkSync(localImagePath);
-    }
-  }
-}
-// export async function decideIEImageUsage(imageUrl) {
-//   if (!imageUrl) {
-//     return { useImage: false, reason: "No imageUrl" };
-//   }
-
-//   try {
-//     const localImagePath = await downloadImageToTemp(imageUrl);
-
-//     if (await isIEBrandedImage(localImagePath)) {
-//       return {
-//         useImage: false,
-//         reason: "IE branded image detected",
-//       };
-//     }
-
-//     const ocrResult = await isRiskyTwitterImageIE(localImagePath);
-
-//     if (ocrResult?.risky) {
-//       return {
-//         useImage: false,
-//         reason: `OCR flagged risky: ${ocrResult.reason}`,
-//       };
-//     }
-
-//     if (ocrResult?.text && ocrResult.text.toLowerCase().includes("live")) {
-//       return {
-//         useImage: false,
-//         reason: "LIVE badge detected via OCR",
-//       };
-//     }
-
-//     return { useImage: true };
-//   } catch (err) {
-//     return {
-//       useImage: false,
-//       reason: `OCR check failed: ${err.message}`,
-//     };
-//   }
-// }
