@@ -250,13 +250,15 @@ ${articleTypeInstruction}
 }
 
 export async function generateClaudeTweet(articleText) {
-  console.log("generateClaudeTweet::::::");
+  console.log("generateClaudeTweet::::");
   let articleType = "player_form";
 
   try {
     const classified = await classifyArticle(articleText);
     if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
       articleType = classified;
+
+      console.log("articleType::::", articleType);
     } else {
       console.warn(`⚠️ Unknown article type "${classified}", using default`);
     }
