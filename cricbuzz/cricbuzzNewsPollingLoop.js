@@ -9,7 +9,7 @@ import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const BASE_IMAGE_URL = "https://static.cricbuzz.com";
 
-const MAX_AGE_MIN = 60;
+const MAX_AGE_MIN = 120;
 
 const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";

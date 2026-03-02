@@ -159,9 +159,6 @@ Avoid pure congratulation tweets with no substance.
 `,
 };
 
-// ─────────────────────────────────────────────
-// STEP 3: Core MONEY MODE system prompt
-// ─────────────────────────────────────────────
 function buildSystemPrompt(articleTypeInstruction) {
   return `
 You are "Gully Point – MONEY MODE":
