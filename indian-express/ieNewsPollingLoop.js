@@ -2,6 +2,7 @@
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
@@ -136,20 +137,33 @@ export async function ieNewsPollingLoop() {
 
     let tweetBody;
 
+    // console.log("content::::");
+    // console.log(`${parsed.headline}\n${parsed.body}`);
+
     try {
       try {
-        tweetBody = await generateGeminiTweet(
+        // tweetBody = await generateGeminiTweet(
+        //   `${parsed.headline}\n${parsed.body}`
+        // );
+
+        tweetBody = await generateClaudeTweet(
           `${parsed.headline}\n${parsed.body}`
         );
+
+        // const tweetText = await generateClaudeTweet(articleText);
       } catch (err) {
         console.warn("⚠️ Gemini failed:", err?.message || err);
       }
 
       if (!tweetBody) {
         try {
-          tweetBody = await generateGPTTweet(
+          tweetBody = await generateGeminiTweet(
             `${parsed.headline}\n${parsed.body}`
           );
+
+          // tweetBody = await generateGPTTweet(
+          //   `${parsed.headline}\n${parsed.body}`
+          // );
         } catch (err) {
           console.warn("❌ GPT failed:", err?.message || err);
         }

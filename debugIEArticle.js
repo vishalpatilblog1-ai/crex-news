@@ -2,15 +2,17 @@
 // import { parseIEArticle } from "./parseIEArticle.js";
 // import { fetchIEArticle } from "./fetchIEArticle.js";
 // import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+import { generateGeminiTweet } from "./ai/generate-gemini-tweet.js";
 import { judgeNewsContext } from "./indian-express/ai/judgeNewsContext.js";
 import { fetchIEArticle } from "./indian-express/fetchIEArticle.js";
 import { isIEArticle, normalizeIELink } from "./indian-express/ieFilters.js";
 import { parseIEArticle } from "./indian-express/parseIEArticle.js";
 
 const testItem = {
-  title: "Pakistan vs Sri Lanka Live Score, T20 World Cup 2026...",
+  title:
+    "How Auqib Nabi overcame father’s fears to become Ranji Trophy champion",
   link: "https://indianexpress.com/article/sports/cricket/pakistan-vs-sri-lanka-live-score-pak-vs-sl-t20-world-cup-super-8-match-live-cricket-scorecard-updates-10557392/",
-  pubDate: "Tue, 28 Feb 2026 18:51:00 GMT",
+  pubDate: "Tue, 01 Mar 2026 18:51:00 GMT",
 };
 
 export async function debugIEArticle(testItem) {
@@ -59,8 +61,6 @@ export async function debugIEArticle(testItem) {
       global.STATE?.dailyContext?.contexts?.map((c) => c.summary) || [],
   });
 
-  console.log("ContextDecision:", contextDecision);
-
   if (
     contextDecision?.isAlreadyCovered === true &&
     contextDecision?.confidence >= 0.8
@@ -68,13 +68,24 @@ export async function debugIEArticle(testItem) {
     console.log("❌ Gate 5 FAILED: Context dedupe triggered");
     return;
   }
+  let tweetBody = "";
+  try {
+    tweetBody = await generateGeminiTweet(`${parsed.headline}\n${parsed.body}`);
+  } catch (err) {
+    console.warn("⚠️ Gemini failed:", err?.message || err);
+  }
 
-  console.log("✅ Gate 5 PASSED: Context OK");
-  console.log("🎉 Article would be selected.");
-  console.log("========== DEBUG END ==========");
+  console.log("============================================");
+
+  console.log("tweetBody:::", tweetBody);
+
+  console.log("============================================");
+
+  // console.log("✅ Gate 5 PASSED: Context OK");
+  // console.log("🎉 Article would be selected.");
+  // console.log("========== DEBUG END ==========");
 }
 
-// 👇 CALL IT
 global.STATE = {
   ie: { seen: {} },
   dailyContext: { contexts: [] },

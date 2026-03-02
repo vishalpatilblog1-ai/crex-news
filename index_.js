@@ -2,90 +2,122 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { loadState, saveState } from "./utils/stateStoreCloud.js";
 import { createLogger } from "./utils/logger.js";
+import { loadState, saveState } from "./utils/stateStoreCloud.js";
 
-import { bbcNewsPollingLoop } from "./bbc/bbcNewsPollingLoop.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
-import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
-import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
-import { probatsmanNewsPollingLoop } from "./pro-batsman/probatsmanNewsPollingLoop.js";
-import { geminiDiscoveryLoop } from "./google-news/ai/geminiDiscoveryLoop.js";
-import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
+// import { sportskeedaNewsPollingLoop } from "./espn-cricinfo/sportskeedaNewsPollingLoop.js";
+import { googleNewsPollingLoop } from "./google-news/googleNewsPooling.js";
+import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
+import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
 
 const log = createLogger("prod");
 
 /* ------------------------------------------------------------------
-   Gemini safety gate (ONLY affects CA & CT)
+   Global runtime state
 ------------------------------------------------------------------- */
-global.GEMINI_BUSY = false;
-global.GEMINI_COOLDOWN_UNTIL = 0;
+global.STATE = null;
 global.LAST_CA_SUCCESS_AT = 0;
-
-function canUseGemini() {
-  return !global.GEMINI_BUSY && Date.now() > global.GEMINI_COOLDOWN_UNTIL;
-}
+global.CA_COOLDOWN_UNTIL = 0;
 
 /* ------------------------------------------------------------------
-   Safe wrappers (old logic preserved, just guarded)
+   Safe CA polling
 ------------------------------------------------------------------- */
-async function safeCaPolling() {
-  console.log("inside safeCaPolling ...");
-  // if (!canUseGemini()) {
-  //   console.log("⏭️ CA skipped — Gemini busy/cooldown");
-  //   return;
-  // }
 
-  try {
-    global.GEMINI_BUSY = true;
-    await caNewsPollingLoop();
-  } catch (err) {
-    if (err?.status === 429) {
-      global.GEMINI_COOLDOWN_UNTIL = Date.now() + 30 * 60 * 1000;
-      console.log("🛑 Gemini cooldown activated (CA) — 30 min");
-    }
-    console.warn("⚠️ CA polling error:", err?.message || err);
-  } finally {
-    global.GEMINI_BUSY = false;
-  }
+// const MIN_CA_INTERVAL = 20 * 60 * 1000;
+// const MAX_CA_INTERVAL = 35 * 60 * 1000;
+
+const MIN_CA_INTERVAL = 5 * 60 * 1000;
+const MAX_CA_INTERVAL = 10 * 60 * 1000;
+
+function randomDelay(min, max) {
+  return min + Math.floor(Math.random() * (max - min));
+}
+
+function isDayWindowIST() {
+  // IST = UTC + 5:30
+  const now = new Date();
+  const istHour = (now.getUTCHours() + 5) % 24;
+  const istMinute = now.getUTCMinutes();
+
+  const timeInMinutes = istHour * 60 + istMinute;
+
+  const DAY_START = 9 * 60; // 09:00
+  const DAY_END = 21 * 60; // 21:00
+
+  return timeInMinutes >= DAY_START && timeInMinutes < DAY_END;
 }
 
 async function safeCtPolling() {
   console.log("inside safeCtPolling ...");
-  // if (!canUseGemini()) {
-  //   console.log("⏭️ CT skipped — Gemini busy/cooldown");
-  //   return;
-  // }
 
-  // CT = fallback → run only if CA inactive for 30 min
-  const sinceLastCA = Date.now() - (global.LAST_CA_SUCCESS_AT || 0);
+  try {
+    await ctNewsPollingLoop();
+  } catch (err) {
+    console.warn("⚠️ CT polling error:", err?.message || err);
+  }
+}
 
-  if (sinceLastCA < 30 * 60 * 1000) {
-    console.log("⏭️ CT skipped — CA active recently");
+async function safeCaPolling() {
+  if (!isDayWindowIST()) {
+    console.log("🌙 CA polling skipped (night window 9PM–9AM IST)");
+    return false; // 👈 immediate return
+  }
+
+  console.log("☀️ CA polling allowed (day window)");
+
+  try {
+    await caNewsPollingLoop();
+  } catch (err) {
+    console.warn("⚠️ CA polling error:", err, err?.message);
+  }
+}
+
+// async function safeCaPolling() {
+//   console.log("inside safeCaPolling ...");
+
+//   try {
+//     await caNewsPollingLoop();
+//   } catch (err) {
+//     console.warn("⚠️ CA polling error:", err, err?.message);
+//   }
+// }
+
+async function scheduleCaPolling() {
+  try {
+    await safeCaPolling();
+  } catch (err) {
+    console.error("❌ CA polling error, backing off:", err.message);
+
+    setTimeout(scheduleCaPolling, 6 * 60 * 60 * 1000);
     return;
   }
 
-  try {
-    global.GEMINI_BUSY = true;
-    await ctNewsPollingLoop();
-  } catch (err) {
-    if (err?.status === 429) {
-      global.GEMINI_COOLDOWN_UNTIL = Date.now() + 30 * 60 * 1000;
-      console.log("🛑 Gemini cooldown activated (CT) — 30 min");
-    }
-    console.warn("⚠️ CT polling error:", err?.message || err);
-  } finally {
-    global.GEMINI_BUSY = false;
-  }
+  const nextDelay = randomDelay(MIN_CA_INTERVAL, MAX_CA_INTERVAL);
+  console.log(
+    `⏳ Next CricketAddictor poll in ${Math.round(nextDelay / 60000)} min`
+  );
+
+  setTimeout(scheduleCaPolling, nextDelay);
 }
 
 async function bootstrap() {
   global.STATE = await loadState();
 
+  setInterval(async () => {
+    try {
+      console.log("tryFlushTweetQueue::");
+      await tryFlushTweetQueue();
+    } catch (err) {
+      console.error("❌ Queue flush error:", err?.message || err);
+    }
+  }, 15 * 1000);
+
   log("🌍 JSONBin state loaded:", true);
   log(global.STATE, true);
+  global.STATE.tweetQueue ??= [];
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -98,48 +130,83 @@ async function bootstrap() {
     await saveState(global.STATE);
   }
 
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(scheduleCaPolling, 5 * 60 * 1000);
+  // }
+
+  // if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
+  //   console.log("📰 Indian Express news polling enabled");
+  //   setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
+  // }
+
+  //================================================================================
+
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(scheduleCaPolling, 5 * 60 * 1000);
+  // }
+
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("🧠 CricketAddictor polling enabled");
+  //   setTimeout(caNewsPollingLoop, 15 * 60 * 1000);
+  // }
+
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 15);
-  }
-
-  if (process.env.ENABLE_BBC_NEWS_POLLING === "true") {
-    console.log("📰 BBC news polling enabled");
-    setInterval(bbcNewsPollingLoop, 1000 * 60 * 2);
+    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
   }
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 10);
-  }
-
-  if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
-    console.log("📰 The Hindu news polling enabled");
-    setInterval(hinduNewsPollingLoop, 1000 * 60 * 15);
-  }
-
-  if (process.env.ENABLE_PROBATSMAN_NEWS_POLLING === "true") {
-    console.log("📰 ProBatsman news polling enabled");
-    setInterval(probatsmanNewsPollingLoop, 1000 * 60 * 8);
-  }
-
-  if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
-    console.log("🧠 Gemini discovery polling enabled for crex-news");
-    setInterval(googleNewsPollingLoop, 1000 * 60 * 10);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 6);
   }
 
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-    console.log("🧠 cricketaddictor news polling enabled for crex-news");
-    safeCaPolling();
-    setInterval(safeCaPolling, 1000 * 60 * 3);
+    setTimeout(() => {
+      console.log("🧠 CricketAddictor fallback polling enabled");
+
+      safeCaPolling();
+
+      setInterval(safeCaPolling, 1000 * 60 * 6);
+    }, 0);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     setTimeout(() => {
-      console.log("🧠 cricktracker news polling enabled for crex-news");
+      console.log("🧠 CricTracker fallback polling enabled");
+
       safeCtPolling();
-      setInterval(safeCtPolling, 1000 * 60 * 3);
-    }, 1000 * 60 * 6);
+
+      setInterval(safeCtPolling, 1000 * 60 * 6);
+    }, 1000 * 60 * 10);
+  }
+
+  if (process.env.ENABLE_GEMINI_NEWS_POLLING === "true") {
+    console.log("🧠 Gemini discovery polling enabled for crex-news");
+
+    const MIN_DELAY = 5 * 60 * 1000;
+    const MAX_DELAY = 10 * 60 * 1000;
+
+    function randomDelay(min, max) {
+      return min + Math.floor(Math.random() * (max - min));
+    }
+
+    async function scheduleGeminiPolling() {
+      try {
+        await googleNewsPollingLoop();
+      } catch (err) {
+        console.error("❌ Gemini polling error:", err?.message || err);
+      }
+
+      const nextDelay = randomDelay(MIN_DELAY, MAX_DELAY);
+      console.log(
+        `⏳ Next Gemini poll in ~${Math.round(nextDelay / 60000)} min`
+      );
+
+      setTimeout(scheduleGeminiPolling, nextDelay);
+    }
+    scheduleGeminiPolling();
   }
 }
 

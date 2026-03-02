@@ -9,6 +9,7 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@google/genai": "^1.35.0",
     "@google/generative-ai": "^0.24.1",
     "@mozilla/readability": "^0.6.0",

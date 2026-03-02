@@ -1,5 +1,6 @@
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { tweetNewsWithImage } from "../twitter/tweetNewsWithImage.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
@@ -97,7 +98,8 @@ export async function cricbuzzNewsPollingLoop() {
     let tweetText = null;
 
     try {
-      tweetText = await generateGeminiTweet(fullText);
+      // tweetText = await generateGeminiTweet(fullText);
+      tweetText = await generateClaudeTweet(fullText);
     } catch (err) {
       console.warn("⚠️ Gemini failed:", err?.message || err);
     }
