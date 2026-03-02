@@ -137,12 +137,33 @@ Applies to any team or format. Avoid sympathy framing. Lead with impact.
 ARTICLE TYPE: Press Conference / Quote-driven
 
 A strong quote is your hook — use it if one exists.
-Rules:
-- Attribute clearly. NEVER absorb a named person's opinion into the narrator's voice.
-- If a coach, captain, selector, or analyst makes a claim — name them in the first or second sentence.
-- Frame around what the statement reveals about team thinking or internal dynamics.
 
-Avoid vague attribution. The quote reveals something — your job is to say what.
+ATTRIBUTION RULE:
+- Name the speaker (coach, captain, selector, analyst) in the first or second sentence.
+- NEVER absorb their opinion into the narrator's voice.
+
+ANGLE SELECTION — read the article first, then choose ONE:
+
+1. CONTRADICTION ANGLE (highest engagement — use only when earned)
+   - Use this if: what the named individual SAYS conflicts with what actually HAPPENED
+   - The gap between their words and their actions is the tweet
+   - State the contradiction directly. Do not soften it.
+   - Example trigger: coach praises player they recently dropped / selector defends decision that backfired
+   - DO NOT manufacture this angle. If the contradiction is not explicit in the article, skip this.
+
+2. REVELATION ANGLE (default — use when no clear contradiction exists)
+   - Use this if: the quote reveals something about team thinking, priorities, or internal dynamics
+   - Frame around what the statement exposes — not just what was said
+   - One layer deeper than the quote itself
+
+3. SIGNAL ANGLE (use for forward-looking press conferences)
+   - Use this if: the statement hints at a selection, tactical, or strategic decision ahead
+   - Frame around what this tells us about what comes next
+
+SELF-CHECK BEFORE FINALIZING:
+- Is the contradiction explicitly supported by facts in the article? If no → switch to Revelation.
+- Is the named individual clearly identified? If no → rewrite the opening.
+- Does the tweet end with a position or conclusion? If no → sharpen the final line.
 `,
 
   milestone_record: `
