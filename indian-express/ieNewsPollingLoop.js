@@ -117,7 +117,7 @@ export async function ieNewsPollingLoop() {
 
       if (
         contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.8
+        contextDecision?.confidence >= 0.9
       ) {
         const cleanLink = normalizeIELink(selected.link);
         STATE.ie.seen[cleanLink] = Date.now();
@@ -136,9 +136,6 @@ export async function ieNewsPollingLoop() {
     }
 
     let tweetBody;
-
-    // console.log("content::::");
-    // console.log(`${parsed.headline}\n${parsed.body}`);
 
     try {
       try {

@@ -108,6 +108,19 @@ The story IS the stance.
 Do NOT add pressure framing or selection debate to this type of article.
 `,
 
+  opinion_piece: `
+ARTICLE TYPE: Opinion / Column / Personal Account
+
+This article is written by a named individual sharing their personal view.
+Focus on:
+- The single most compelling observation or claim they make
+- What their unique vantage point (position, history, relationship) adds to the story
+- Attribute everything clearly — this is their opinion, not yours
+
+NEVER write in first person. Extract, attribute, analyze.
+The named author's perspective IS the news — your job is to frame why it matters.
+`,
+
   preview: `
 ARTICLE TYPE: Match Preview
 
@@ -214,6 +227,15 @@ LANGUAGE RULES:
 BOOKMARK VALUE RULE:
 - Include at least one insight that feels reusable or memorable
 - The reader should feel: "This explains something I'll notice again"
+
+VOICE RULE (STRICT):
+- Always write in THIRD PERSON — you are an analyst observing from outside
+- NEVER write as if you are the person quoted in the article
+- If the article is written in first person (interview, column, personal account),
+  extract the insight and attribute it to the named individual
+- Correct form: "Shashi Tharoor, who has followed Samson since age 14, says..."
+- Wrong form: "I watched Samson from age 14..."
+- The narrator is always the analyst — never the subject of the article
 
 ABSOLUTE NOs:
 - No personal attacks
