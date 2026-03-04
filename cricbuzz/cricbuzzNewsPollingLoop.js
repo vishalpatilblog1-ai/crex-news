@@ -96,19 +96,18 @@ export async function cricbuzzNewsPollingLoop() {
     }
 
     let tweetText = null;
-
     try {
-      // tweetText = await generateGeminiTweet(fullText);
       tweetText = await generateClaudeTweet(fullText);
     } catch (err) {
-      console.warn("⚠️ Gemini failed:", err?.message || err);
+      console.warn("⚠️ Claude failed:", err?.message || err);
     }
 
-    if (!tweetText) {
+    if (!tweetText || tweetText.trim().length < 30) {
       try {
         tweetText = await generateGPTTweet(fullText);
       } catch (err) {
-        console.warn("❌ GPT failed:", err?.message || err);
+        console.warn("⚠️ Cricbuzz AI failed, skipping tweet:", err.message);
+        return; // exit without posting
       }
     }
 

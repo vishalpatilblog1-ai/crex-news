@@ -11,6 +11,8 @@ import { parseHinduArticle } from "./parseHinduArticle.js";
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
+import { generateIEFallbackTweet } from "../indian-express/ai/generateIEFallbackTweet.js";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) {
@@ -75,7 +77,6 @@ export async function hinduNewsPollingLoop() {
       if (!pubMs) continue;
       const ageMin = (Date.now() - pubMs) / 60000;
       if (ageMin > MAX_AGE_MIN) continue;
-      // if (Date.now() - pubMs > MAX_AGE_MS) continue;
 
       const cleanLink = normalizeHinduLink(item.link);
       if (STATE.hindu.seen[cleanLink]) continue;
@@ -129,29 +130,42 @@ export async function hinduNewsPollingLoop() {
       console.warn("⚠️ Context judge failed (Hindu), proceeding:", err.message);
     }
 
-    // ── Generate tweet ───────────────────────────────────────
     let tweetBody;
 
     try {
-      tweetBody = await generateGeminiTweet(
-        parsed.headline + "\n" + parsed.body
-      );
+      try {
+        tweetBody = await generateClaudeTweet(
+          `${parsed.headline}\n${parsed.body}`
+        );
+      } catch (err) {
+        console.warn("⚠️ Claude failed:", err?.message || err);
+      }
+
+      if (!tweetBody) {
+        try {
+          tweetBody = await generateGeminiTweet(
+            `${parsed.headline}\n${parsed.body}`
+          );
+        } catch (err) {
+          console.warn("⚠️ Gemini failed:", err?.message || err);
+        }
+      }
+
+      console.log("tweetBody IE::", tweetBody);
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
       }
     } catch (err) {
-      console.warn("⚠️ Hindu AI failed, using fallback:", err.message);
-      tweetBody = generateHinduFallbackTweet(selected);
+      console.warn("⚠️ IE AI failed, skipping tweet:", err.message);
+      return;
     }
 
     const cleanUrl = normalizeHinduLink(selected.link);
     const imageUrl = getHinduImageUrl(selected);
 
-    // 🟢 Hindu source signature
-    let tweetText = `🟢 ${tweetBody}`;
+    let tweetText = `${tweetBody}`;
 
-    // ── Post tweet ───────────────────────────────────────────
     if (CONSOLE_ONLY) {
       console.log("🟡 CONSOLE MODE — Tweet skipped");
       console.log(tweetText);

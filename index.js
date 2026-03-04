@@ -7,6 +7,7 @@ import { loadState, saveState } from "./utils/stateStoreCloud.js";
 import { cricbuzzNewsPollingLoop } from "./cricbuzz/cricbuzzNewsPollingLoop.js";
 import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
+import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
@@ -48,7 +49,12 @@ async function bootstrap() {
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 6);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 8);
+  }
+
+  if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
+    console.log("The Hindu news polling enabled");
+    setInterval(hinduNewsPollingLoop, 1000 * 60 * 6);
   }
 }
 

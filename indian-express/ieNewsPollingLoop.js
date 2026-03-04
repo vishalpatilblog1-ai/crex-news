@@ -115,19 +115,20 @@ export async function ieNewsPollingLoop() {
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
 
-      // if (
-      //   contextDecision?.isAlreadyCovered === true &&
-      //   contextDecision?.confidence >= 0.98
-      // ) {
-      //   const cleanLink = normalizeIELink(selected.link);
-      //   STATE.ie.seen[cleanLink] = Date.now();
-      //   STATE.ie.lastLink = cleanLink;
-      //   STATE.ie.lastTitle = selected.title;
-      //   STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+      if (
+        contextDecision?.isAlreadyCovered === true &&
+        contextDecision?.confidence >= 0.8
+      ) {
+        console.log("🔁 IE context already covered — skipping");
+        const cleanLink = normalizeIELink(selected.link);
+        STATE.ie.seen[cleanLink] = Date.now();
+        STATE.ie.lastLink = cleanLink;
+        STATE.ie.lastTitle = selected.title;
+        STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-      //   await saveState(STATE);
-      //   return;
-      // }
+        await saveState(STATE);
+        return;
+      }
     } catch (err) {
       console.warn(
         "⚠️ IE context judge failed, proceeding without dedup:",
@@ -139,37 +140,29 @@ export async function ieNewsPollingLoop() {
 
     try {
       try {
-        tweetBody = await generateClaudeTweet(
+        tweetBody = await generateGeminiTweet(
           `${parsed.headline}\n${parsed.body}`
         );
-
-        // const tweetText = await generateClaudeTweet(articleText);
       } catch (err) {
         console.warn("⚠️ Gemini failed:", err?.message || err);
       }
 
       if (!tweetBody) {
         try {
-          tweetBody = await generateGeminiTweet(
+          tweetBody = await generateClaudeTweet(
             `${parsed.headline}\n${parsed.body}`
           );
-
-          // tweetBody = await generateGPTTweet(
-          //   `${parsed.headline}\n${parsed.body}`
-          // );
         } catch (err) {
-          console.warn("❌ GPT failed:", err?.message || err);
+          console.warn("⚠️ Claude failed:", err?.message || err);
         }
       }
 
-      console.log("tweetBody IE::", tweetBody);
-
-      if (!tweetBody || tweetBody.length < 30) {
+      if (!tweetBody || tweetBody.trim().length < 30) {
         throw new Error("AI output invalid");
       }
     } catch (err) {
-      console.warn("⚠️ IE AI failed, using fallback:", err.message);
-      tweetBody = generateIEFallbackTweet(selected);
+      console.warn("⚠️ IE AI failed, skipping tweet:", err.message);
+      return;
     }
 
     let tweetText = tweetBody;
