@@ -38,7 +38,7 @@ export async function ieNewsPollingLoop() {
     };
   }
 
-  const MAX_AGE_MIN = 90;
+  const MAX_AGE_MIN = 60;
   const SEEN_RETENTION_HOURS = 6;
   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
@@ -115,19 +115,19 @@ export async function ieNewsPollingLoop() {
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
 
-      if (
-        contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.98
-      ) {
-        const cleanLink = normalizeIELink(selected.link);
-        STATE.ie.seen[cleanLink] = Date.now();
-        STATE.ie.lastLink = cleanLink;
-        STATE.ie.lastTitle = selected.title;
-        STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+      // if (
+      //   contextDecision?.isAlreadyCovered === true &&
+      //   contextDecision?.confidence >= 0.98
+      // ) {
+      //   const cleanLink = normalizeIELink(selected.link);
+      //   STATE.ie.seen[cleanLink] = Date.now();
+      //   STATE.ie.lastLink = cleanLink;
+      //   STATE.ie.lastTitle = selected.title;
+      //   STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-        await saveState(STATE);
-        return;
-      }
+      //   await saveState(STATE);
+      //   return;
+      // }
     } catch (err) {
       console.warn(
         "⚠️ IE context judge failed, proceeding without dedup:",
