@@ -132,6 +132,8 @@ export async function hinduNewsPollingLoop() {
 
     let tweetBody;
 
+    console.log("The Hindi News Link:::", normalizeHinduLink(selected.link));
+
     try {
       try {
         tweetBody = await generateClaudeTweet(
