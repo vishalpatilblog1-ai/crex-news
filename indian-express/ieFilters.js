@@ -1,8 +1,8 @@
-import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp";
+import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
 import fs from "fs";
-import { isIEBrandedImage } from "./detectIEBranding";
-import { detectBrandingWithVision } from "../cricket-addictor/ocr/detectBrandingWithVision";
-import { isRiskyTwitterImageIE } from "../cricket-addictor/ocr/detectTwitterReference";
+import { isIEBrandedImage } from "./detectIEBranding.js";
+import { detectBrandingWithVision } from "../cricket-addictor/ocr/detectBrandingWithVision.js";
+import { isRiskyTwitterImageIE } from "../cricket-addictor/ocr/detectTwitterReference.js";
 
 export function isIEArticle(item) {
   return (
