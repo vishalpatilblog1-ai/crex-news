@@ -1,3 +1,9 @@
+import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp";
+import fs from "fs";
+import { isIEBrandedImage } from "./detectIEBranding";
+import { detectBrandingWithVision } from "../cricket-addictor/ocr/detectBrandingWithVision";
+import { isRiskyTwitterImageIE } from "../cricket-addictor/ocr/detectTwitterReference";
+
 export function isIEArticle(item) {
   return (
     item.link && item.link.includes("indianexpress.com/article/sports/cricket/")
