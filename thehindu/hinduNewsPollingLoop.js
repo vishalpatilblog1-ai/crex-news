@@ -9,10 +9,9 @@ import { fetchHinduCricketRSS } from "./hinduRssFetcher.js";
 import { parseHinduArticle } from "./parseHinduArticle.js";
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import { generateHinduFallbackTweet } from "./ai/generateHinduFallbackTweet.js";
-import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
-import { generateIEFallbackTweet } from "../indian-express/ai/generateIEFallbackTweet.js";
+import { normalizeHinduImageUrl } from "../indian-express/ai/imageDetector.js";
+import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) {
@@ -99,7 +98,6 @@ export async function hinduNewsPollingLoop() {
       return;
     }
 
-    // ── Context dedupe ───────────────────────────────────────
     let contextDecision = null;
 
     try {
@@ -165,6 +163,8 @@ export async function hinduNewsPollingLoop() {
 
     const cleanUrl = normalizeHinduLink(selected.link);
     const imageUrl = getHinduImageUrl(selected);
+
+    imageUrl = normalizeHinduImageUrl(imageUrl);
 
     let tweetText = `${tweetBody}`;
 
