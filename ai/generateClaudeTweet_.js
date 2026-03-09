@@ -108,6 +108,19 @@ The story IS the stance.
 Do NOT add pressure framing or selection debate to this type of article.
 `,
 
+  opinion_piece: `
+ARTICLE TYPE: Opinion / Column / Personal Account
+
+This article is written by a named individual sharing their personal view.
+Focus on:
+- The single most compelling observation or claim they make
+- What their unique vantage point (position, history, relationship) adds to the story
+- Attribute everything clearly — this is their opinion, not yours
+
+NEVER write in first person. Extract, attribute, analyze.
+The named author's perspective IS the news — your job is to frame why it matters.
+`,
+
   preview: `
 ARTICLE TYPE: Match Preview
 
@@ -137,33 +150,12 @@ Applies to any team or format. Avoid sympathy framing. Lead with impact.
 ARTICLE TYPE: Press Conference / Quote-driven
 
 A strong quote is your hook — use it if one exists.
+Rules:
+- Attribute clearly. NEVER absorb a named person's opinion into the narrator's voice.
+- If a coach, captain, selector, or analyst makes a claim — name them in the first or second sentence.
+- Frame around what the statement reveals about team thinking or internal dynamics.
 
-ATTRIBUTION RULE:
-- Name the speaker (coach, captain, selector, analyst) in the first or second sentence.
-- NEVER absorb their opinion into the narrator's voice.
-
-ANGLE SELECTION — read the article first, then choose ONE:
-
-1. CONTRADICTION ANGLE (highest engagement — use only when earned)
-   - Use this if: what the named individual SAYS conflicts with what actually HAPPENED
-   - The gap between their words and their actions is the tweet
-   - State the contradiction directly. Do not soften it.
-   - Example trigger: coach praises player they recently dropped / selector defends decision that backfired
-   - DO NOT manufacture this angle. If the contradiction is not explicit in the article, skip this.
-
-2. REVELATION ANGLE (default — use when no clear contradiction exists)
-   - Use this if: the quote reveals something about team thinking, priorities, or internal dynamics
-   - Frame around what the statement exposes — not just what was said
-   - One layer deeper than the quote itself
-
-3. SIGNAL ANGLE (use for forward-looking press conferences)
-   - Use this if: the statement hints at a selection, tactical, or strategic decision ahead
-   - Frame around what this tells us about what comes next
-
-SELF-CHECK BEFORE FINALIZING:
-- Is the contradiction explicitly supported by facts in the article? If no → switch to Revelation.
-- Is the named individual clearly identified? If no → rewrite the opening.
-- Does the tweet end with a position or conclusion? If no → sharpen the final line.
+Avoid vague attribution. The quote reveals something — your job is to say what.
 `,
 
   milestone_record: `
@@ -180,9 +172,6 @@ Avoid pure congratulation tweets with no substance.
 `,
 };
 
-// ─────────────────────────────────────────────
-// STEP 3: Core MONEY MODE system prompt
-// ─────────────────────────────────────────────
 function buildSystemPrompt(articleTypeInstruction) {
   return `
 You are "Gully Point – MONEY MODE":
@@ -239,6 +228,15 @@ BOOKMARK VALUE RULE:
 - Include at least one insight that feels reusable or memorable
 - The reader should feel: "This explains something I'll notice again"
 
+VOICE RULE (STRICT):
+- Always write in THIRD PERSON — you are an analyst observing from outside
+- NEVER write as if you are the person quoted in the article
+- If the article is written in first person (interview, column, personal account),
+  extract the insight and attribute it to the named individual
+- Correct form: "Shashi Tharoor, who has followed Samson since age 14, says..."
+- Wrong form: "I watched Samson from age 14..."
+- The narrator is always the analyst — never the subject of the article
+
 ABSOLUTE NOs:
 - No personal attacks
 - No profanity
@@ -250,15 +248,14 @@ ${articleTypeInstruction}
 }
 
 export async function generateClaudeTweet(articleText) {
-  console.log("generateClaudeTweet::::");
+  console.log("generateClaudeTweet::");
   let articleType = "player_form";
 
   try {
     const classified = await classifyArticle(articleText);
     if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
       articleType = classified;
-
-      console.log("articleType::::", articleType);
+      console.log("articleType::", articleType);
     } else {
       console.warn(`⚠️ Unknown article type "${classified}", using default`);
     }
