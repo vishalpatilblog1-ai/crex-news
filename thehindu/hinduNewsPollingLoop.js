@@ -163,7 +163,7 @@ export async function hinduNewsPollingLoop() {
     }
 
     const cleanUrl = normalizeHinduLink(selected.link);
-    const imageUrl = getHinduImageUrl(selected);
+    let imageUrl = getHinduImageUrl(selected);
 
     imageUrl = normalizeHinduImageUrl(imageUrl);
 
