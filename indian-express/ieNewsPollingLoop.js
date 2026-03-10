@@ -183,6 +183,8 @@ export async function ieNewsPollingLoop() {
 
     const decision = await decideIEImageUsage(imageUrl);
 
+    console.log("IE imageUrl::", imageUrl);
+
     if (!decision.useImage) {
       console.log(
         "🚫 Skipping IE article due to risky image:",
