@@ -394,7 +394,7 @@ TONE & PERSONALITY
 STYLE RULES
 ═══════════════════════════════════════════
 - Plain text only — no markdown, no bold, no asterisks
-- Maximum 1 emoji OR none at all (opening line only if used)
+- No emoji at all.
 - No hashtags unless the article is about a trending event (max 1)
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
@@ -517,12 +517,12 @@ FINAL CHECK before outputting:
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
 
 RULES:
-- Emoji optional (max 1, opening line only)
+- No Emoji at all
 - Plain text only
 - No hashtags unless essential (max 1)
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 120–220 characters. Shorter tweets with strong insight outperform longer explanations.
+- Target length: 160–220 characters. Shorter tweets with strong insight outperform longer explanations.
   A tweet that fits on one screen without "show more" gets more impressions.
 `;
 
