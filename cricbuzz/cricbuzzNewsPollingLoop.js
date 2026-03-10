@@ -135,17 +135,6 @@ export async function cricbuzzNewsPollingLoop() {
       seenKey: newsKey,
     });
     STATE.cricbuzz.seen[newsKey] = Date.now();
-    // STATE.cricbuzz.queued[newsKey] = Date.now();
-
-    // STATE.cricktracker.seen[cleanLink] = Date.now();
-    // if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
-    //   STATE.dailyContext.contexts.push({
-    //     summary: decision.newContext,
-    //     source: "CT",
-    //     link: cleanLink,
-    //     createdAt: new Date().toISOString(),
-    //   });
-    // }
 
     await saveState(STATE);
     console.log(`📥 Queued Cricbuzz tweet: ${selected.hline}`);

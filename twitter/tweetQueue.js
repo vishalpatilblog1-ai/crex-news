@@ -1,8 +1,9 @@
 // twitter/tweetQueue.js
 
+import { generateNewsReplyTweet } from "../ai/generateNewsReplyTweet.js";
 import { saveState } from "../utils/stateStoreCloud.js";
-import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
-import { postTweet_ie_web } from "./twitter.js";
+// import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
+import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
 /**
  * Global timing controls
@@ -10,20 +11,11 @@ import { postTweet_ie_web } from "./twitter.js";
  */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-/**
- * Tweet delay window (human-like)
- */
-const MIN_TWEET_DELAY = 5 * 60 * 1000; // 5 minutes
-const MAX_TWEET_DELAY = 10 * 60 * 1000; // 10 minutes
+const MIN_TWEET_DELAY = 5 * 60 * 1000;
+const MAX_TWEET_DELAY = 10 * 60 * 1000;
 
-/**
- * Console-only mode (no real posting)
- */
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-/**
- * Generate random delay between MIN and MAX
- */
 function randomTweetDelay() {
   return (
     MIN_TWEET_DELAY +
@@ -81,11 +73,10 @@ function markTweeted(source) {
 /**
  * Add tweet to queue (id-deduped)
  */
-export function enqueueTweet({ id, source, text, imageUrl }) {
+export function enqueueTweet({ id, source, text, imageUrl, articleBody }) {
   const STATE = global.STATE;
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
-  // Prevent duplicate queueing
   if (STATE.tweetQueue.some((t) => t.id === id)) return;
 
   STATE.tweetQueue.push({
@@ -93,6 +84,7 @@ export function enqueueTweet({ id, source, text, imageUrl }) {
     source,
     text,
     imageUrl,
+    // _articleBody: articleBody,
     createdAt: Date.now(),
   });
 
@@ -121,10 +113,44 @@ export async function tryFlushTweetQueue() {
       return true;
     }
 
+    // if (next.imageUrl) {
+    //   await tweetNewsWithImage(next.text, next.imageUrl);
+    // } else {
+    //   await postTweet_ie_web({ text: next.text });
+    // }
+
+    let tweetResponse;
+
     if (next.imageUrl) {
-      await tweetNewsWithImage(next.text, next.imageUrl);
+      tweetResponse = await tweetNewsWithImage(next.text, next.imageUrl);
     } else {
-      await postTweet_ie_web({ text: next.text });
+      tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+    }
+
+    // console.log("next:::::", next);
+    console.log("tweetResponse:::::", next.text);
+    const tweetId = tweetResponse?.data?.id;
+
+    console.log("tweetId:::", tweetId, "source::", next.source);
+
+    if (tweetId && next.source == "CB") {
+      console.log("started ...");
+      setTimeout(async () => {
+        try {
+          const replyText = await generateNewsReplyTweet(next.text);
+
+          if (!replyText) return;
+
+          await tweetNewsWithoutImage({
+            text: replyText,
+            replyTo: tweetId,
+          });
+
+          console.log(`↪️ ${next.source} reply posted::: ${replyText}`);
+        } catch (err) {
+          console.error("❌ IE reply failed:", err);
+        }
+      }, 25000);
     }
 
     markTweeted("QUEUE");

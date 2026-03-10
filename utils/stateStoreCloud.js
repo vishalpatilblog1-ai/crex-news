@@ -28,6 +28,40 @@ export async function loadState() {
   }
 }
 
+// export async function saveState(stateObj, reason = "no-reason-provided") {
+//   console.log(`💾 Saving state to JSONBin | Reason: ${reason}`);
+
+//   try {
+//     // Deep clone state so we don't mutate the in-memory STATE
+//     const stateToSave = JSON.parse(JSON.stringify(stateObj));
+
+//     // Remove heavy fields from queue items before saving
+//     if (stateToSave?.tweetQueue?.length) {
+//       stateToSave.tweetQueue = stateToSave.tweetQueue.map((t) => {
+//         const { _articleBody, ...rest } = t;
+//         return rest;
+//       });
+//     }
+
+//     const res = await fetch(`${BASE_URL}${BIN_ID}`, {
+//       method: "PUT",
+//       headers: {
+//         "Content-Type": "application/json",
+//         "X-Master-Key": API_KEY,
+//       },
+//       body: JSON.stringify(stateToSave),
+//     });
+
+//     if (!res.ok) {
+//       console.log("⚠ JSONBin save failed:", res.status);
+//     } else {
+//       console.log("💾 State saved to JSONBin successfully");
+//     }
+//   } catch (err) {
+//     console.log("⚠ JSONBin save error:", err);
+//   }
+// }
+
 export async function saveState(stateObj, reason = "no-reason-provided") {
   console.log(`💾 Saving state to JSONBin | Reason: ${reason}`);
   try {

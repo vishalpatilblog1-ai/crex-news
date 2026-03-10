@@ -1,6 +1,9 @@
 // twitter.js
 import { TwitterApi } from "twitter-api-v2";
 import dotenv from "dotenv";
+import axios from "axios";
+import fs from "fs";
+import path from "path";
 import { createLogger } from "../utils/logger.js";
 
 dotenv.config();
@@ -12,6 +15,97 @@ const twitterClient = new TwitterApi({
   accessToken: process.env.X_ACCESS_TOKEN,
   accessSecret: process.env.X_ACCESS_SECRET,
 });
+
+const rwClient = twitterClient.readWrite;
+
+async function downloadImage(url) {
+  fs.mkdirSync("./tmp", { recursive: true });
+  const filePath = "./tmp/news.jpg";
+
+  const res = await axios.get(url, {
+    responseType: "arraybuffer",
+    headers: {
+      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+      "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
+    },
+  });
+
+  fs.writeFileSync(filePath, res.data);
+  return filePath;
+}
+
+export async function tweetNewsWithImage(text, imageUrl) {
+  try {
+    const EXPERIMENT_TAGS = [];
+
+    let finalText = text;
+
+    const missingTags = EXPERIMENT_TAGS.filter(
+      (tag) => !finalText.includes(tag)
+    );
+
+    if (missingTags.length > 0) {
+      finalText += `\n\n${missingTags.join(" ")}`;
+    }
+    console.log("⬇ Downloading image...");
+    const downloadedPath = await downloadImage(imageUrl);
+
+    console.log("📤 Uploading image to Twitter...");
+    const data = fs.readFileSync(downloadedPath);
+    const mediaId = await rwClient.v1.uploadMedia(data, {
+      mimeType: "image/jpeg",
+    });
+
+    console.log("📝 Tweeting...");
+    const tweet = await rwClient.v2.tweet({
+      text: finalText,
+      media: { media_ids: [mediaId] },
+    });
+
+    console.log("🚀 Tweet Posted:", tweet.data.id);
+
+    fs.unlinkSync(downloadedPath);
+    return tweet;
+  } catch (err) {
+    console.error("❌ Error tweeting news image:", err);
+  }
+}
+
+export async function tweetNewsWithoutImage(payload) {
+  try {
+    const text = typeof payload === "string" ? payload : payload?.text;
+    const media_ids = payload?.media_ids;
+    const replyTo = payload?.replyTo;
+
+    if (typeof text !== "string") {
+      log("❌ Invalid tweet (not a string)");
+      console.log("INVALID TWEET:", payload);
+      return null;
+    }
+
+    if (!text.trim()) {
+      log("⚠ Empty tweet skipped");
+      return null;
+    }
+
+    const tweetPayload = {
+      text,
+      ...(media_ids?.length ? { media: { media_ids } } : {}),
+      ...(replyTo ? { reply: { in_reply_to_tweet_id: replyTo } } : {}),
+    };
+
+    const res = await twitterClient.v2.tweet(tweetPayload);
+
+    log("📤 Tweet POSTED via API:");
+    log(JSON.stringify(res.data, null, 2));
+
+    return res.data;
+  } catch (err) {
+    log("❌ Error posting tweet (API):");
+    console.error(err);
+    return null;
+  }
+}
 
 export async function postTweet_bbc_console(payload) {
   const text = typeof payload === "string" ? payload : payload?.text;
@@ -58,37 +152,73 @@ ${text}
   return { status: "console_ok", text };
 }
 
-export async function postTweet_ie_web(payload) {
-  try {
-    const text = typeof payload === "string" ? payload : payload?.text;
-    const media_ids = payload?.media_ids;
+// export async function postTweet_ie_web(payload) {
+//   try {
+//     const text = typeof payload === "string" ? payload : payload?.text;
+//     const media_ids = payload?.media_ids;
+//     const replyTo = payload?.replyTo;
 
-    if (typeof text !== "string") {
-      log("❌ Invalid tweet (not a string)");
-      console.log("INVALID TWEET:", payload);
-      return null;
-    }
+//     if (typeof text !== "string") {
+//       log("❌ Invalid tweet (not a string)");
+//       console.log("INVALID TWEET:", payload);
+//       return null;
+//     }
 
-    if (!text.trim()) {
-      log("⚠ Empty tweet skipped");
-      return null;
-    }
+//     if (!text.trim()) {
+//       log("⚠ Empty tweet skipped");
+//       return null;
+//     }
 
-    const res = await twitterClient.v2.tweet({
-      text,
-      ...(media_ids?.length ? { media: { media_ids } } : {}),
-    });
+//     const tweetPayload = {
+//       text,
+//       ...(media_ids?.length ? { media: { media_ids } } : {}),
+//       ...(replyTo ? { reply: { in_reply_to_tweet_id: replyTo } } : {}),
+//     };
 
-    log("📤 Tweet POSTED via API:");
-    log(JSON.stringify(res.data, null, 2));
+//     const res = await twitterClient.v2.tweet(tweetPayload);
 
-    return res.data;
-  } catch (err) {
-    log("❌ Error posting tweet (API):");
-    console.error(err);
-    return null;
-  }
-}
+//     log("📤 Tweet POSTED via API:");
+//     log(JSON.stringify(res.data, null, 2));
+
+//     return res.data;
+//   } catch (err) {
+//     log("❌ Error posting tweet (API):");
+//     console.error(err);
+//     return null;
+//   }
+// }
+
+// export async function postTweet_ie_web(payload) {
+//   try {
+//     const text = typeof payload === "string" ? payload : payload?.text;
+//     const media_ids = payload?.media_ids;
+
+//     if (typeof text !== "string") {
+//       log("❌ Invalid tweet (not a string)");
+//       console.log("INVALID TWEET:", payload);
+//       return null;
+//     }
+
+//     if (!text.trim()) {
+//       log("⚠ Empty tweet skipped");
+//       return null;
+//     }
+
+//     const res = await twitterClient.v2.tweet({
+//       text,
+//       ...(media_ids?.length ? { media: { media_ids } } : {}),
+//     });
+
+//     log("📤 Tweet POSTED via API:");
+//     log(JSON.stringify(res.data, null, 2));
+
+//     return res.data;
+//   } catch (err) {
+//     log("❌ Error posting tweet (API):");
+//     console.error(err);
+//     return null;
+//   }
+// }
 
 export async function postTweet_bbc_web(payload) {
   try {

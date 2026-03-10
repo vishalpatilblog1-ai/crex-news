@@ -1,5 +1,3 @@
-import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
-import { postTweet_ie_web } from "../twitter/twitter.js"; // consider renaming later
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { fetchHinduArticle } from "./fetchHinduArticle.js";
@@ -11,6 +9,7 @@ import { parseHinduArticle } from "./parseHinduArticle.js";
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
 import { normalizeHinduImageUrl } from "../indian-express/ai/imageDetector.js";
+import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 
 export async function hinduNewsPollingLoop() {
@@ -152,7 +151,7 @@ export async function hinduNewsPollingLoop() {
         }
       }
 
-      console.log("tweetBody IE::", tweetBody);
+      console.log("tweetBody Hindu::", tweetBody);
 
       if (!tweetBody || tweetBody.length < 30) {
         throw new Error("AI output invalid");
@@ -169,24 +168,43 @@ export async function hinduNewsPollingLoop() {
 
     let tweetText = `${tweetBody}`;
 
+    const tweetId = `HINDU:${cleanUrl}`;
+
     if (CONSOLE_ONLY) {
-      console.log("🟡 CONSOLE MODE — Tweet skipped");
-      console.log(tweetText);
-    } else {
-      try {
-        if (imageUrl) {
-          await tweetWithNativeImage({ text: tweetText, imageUrl });
-        } else {
-          await postTweet_ie_web({ text: tweetText });
-        }
-      } catch (err) {
-        console.warn(
-          "⚠️ Hindu image tweet failed, fallback to text-only:",
-          err.message
-        );
-        await postTweet_ie_web({ text: tweetText });
-      }
+      console.log("tweetText::", tweetText);
+      console.log("🧪 CONSOLE_ONLY mode. Not enqueueing.");
+      return;
     }
+
+    enqueueTweet({
+      id: tweetId,
+      source: "HINDU",
+      text: tweetText,
+      imageUrl,
+      seenKey: cleanUrl,
+      // articleBody: parsed.body,
+    });
+
+    console.log(`📥 Queued HINDU tweet: ${selected.title}`);
+
+    // if (CONSOLE_ONLY) {
+    //   console.log("🟡 CONSOLE MODE — Tweet skipped");
+    //   console.log(tweetText);
+    // } else {
+    //   try {
+    //     if (imageUrl) {
+    //       await tweetWithNativeImage({ text: tweetText, imageUrl });
+    //     } else {
+    //       await postTweet_ie_web({ text: tweetText });
+    //     }
+    //   } catch (err) {
+    //     console.warn(
+    //       "⚠️ Hindu image tweet failed, fallback to text-only:",
+    //       err.message
+    //     );
+    //     await postTweet_ie_web({ text: tweetText });
+    //   }
+    // }
 
     // ── Update state ─────────────────────────────────────────
     STATE.hindu.seen[cleanUrl] = Date.now();

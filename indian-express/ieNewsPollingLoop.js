@@ -169,8 +169,6 @@ export async function ieNewsPollingLoop() {
 
     let imageUrl = getIEImageUrl(selected);
 
-    console.log("imageUrl IE before::", imageUrl);
-
     if (!imageUrl) {
       console.log("🚫 Skipping IE article — no image found");
       const cleanUrl = normalizeIELink(selected.link);
@@ -202,7 +200,7 @@ export async function ieNewsPollingLoop() {
     }
 
     console.log("imageUrl IE After::", imageUrl);
-    // console.log("addSource IE::", addSource);
+
     const cleanUrl = normalizeIELink(selected.link);
     const tweetId = `IE:${cleanUrl}`;
 
@@ -216,10 +214,9 @@ export async function ieNewsPollingLoop() {
       id: tweetId,
       source: "IE",
       text: tweetText,
-      // imageUrl: imageUrl || null,
-      // imageUrl: useImage ? imageUrl : null,
       imageUrl,
       seenKey: cleanUrl,
+      // articleBody: parsed.body,
     });
 
     console.log(`📥 Queued IE tweet: ${selected.title}`);
