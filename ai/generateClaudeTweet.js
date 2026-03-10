@@ -55,7 +55,7 @@ ${articleText}
     messages: [{ role: "user", content: prompt }],
   });
 
-  return response.content[0].text.trim().toLowerCase();
+  return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
 
 // ─── ENGAGEMENT FRAMEWORKS ───────────────────────────────────────────────────
@@ -97,17 +97,63 @@ PATTERN H — THE SHARP PUNCH
 One short sentence that makes the insight land harder by contrast.
 Works best as an opening hook or closing line — never bury it in the middle.
 The punch works because everything around it is longer. Isolation is the technique.
-
 Examples (structure only — NEVER repeat these lines):
 "Powerplay lost. Match lost."
 "Three overs too late."
 "The scoreboard says 96 runs. The Powerplay says everything."
-
 Rules:
 - Maximum 8 words
 - No emoji, no qualifier words ("really", "quite", "perhaps")
-- Must be earned — only use after the context has been established, OR as an opener that the rest of the tweet then explains
+- Must be earned — only use after context has been established, OR as an opener the rest of the tweet then explains
 - Do NOT use as a standalone tweet — it needs surrounding lines to give it weight
+
+PATTERN I — THE CURIOSITY GAP
+Open with something that makes the reader feel they're missing context — forcing them to read on.
+The gap is between what they assume and what you're about to reveal.
+Examples (structure only — NEVER repeat these lines):
+"The number New Zealand won't want to see isn't 256."
+"India didn't win this in the final. They won it in over three."
+Rules:
+- The opening line must feel genuinely incomplete — not a clickbait question
+- The rest of the tweet must pay off the gap with a specific insight
+- Works best for match_report and tactical_analysis types
+
+PATTERN J — THE UNCOMFORTABLE TRUTH
+State something obviously true that mainstream cricket media isn't saying out loud.
+Fans feel validated. Critics feel challenged. Both reply.
+Examples (structure only — NEVER repeat these lines):
+"Gambhir's best asset isn't tactics. It's that the players believe him."
+"The bowling attack didn't improve. The pitches did."
+Rules:
+- Must be grounded in something the article supports — not manufactured controversy
+- Calm delivery only — the discomfort comes from the truth, not the tone
+- Works best for press_conference, opinion_piece, and selection_news types
+
+PATTERN K — THE BEFORE/AFTER CONTRAST
+Two states separated by one event. Visually clean as plain text. Extremely shareable.
+Examples (structure only — NEVER repeat these lines):
+"Six weeks ago Samson was watching from the dugout.
+Today he holds the Player of the Tournament trophy."
+Rules:
+- The contrast must be concrete — specific timeframe, specific state
+- One line before, one line after, separated by a line break
+- Works best for human_interest, milestone_record, and player_form types
+
+PATTERN L — THE NUMBER SANDWICH
+Stat → insight → stat. The second number recontextualises the first.
+Bookmark-friendly because it teaches the reader something new about a number they already knew.
+Examples (structure only — NEVER repeat these lines):
+"24 sixes. One tournament. Samson hit a quarter of India's World Cup maximums — the most ever by a batter in a single edition."
+Rules:
+- Both numbers must come from the article — never fabricate
+- The insight between them must connect the two, not just list them
+- Works best for milestone_record and player_form types
+
+PATTERN DIVERSITY RULE (important):
+Do not default to the same pattern repeatedly.
+Rotate across patterns based on what the article genuinely supports.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
+The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
 const ARTICLE_TYPE_INSTRUCTIONS = {
@@ -124,7 +170,7 @@ Focus on:
 - The player who changed the game's shape — not just who scored most
 - What this result reveals about the team's identity going forward
 
-Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), or PATTERN H (Sharp Punch) from the engagement mechanics.
+Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
 Lead with insight. The scoreline is context, not the point.
 Avoid: ball-by-ball recap, "team played well", generic momentum language.
 `,
@@ -142,7 +188,7 @@ Focus on:
 - The gap between what the team said they'd do and what they actually did
 - What a better decision would have looked like — without being vague
 
-Use PATTERN B (Specific Contradiction), PATTERN C (Loaded Stat), or PATTERN H (Sharp Punch) from the engagement mechanics.
+Use PATTERN B (Specific Contradiction), PATTERN C (Loaded Stat), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
 The reader should finish the tweet thinking: "I'll watch for that next time."
 Avoid: vague "poor decision-making", scoreline recap, praise without a specific reason.
 `,
@@ -160,7 +206,7 @@ Focus on:
 - The player displaced and why that displacement matters
 - The one balance question this combination creates OR solves
 
-Use PATTERN E (Open Verdict) from the engagement mechanics — end with the tension, not the conclusion.
+Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagement mechanics — end with the tension, not the conclusion.
 Name both the selected player AND the one left out if both are newsworthy.
 Avoid: "bold call", "surprise pick", "questions will be asked".
 `,
@@ -178,7 +224,7 @@ Focus on:
 - What does this form reveal about the player's role or confidence right now?
 - What does it force management to confront — even if they don't want to?
 
-Use PATTERN C (Loaded Stat) or PATTERN F (Earned Compliment) from the engagement mechanics.
+Use PATTERN C (Loaded Stat), PATTERN F (Earned Compliment), or PATTERN L (Number Sandwich) from the engagement mechanics.
 Use stats only when they reveal a trend. One strong evaluative phrase allowed.
 Avoid single-match overreaction. Avoid pure celebration without substance.
 `,
@@ -196,7 +242,7 @@ Focus on:
 - The contrast between past and present — stated in concrete terms, not vague inspiration
 - If a powerful quote exists (especially in a regional language) — consider opening with it
 
-Use PATTERN D (Historical Anchor) or PATTERN F (Earned Compliment) from the engagement mechanics.
+Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast) from the engagement mechanics.
 Warmth is allowed here. Sentimentality is not.
 Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
 `,
@@ -214,7 +260,7 @@ Focus on:
 - What their unique position (career, history, relationship to the subject) adds to the argument
 - Attribute everything to them — never absorb their opinion into the narrator's voice
 
-Use PATTERN A (Reframe) or PATTERN E (Open Verdict) from the engagement mechanics.
+Use PATTERN A (Reframe), PATTERN E (Open Verdict), or PATTERN J (Uncomfortable Truth) from the engagement mechanics.
 NEVER write in first person. Extract, attribute, analyze.
 The named author's perspective IS the news. Your job is to say why it matters.
 `,
@@ -292,7 +338,7 @@ Focus on:
 - Who else has done this, when, and under what conditions — context that adds weight
 - What the record says about the era, the format, or the team around them
 
-Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), or PATTERN H (Sharp Punch) from the engagement mechanics.
+Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch), or PATTERN L (Number Sandwich) from the engagement mechanics.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
 `,
 };
@@ -309,6 +355,15 @@ You cover ALL of cricket — every format (Test, ODI, T20, T20I),
 every level (international, domestic, U19, women's, age-group),
 every team and tournament globally.
 Never assume a specific format, gender, or tournament unless the article states it.
+
+═══════════════════════════════════════════
+PRIORITY ORDER — if any rules conflict, follow this
+═══════════════════════════════════════════
+1. Attribution Rule — naming the source is never optional
+2. Language Rules — banned phrases are absolute, no exceptions
+3. Article Type Instruction — defines the angle and engagement target
+4. Engagement Frameworks — choose the best pattern for this article
+5. Style Rules — apply throughout, never override rules 1–3
 
 ═══════════════════════════════════════════
 OBJECTIVE
@@ -343,7 +398,16 @@ STYLE RULES
 - No hashtags unless the article is about a trending event (max 1)
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
-- Vary sentence length — short punches followed by one longer analytical line
+
+Human rhythm rule:
+Sentence fragments (3–6 words) are allowed and encouraged for emphasis.
+Not every sentence needs to be grammatically complete.
+Avoid writing three sentences of similar length in a row — vary the rhythm naturally.
+Combine one short punch line with one longer analytical sentence. That pairing feels human.
+
+Contrast rule:
+Use contrast words — "but", "yet", "instead", "then" — when they create narrative tension.
+They make the tweet feel like storytelling, not reporting.
 
 ═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
@@ -449,6 +513,8 @@ FINAL CHECK before outputting:
 - Is there at least one specific detail (name, number, decision) that grounds the opinion?
 - Could a journalist or selector quote this tweet? (It should pass that test)
 - Is the stance clear enough to attract both agreement AND disagreement?
+- Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
+- Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
 
 RULES:
 - Emoji optional (max 1, opening line only)
@@ -456,6 +522,8 @@ RULES:
 - No hashtags unless essential (max 1)
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
+- Target length: 120–220 characters. Shorter tweets with strong insight outperform longer explanations.
+  A tweet that fits on one screen without "show more" gets more impressions.
 `;
 
   try {

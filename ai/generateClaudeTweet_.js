@@ -92,6 +92,22 @@ Praise that has analytical weight, not fan-page warmth.
 PATTERN G — THE ACT-OVER-QUOTE
 When the significance of WHO is speaking (or that they spoke at all) outweighs WHAT they said — lead with the act.
 "MS Dhoni breaks a near two-year social media silence — and the first person he publicly validates is Gambhir."
+
+PATTERN H — THE SHARP PUNCH
+One short sentence that makes the insight land harder by contrast.
+Works best as an opening hook or closing line — never bury it in the middle.
+The punch works because everything around it is longer. Isolation is the technique.
+
+Examples (structure only — NEVER repeat these lines):
+"Powerplay lost. Match lost."
+"Three overs too late."
+"The scoreboard says 96 runs. The Powerplay says everything."
+
+Rules:
+- Maximum 8 words
+- No emoji, no qualifier words ("really", "quite", "perhaps")
+- Must be earned — only use after the context has been established, OR as an opener that the rest of the tweet then explains
+- Do NOT use as a standalone tweet — it needs surrounding lines to give it weight
 `;
 
 const ARTICLE_TYPE_INSTRUCTIONS = {
@@ -108,7 +124,7 @@ Focus on:
 - The player who changed the game's shape — not just who scored most
 - What this result reveals about the team's identity going forward
 
-Use PATTERN A (Reframe) or PATTERN B (Specific Contradiction) from the engagement mechanics.
+Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), or PATTERN H (Sharp Punch) from the engagement mechanics.
 Lead with insight. The scoreline is context, not the point.
 Avoid: ball-by-ball recap, "team played well", generic momentum language.
 `,
@@ -126,7 +142,7 @@ Focus on:
 - The gap between what the team said they'd do and what they actually did
 - What a better decision would have looked like — without being vague
 
-Use PATTERN B (Specific Contradiction) or PATTERN C (Loaded Stat) from the engagement mechanics.
+Use PATTERN B (Specific Contradiction), PATTERN C (Loaded Stat), or PATTERN H (Sharp Punch) from the engagement mechanics.
 The reader should finish the tweet thinking: "I'll watch for that next time."
 Avoid: vague "poor decision-making", scoreline recap, praise without a specific reason.
 `,
@@ -276,7 +292,7 @@ Focus on:
 - Who else has done this, when, and under what conditions — context that adds weight
 - What the record says about the era, the format, or the team around them
 
-Use PATTERN C (Loaded Stat) or PATTERN D (Historical Anchor) from the engagement mechanics.
+Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), or PATTERN H (Sharp Punch) from the engagement mechanics.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
 `,
 };
