@@ -543,7 +543,7 @@ RULES:
 - No hashtags unless essential (max 1)
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 160–220 characters. Shorter tweets with strong insight outperform longer explanations.
+- Target length: 140–220 characters. Shorter tweets with strong insight outperform longer explanations.
   A tweet that fits on one screen without "show more" gets more impressions.
 `;
 
