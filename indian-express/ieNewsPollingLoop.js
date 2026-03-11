@@ -140,7 +140,7 @@ export async function ieNewsPollingLoop() {
 
     try {
       try {
-        tweetBody = await generateGeminiTweet(
+        tweetBody = await generateClaudeTweet(
           `${parsed.headline}\n${parsed.body}`
         );
       } catch (err) {
@@ -149,7 +149,7 @@ export async function ieNewsPollingLoop() {
 
       if (!tweetBody) {
         try {
-          tweetBody = await generateClaudeTweet(
+          tweetBody = await generateGeminiTweet(
             `${parsed.headline}\n${parsed.body}`
           );
         } catch (err) {
