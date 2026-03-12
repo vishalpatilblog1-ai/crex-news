@@ -70,9 +70,6 @@ function markTweeted(source) {
   );
 }
 
-/**
- * Add tweet to queue (id-deduped)
- */
 export function enqueueTweet({ id, source, text, imageUrl, articleBody }) {
   const STATE = global.STATE;
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
@@ -113,12 +110,6 @@ export async function tryFlushTweetQueue() {
       return true;
     }
 
-    // if (next.imageUrl) {
-    //   await tweetNewsWithImage(next.text, next.imageUrl);
-    // } else {
-    //   await postTweet_ie_web({ text: next.text });
-    // }
-
     let tweetResponse;
 
     if (next.imageUrl) {
@@ -127,31 +118,29 @@ export async function tryFlushTweetQueue() {
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
     }
 
-    // console.log("next:::::", next);
-    console.log("tweetResponse:::::", next.text);
     const tweetId = tweetResponse?.data?.id;
 
-    console.log("tweetId:::", tweetId, "source::", next.source);
+    // temporary commented
 
-    if (tweetId && next.source == "CB") {
-      console.log("started ...");
-      setTimeout(async () => {
-        try {
-          const replyText = await generateNewsReplyTweet(next.text);
+    // if (tweetId && next.source == "CB") {
+    //   console.log("started ...");
+    //   setTimeout(async () => {
+    //     try {
+    //       const replyText = await generateNewsReplyTweet(next.text);
 
-          if (!replyText) return;
+    //       if (!replyText) return;
 
-          await tweetNewsWithoutImage({
-            text: replyText,
-            replyTo: tweetId,
-          });
+    //       await tweetNewsWithoutImage({
+    //         text: replyText,
+    //         replyTo: tweetId,
+    //       });
 
-          console.log(`↪️ ${next.source} reply posted::: ${replyText}`);
-        } catch (err) {
-          console.error("❌ IE reply failed:", err);
-        }
-      }, 25000);
-    }
+    //       console.log(`↪️ ${next.source} reply posted::: ${replyText}`);
+    //     } catch (err) {
+    //       console.error("❌ IE reply failed:", err);
+    //     }
+    //   }, 25000);
+    // }
 
     markTweeted("QUEUE");
     await saveState(STATE);
@@ -161,16 +150,12 @@ export async function tryFlushTweetQueue() {
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);
 
-    // Put tweet back at the front
     STATE.tweetQueue.unshift(next);
     await saveState(STATE);
     return false;
   }
 }
 
-/**
- * Append punctuation-based source signature
- */
 export function applySourceSignature(text, source) {
   const signatureMap = {
     // CA: ".",
