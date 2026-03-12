@@ -218,7 +218,6 @@ export async function ieNewsPollingLoop() {
       text: tweetText,
       imageUrl,
       seenKey: cleanUrl,
-      // articleBody: parsed.body,
     });
 
     console.log(`📥 Queued IE tweet: ${selected.title}`);

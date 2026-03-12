@@ -1,8 +1,6 @@
 // crictracker/ctNewsPollingLoop.js
 
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
-import { postTweet_ie_web } from "../twitter/twitter.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { isBlockedCAHeadline } from "../cricket-addictor/caHeadlineFilter.js";
@@ -16,7 +14,7 @@ import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
 import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 
 export async function ctNewsPollingLoop() {
@@ -123,14 +121,16 @@ export async function ctNewsPollingLoop() {
   let tweetText = null;
 
   try {
-    tweetText = await generateGeminiTweet(`${parsed.headline}\n${parsed.body}`);
+    tweetText = await generateClaudeTweet(`${parsed.headline}\n${parsed.body}`);
   } catch (err) {
     console.warn("⚠️ Gemini failed:", err?.message || err);
   }
 
   if (!tweetText) {
     try {
-      tweetText = await generateGPTTweet(`${parsed.headline}\n${parsed.body}`);
+      tweetText = await generateGeminiTweet(
+        `${parsed.headline}\n${parsed.body}`
+      );
     } catch (err) {
       console.warn("❌ GPT failed:", err?.message || err);
     }
@@ -153,7 +153,14 @@ export async function ctNewsPollingLoop() {
     source: "CT",
     text: tweetText,
     imageUrl: useImage ? imageUrl : null,
+    seenKey: cleanLink,
   });
+
+  console.log(`📥 Queued CT tweet: ${parsed.headline}`);
+
+  if (useImage && imageUrl) {
+    STATE.usedImages[imageUrl] = Date.now();
+  }
 
   // if (CONSOLE_ONLY) {
   //   console.log("🧪 CONSOLE_ONLY would publish:", {
