@@ -1,9 +1,8 @@
-// ieNewsPollingLoop.js
+// ndtvnewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import { decideIEImageUsage } from "../indian-express/ieFilters.js";
 // import { fetchIEArticle } from "../indian-express/fetchIEArticle.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -20,7 +19,7 @@ import { parseNDTVArticle } from "./parseNDTVArticle.js";
 // import { fetchIECricketRSS } from "./ieRssFetcher.js";
 // import { parseIEArticle } from "./parseIEArticle.js";
 
-export async function ndtvNewspolling() {
+export async function ndtvNewspolling____() {
   if (!global.STATE) {
     console.log("⚠️ global.STATE not ready. Skipping IE polling.");
     return;
