@@ -83,7 +83,7 @@ export async function cricbuzzNewsPollingLoop() {
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
 
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.95) {
+      if (decision?.isAlreadyCovered && decision?.confidence >= 0.9) {
         console.log("🔴 Cricbuzz skipped — already covered context");
         STATE.cricbuzz.seen[newsKey] = Date.now();
         await saveState(STATE);
