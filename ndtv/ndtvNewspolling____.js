@@ -88,11 +88,11 @@ export async function ndtvNewspolling____() {
     }
 
     if (!selected) {
-      console.log("🟡 No eligible IE articles (age + dedupe)");
+      console.log("🟡 No eligible NDTV articles (age + dedupe)");
       return;
     }
 
-    const html = await fetchNDTVArticle(selected.link);
+    // const html = await fetchNDTVArticle(selected.link);
 
     // const parsed = parseNDTVArticle(html);
 
@@ -142,7 +142,7 @@ export async function ndtvNewspolling____() {
 
       if (
         contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.8
+        contextDecision?.confidence >= 0.95
       ) {
         console.log("🔁 IE context already covered — skipping");
         const cleanLink = normalizeNDTVLink(selected.link);

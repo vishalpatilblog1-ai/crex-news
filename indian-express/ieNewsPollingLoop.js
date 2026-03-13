@@ -117,7 +117,7 @@ export async function ieNewsPollingLoop() {
 
       if (
         contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.8
+        contextDecision?.confidence >= 0.95
       ) {
         console.log("🔁 IE context already covered — skipping");
         const cleanLink = normalizeIELink(selected.link);
