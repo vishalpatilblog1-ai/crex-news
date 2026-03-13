@@ -151,7 +151,7 @@ export async function ndtvNewspolling____() {
         STATE.ndtv.lastTitle = selected.title;
         STATE.ndtv.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-        // await saveState(STATE);
+        await saveState(STATE);
         return;
       }
     } catch (err) {
