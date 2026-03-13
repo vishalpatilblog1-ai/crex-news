@@ -54,9 +54,30 @@ async function bootstrap() {
     setInterval(ieNewsPollingLoop, 1000 * 60 * 8);
   }
 
+  // if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
+  //   console.log("📰 Ndtv news polling enabled");
+  //   setInterval(ndtvNewspolling____, 1000 * 60 * 8);
+  // }
+
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
-    console.log("📰 Ndtv news polling enabled");
-    setInterval(ndtvNewspolling____, 1000 * 60 * 8);
+    console.log("📰 NDTV news polling enabled");
+
+    async function runLoop() {
+      try {
+        await ndtvNewspolling____();
+      } catch (err) {
+        console.error("❌ ndtvNewspolling crashed:", err.message);
+      }
+
+      const delay =
+        Math.random() < 0.1
+          ? 60000 + Math.random() * 30000
+          : 25000 + Math.random() * 20000;
+      console.log(`⏱ Next NDTV poll in ${(delay / 1000).toFixed(1)}s`);
+      setTimeout(runLoop, delay);
+    }
+
+    runLoop();
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {

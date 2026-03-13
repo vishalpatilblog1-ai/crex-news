@@ -1,14 +1,23 @@
 // twitter/tweetQueue.js
 
-import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
+import { generateNewsReplyTweet } from "../ai/generateNewsReplyTweet.js";
 import { saveState } from "../utils/stateStoreCloud.js";
-import { postTweet_ie_web } from "./twitter.js";
+// import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
+import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
-const GLOBAL_TWEET_COOLDOWN_MS = 60 * 1000; // 1 minute
+/**
+ * Global timing controls
+ * These survive across polling cycles
+ */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-const MIN_TWEET_DELAY = 5 * 60 * 1000; // 5 min
-const MAX_TWEET_DELAY = 8 * 60 * 1000; // 8 min
+const MIN_TWEET_DELAY = 5 * 60 * 1000;
+const MAX_TWEET_DELAY = 10 * 60 * 1000;
+
+// const MIN_TWEET_DELAY = 5 * 1000;
+// const MAX_TWEET_DELAY = 10 * 1000;
+
+const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay() {
   return (
@@ -18,6 +27,11 @@ function randomTweetDelay() {
 }
 
 function canTweetNow(source) {
+  if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
+    console.log("🌙 Sleep window active — queue paused");
+    return false;
+  }
+
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
 
@@ -33,21 +47,18 @@ function canTweetNow(source) {
   return true;
 }
 
-// function canTweetNow(source) {
-//   const now = Date.now();
-//   const diff = now - (global.LAST_TWEET_AT || 0);
+function isSleepWindow() {
+  const now = new Date();
 
-//   if (diff < GLOBAL_TWEET_COOLDOWN_MS) {
-//     console.log(
-//       `⏳ Global tweet cooldown (${Math.ceil(
-//         (GLOBAL_TWEET_COOLDOWN_MS - diff) / 1000
-//       )}s left) — ${source} skipped`
-//     );
-//     return false;
-//   }
+  const istTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
 
-//   return true;
-// }
+  const hour = istTime.getHours();
+  console.log("🕒 IST hour:", hour);
+
+  return hour >= 1 && hour < 6;
+}
 
 function markTweeted(source) {
   const delay = randomTweetDelay();
@@ -62,18 +73,8 @@ function markTweeted(source) {
   );
 }
 
-// function markTweeted(source) {
-//   global.LAST_TWEET_AT = Date.now();
-//   console.log(`🟢 Global tweet lock acquired by ${source}`);
-// }
-
-/* -------------------------------------------------
-   Queue Operations (JSONBin-backed)
--------------------------------------------------- */
-
-export function enqueueTweet({ id, source, text, imageUrl }) {
+export function enqueueTweet({ id, source, text, imageUrl, articleBody }) {
   const STATE = global.STATE;
-
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
   if (STATE.tweetQueue.some((t) => t.id === id)) return;
@@ -98,14 +99,56 @@ export async function tryFlushTweetQueue() {
   const next = STATE.tweetQueue.shift();
 
   try {
-    // await tweetNewsWithImage(next.text, next.imageUrl);
-    if (next.imageUrl) {
-      await tweetNewsWithImage(next.text, next.imageUrl);
-    } else {
-      await postTweet_ie_web({ text: next.text });
-    }
-    markTweeted("QUEUE");
+    if (CONSOLE_ONLY) {
+      console.log("🧪 CONSOLE_ONLY — tweet skipped");
+      console.log({
+        source: next.source,
+        text: next.text,
+        imageUrl: next.imageUrl,
+      });
 
+      markTweeted("CONSOLE_ONLY");
+      await saveState(STATE);
+      return true;
+    }
+
+    let tweetResponse;
+
+    if (next.imageUrl) {
+      tweetResponse = await tweetNewsWithImage(
+        next.text,
+        next.imageUrl,
+        next.source
+      );
+    } else {
+      tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+    }
+
+    const tweetId = tweetResponse?.data?.id;
+
+    // temporary commented
+
+    // if (tweetId && next.source == "CB") {
+    //   console.log("started ...");
+    //   setTimeout(async () => {
+    //     try {
+    //       const replyText = await generateNewsReplyTweet(next.text);
+
+    //       if (!replyText) return;
+
+    //       await tweetNewsWithoutImage({
+    //         text: replyText,
+    //         replyTo: tweetId,
+    //       });
+
+    //       console.log(`↪️ ${next.source} reply posted::: ${replyText}`);
+    //     } catch (err) {
+    //       console.error("❌ IE reply failed:", err);
+    //     }
+    //   }, 25000);
+    // }
+
+    markTweeted("QUEUE");
     await saveState(STATE);
 
     console.log(`🚀 Flushed queued tweet: ${next.id}`);
@@ -113,7 +156,6 @@ export async function tryFlushTweetQueue() {
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);
 
-    // Put it back at the front
     STATE.tweetQueue.unshift(next);
     await saveState(STATE);
     return false;
@@ -122,10 +164,14 @@ export async function tryFlushTweetQueue() {
 
 export function applySourceSignature(text, source) {
   const signatureMap = {
-    CA: ".",
-    CT: "!",
-    CB: "!.",
+    // CA: ".",
+    CT: ".",
+    CB: ".",
+    IE: "_",
+    // GN: "..",
+    // SK: "_",
   };
 
-  return text.replace(/[.!]+$/, "") + signatureMap[source];
+  const signature = signatureMap[source] || ".";
+  return text.replace(/[.!]+$/, "") + signature;
 }
