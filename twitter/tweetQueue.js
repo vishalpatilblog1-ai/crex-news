@@ -14,6 +14,9 @@ global.NEXT_TWEET_ALLOWED_AT ??= 0;
 const MIN_TWEET_DELAY = 5 * 60 * 1000;
 const MAX_TWEET_DELAY = 10 * 60 * 1000;
 
+// const MIN_TWEET_DELAY = 5 * 1000;
+// const MAX_TWEET_DELAY = 10 * 1000;
+
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay() {
@@ -81,7 +84,6 @@ export function enqueueTweet({ id, source, text, imageUrl, articleBody }) {
     source,
     text,
     imageUrl,
-    // _articleBody: articleBody,
     createdAt: Date.now(),
   });
 
@@ -113,7 +115,11 @@ export async function tryFlushTweetQueue() {
     let tweetResponse;
 
     if (next.imageUrl) {
-      tweetResponse = await tweetNewsWithImage(next.text, next.imageUrl);
+      tweetResponse = await tweetNewsWithImage(
+        next.text,
+        next.imageUrl,
+        next.source
+      );
     } else {
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
     }

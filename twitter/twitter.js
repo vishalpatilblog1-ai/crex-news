@@ -5,6 +5,7 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 import { createLogger } from "../utils/logger.js";
+import { downloadNDTVImage } from "../ndtv/downloadNDTVImage.js";
 
 dotenv.config();
 const log = createLogger("prod");
@@ -34,7 +35,7 @@ async function downloadImage(url) {
   return filePath;
 }
 
-export async function tweetNewsWithImage(text, imageUrl) {
+export async function tweetNewsWithImage(text, imageUrl, source) {
   try {
     const EXPERIMENT_TAGS = [];
 
@@ -47,29 +48,103 @@ export async function tweetNewsWithImage(text, imageUrl) {
     if (missingTags.length > 0) {
       finalText += `\n\n${missingTags.join(" ")}`;
     }
-    console.log("⬇ Downloading image...");
-    const downloadedPath = await downloadImage(imageUrl);
 
-    console.log("📤 Uploading image to Twitter...");
-    const data = fs.readFileSync(downloadedPath);
-    const mediaId = await rwClient.v1.uploadMedia(data, {
-      mimeType: "image/jpeg",
-    });
+    console.log("⬇ Downloading image...", source);
 
-    console.log("📝 Tweeting...");
+    let downloadedPath = null;
+
+    try {
+      if (source === "NDTV") {
+        downloadedPath = await downloadNDTVImage(imageUrl);
+      } else {
+        downloadedPath = await downloadImage(imageUrl);
+      }
+    } catch (err) {
+      console.warn(
+        "⚠️ Image download failed, tweeting text only:",
+        err.message
+      );
+    }
+
+    // IMAGE SUCCESS
+    if (downloadedPath) {
+      console.log("📤 Uploading image to Twitter...");
+      const data = fs.readFileSync(downloadedPath);
+
+      const mediaId = await rwClient.v1.uploadMedia(data, {
+        mimeType: "image/jpeg",
+      });
+
+      console.log("📝 Tweeting with image...");
+      const tweet = await rwClient.v2.tweet({
+        text: finalText,
+        media: { media_ids: [mediaId] },
+      });
+
+      console.log("🚀 Tweet Posted:", tweet.data.id);
+
+      fs.unlinkSync(downloadedPath);
+      return tweet;
+    }
+
+    // FALLBACK TEXT TWEET
+    console.log("📝 Tweeting text only (image unavailable)...");
     const tweet = await rwClient.v2.tweet({
       text: finalText,
-      media: { media_ids: [mediaId] },
     });
 
     console.log("🚀 Tweet Posted:", tweet.data.id);
 
-    fs.unlinkSync(downloadedPath);
     return tweet;
   } catch (err) {
-    console.error("❌ Error tweeting news image:", err);
+    console.error("❌ Error tweeting news:", err);
   }
 }
+
+// export async function tweetNewsWithImage(text, imageUrl, source) {
+//   try {
+//     const EXPERIMENT_TAGS = [];
+
+//     let finalText = text;
+
+//     const missingTags = EXPERIMENT_TAGS.filter(
+//       (tag) => !finalText.includes(tag)
+//     );
+
+//     if (missingTags.length > 0) {
+//       finalText += `\n\n${missingTags.join(" ")}`;
+//     }
+//     console.log("⬇ Downloading image...", source);
+
+//     let downloadedPath;
+
+//     if (source === "NDTV") {
+//       downloadedPath = await downloadNDTVImage(imageUrl);
+//     } else {
+//       downloadedPath = await downloadImage(imageUrl); // default
+//     }
+//     // const downloadedPath = await downloadImage(imageUrl);
+
+//     console.log("📤 Uploading image to Twitter...");
+//     const data = fs.readFileSync(downloadedPath);
+//     const mediaId = await rwClient.v1.uploadMedia(data, {
+//       mimeType: "image/jpeg",
+//     });
+
+//     console.log("📝 Tweeting...");
+//     const tweet = await rwClient.v2.tweet({
+//       text: finalText,
+//       media: { media_ids: [mediaId] },
+//     });
+
+//     console.log("🚀 Tweet Posted:", tweet.data.id);
+
+//     fs.unlinkSync(downloadedPath);
+//     return tweet;
+//   } catch (err) {
+//     console.error("❌ Error tweeting news image:", err);
+//   }
+// }
 
 export async function tweetNewsWithoutImage(payload) {
   try {
