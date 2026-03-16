@@ -235,16 +235,33 @@ ARTICLE TYPE: Human Interest
 This is a story, not a debate. Let the narrative carry the weight.
 
 ENGAGEMENT TARGET: Shares + saves (emotional resonance)
-The tweet should surface the contrast — where they started versus where they are now.
 
-Focus on:
-- The specific sacrifice, setback, or struggle that makes this moment meaningful
-- The contrast between past and present — stated in concrete terms, not vague inspiration
-- If a powerful quote exists (especially in a regional language) — consider opening with it
+STRUCTURE — use this two-beat format:
+Beat 1 (Scene): What happened, who was involved, and ONE hyper-specific detail
+  (exact distance, exact time, exact place). Make it visual and concrete.
+  The reader should be able to picture it.
+Beat 2 (Meaning): One universal sentence — the emotional truth this moment represents.
+  This line must make sense and hit hard even if the reader has never watched cricket.
+  It should feel quotable. It should make someone want to share it, not just like it.
 
-Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast) from the engagement mechanics.
-Warmth is allowed here. Sentimentality is not.
-Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+SPECIFICITY RULE:
+  If the article contains any exact number, distance, time, or place — use it verbatim.
+  Exact figures build credibility and make the story feel reported, not invented.
+
+NON-CRICKET READER TEST:
+  Read Beat 2 as if you know nothing about cricket.
+  If it still lands emotionally — it's the right line.
+  If it only works for fans — rewrite it.
+
+STAT SUPPRESSION RULE:
+  Do NOT mention runs, wickets, averages, match results, or rankings.
+  This is about the person, not the player.
+  Stats break the emotional register of this article type.
+
+PATTERNS:
+  Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast).
+  Warmth is allowed here. Sentimentality is not.
+  Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
 `,
 
   opinion_piece: `
