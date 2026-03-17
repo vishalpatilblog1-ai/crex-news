@@ -21,25 +21,17 @@ export async function judgeNewsContext({ articleText, existingContexts = [] }) {
   2. Summarize its core meaning in ONE or TWO sentences (this is the newContext).
   3. Compare this meaning with the list of contexts already covered today.
   4. Decide if this new article is essentially the SAME news already covered today.
-  5. Score the article's significance for an Indian cricket audience (1–10).
 
-  Deduplication rules:
+  Important rules:
   - SAME EVENT with same outcome or same core issue = already covered
   - Same match but DIFFERENT angle (e.g. result vs pitch controversy) = NOT covered
   - Ignore wording differences and headlines
   - Focus on cricket meaning, not language
-  - If two articles discuss the same topic BUT are driven by different named individuals
-    (players, ex-players, officials), treat them as NOT already covered.
-  - Opinion or statement-based articles from different people are considered DIFFERENT
-    coverage, even if the topic overlaps.
-  - Only mark as already covered if BOTH the topic AND the primary speaker/angle are the same.
 
-  Significance scoring guide:
-  9–10 : Major breaking news — key player injury, selection shock, series result, sacking
-  7–8  : Meaningful development — squad named, notable performance, coaching decision, controversy
-  5–6  : Standard coverage — routine press conference, minor match report, expected squad
-  3–4  : Filler — generic preview, repeated angle on an old story, minor domestic fixture
-  1–2  : Non-story — listicle, throwback, stats trivia with no live news peg
+  Additional rules (VERY IMPORTANT):
+  - If two articles discuss the same topic BUT are driven by different named individuals (players, ex-players, officials), treat them as NOT already covered.
+  - Opinion or statement-based articles from different people are considered DIFFERENT coverage, even if the topic overlaps.
+  - Only mark as already covered if BOTH the topic AND the primary speaker/angle are the same.
 
   You must return STRICT JSON only.
   No explanations. No extra text.
@@ -63,8 +55,7 @@ Return JSON in this exact format:
   "newContext": "<1-2 sentence summary>",
   "isAlreadyCovered": true | false,
   "matchedIndex": <number or null>,
-  "confidence": <number between 0.0 and 1.0>,
-  "significanceScore": <integer between 1 and 10>
+  "confidence": <number between 0.0 and 1.0>
 }
 `;
 
@@ -110,18 +101,10 @@ Return JSON in this exact format:
     throw new Error("Invalid confidence score from AI");
   }
 
-  const significanceScore =
-    typeof parsed.significanceScore === "number" &&
-    parsed.significanceScore >= 1 &&
-    parsed.significanceScore <= 10
-      ? Math.round(parsed.significanceScore)
-      : null;
-
   return {
     newContext: parsed.newContext.trim(),
     isAlreadyCovered: parsed.isAlreadyCovered,
     matchedIndex: parsed.matchedIndex,
     confidence: Number(parsed.confidence.toFixed(2)),
-    significanceScore,
   };
 }

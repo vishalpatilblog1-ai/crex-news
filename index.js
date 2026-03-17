@@ -10,6 +10,7 @@ import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
 import { ndtvNewspolling____ } from "./ndtv/ndtvNewspolling____.js";
+import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
@@ -59,27 +60,6 @@ async function bootstrap() {
     setInterval(ndtvNewspolling____, 1000 * 60 * 3);
   }
 
-  // if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
-  //   console.log("📰 NDTV news polling enabled");
-
-  //   async function runLoop() {
-  //     try {
-  //       await ndtvNewspolling____();
-  //     } catch (err) {
-  //       console.error("❌ ndtvNewspolling crashed:", err.message);
-  //     }
-
-  //     const delay =
-  //       Math.random() < 0.1
-  //         ? 60000 + Math.random() * 30000
-  //         : 25000 + Math.random() * 20000;
-  //     console.log(`⏱ Next NDTV poll in ${(delay / 1000).toFixed(1)}s`);
-  //     setTimeout(runLoop, delay);
-  //   }
-
-  //   runLoop();
-  // }
-
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("The Hindu news polling enabled");
     setInterval(hinduNewsPollingLoop, 1000 * 60 * 6);
@@ -89,6 +69,11 @@ async function bootstrap() {
     console.log("The Crictracker news polling enabled");
     setInterval(ctNewsPollingLoop, 1000 * 60 * 8);
   }
+
+  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+  //   console.log("The cricker addictore news polling enabled");
+  //   setInterval(caNewsPollingLoop, 1000 * 60 * 8);
+  // }
 }
 
 bootstrap();

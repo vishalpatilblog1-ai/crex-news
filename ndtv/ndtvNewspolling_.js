@@ -1,27 +1,27 @@
 // ndtvnewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import {
-  classifyArticle,
-  generateClaudeTweetWithType,
-  SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet.js";
+import { generateClaudeTweet } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+// import { fetchIEArticle } from "../indian-express/fetchIEArticle.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { fetchNDTVArticle } from "./fetchNDTVArticle.js";
 import { getNDTVImageUrl } from "./getNDTVImageUrl.js";
+
+// import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+
+// import { fetchIEArticle } from "./fetchIEArticle.js";
+// import { getIEImageUrl } from "./getIEImageUrl.js";
 import { isNDTVArticle, normalizeNDTVLink } from "./isNDTVArticle.js";
 import { fetchNDTVCricketRSS } from "./ndtvRssFetcher.js";
 import { parseNDTVArticle } from "./parseNDTVArticle.js";
-
-const MAX_AGE_MIN = 90;
-const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+// import { fetchIECricketRSS } from "./ieRssFetcher.js";
+// import { parseIEArticle } from "./parseIEArticle.js";
 
 export async function ndtvNewspolling____() {
   if (!global.STATE) {
-    console.log("⚠️ global.STATE not ready. Skipping NDTV polling.");
+    console.log("⚠️ global.STATE not ready. Skipping IE polling.");
     return;
   }
 
@@ -38,8 +38,13 @@ export async function ndtvNewspolling____() {
     };
   }
 
+  const MAX_AGE_MIN = 90;
+  const SEEN_RETENTION_HOURS = 6;
+  const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
+  const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
+
   try {
-    // ── Prune stale seen entries ──────────────────────────────────────────────
     const now = Date.now();
     let pruned = 0;
 
@@ -51,13 +56,12 @@ export async function ndtvNewspolling____() {
     }
 
     if (pruned) {
-      console.log(`🧹 Pruned ${pruned} old NDTV seen entries`);
+      console.log(`🧹 Pruned ${pruned} old IE seen entries`);
     }
 
-    // ── Fetch + filter RSS ────────────────────────────────────────────────────
     const items = await fetchNDTVCricketRSS();
     if (!Array.isArray(items) || items.length === 0) {
-      console.log("ℹ️ No NDTV RSS items");
+      console.log("ℹ️ No IE RSS items");
       return;
     }
 
@@ -66,6 +70,8 @@ export async function ndtvNewspolling____() {
       .sort((a, b) => getPubDate(b) - getPubDate(a));
 
     let selected = null;
+
+    // console.log("sorted::", sorted);
 
     for (const item of sorted) {
       const pubMs = getPubDate(item);
@@ -86,7 +92,15 @@ export async function ndtvNewspolling____() {
       return;
     }
 
-    // ── Fetch article body ────────────────────────────────────────────────────
+    // const html = await fetchNDTVArticle(selected.link);
+
+    // const parsed = parseNDTVArticle(html);
+
+    // if (!parsed?.body || parsed.body.length < 80) {
+    //   console.warn("⚠️ IE article body missing / too short");
+    //   return;
+    // }
+
     let parsed = null;
 
     try {
@@ -99,6 +113,7 @@ export async function ndtvNewspolling____() {
       );
 
       const rssDesc = selected.description?.trim();
+
       if (rssDesc && rssDesc.length > 30) {
         parsed = {
           headline: selected.title,
@@ -109,25 +124,16 @@ export async function ndtvNewspolling____() {
 
     if (!parsed?.body || parsed.body.length < 30) {
       console.warn("⚠️ No usable NDTV body, skipping article");
+
       const cleanLink = normalizeNDTVLink(selected.link);
+
       STATE.ndtv.seen[cleanLink] = Date.now();
-      await saveState(STATE);
+
       return;
     }
 
-    const fullText = `${parsed.headline}\n${parsed.body}`;
-
-    // ── Step 1: Classify article type first ──────────────────────────────────
-    let articleType = "player_form";
-    try {
-      articleType = await classifyArticle(fullText);
-      console.log(`🏷️ Classified as: ${articleType}`);
-    } catch (err) {
-      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-    }
-
-    // ── Step 2: Deduplication + significance gate ─────────────────────────────
     let contextDecision = null;
+
     try {
       contextDecision = await judgeNewsContext({
         articleText: parsed.body,
@@ -138,38 +144,15 @@ export async function ndtvNewspolling____() {
         contextDecision?.isAlreadyCovered === true &&
         contextDecision?.confidence >= 0.8
       ) {
-        console.log("🔁 NDTV context already covered — skipping");
+        console.log("🔁 IE context already covered — skipping");
         const cleanLink = normalizeNDTVLink(selected.link);
         STATE.ndtv.seen[cleanLink] = Date.now();
         STATE.ndtv.lastLink = cleanLink;
         STATE.ndtv.lastTitle = selected.title;
         STATE.ndtv.visibleDate = new Date(getPubDate(selected)).toUTCString();
+
         await saveState(STATE);
         return;
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = contextDecision?.significanceScore ?? 10;
-
-      if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`
-        );
-        const cleanLink = normalizeNDTVLink(selected.link);
-        STATE.ndtv.seen[cleanLink] = Date.now();
-        STATE.ndtv.lastLink = cleanLink;
-        STATE.ndtv.lastTitle = selected.title;
-        STATE.ndtv.visibleDate = new Date(getPubDate(selected)).toUTCString();
-        await saveState(STATE);
-        return;
-      }
-
-      if (isExempt) {
-        console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
-        );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
       }
     } catch (err) {
       console.warn(
@@ -178,47 +161,53 @@ export async function ndtvNewspolling____() {
       );
     }
 
-    // ── Step 3: Tweet generation ──────────────────────────────────────────────
+    let tweetBody;
+
     // console.log("ndtv data::", parsed.headline, parsed.body);
 
-    let tweetText = null;
     try {
-      const result = await generateClaudeTweetWithType(fullText, articleType);
-      tweetText = result.tweetText;
-      console.log("Prompt generated by claude ....");
-    } catch (err) {
-      console.warn("⚠️ Claude failed:", err?.message || err);
-    }
-
-    if (!tweetText || tweetText.trim().length < 30) {
       try {
-        tweetText = await generateGeminiTweet(fullText);
-        console.log("Prompt generated by Gemini ....");
+        tweetBody = await generateClaudeTweet(
+          `${parsed.headline}\n${parsed.body}`
+        );
       } catch (err) {
         console.warn("⚠️ Gemini failed:", err?.message || err);
       }
-    }
 
-    if (!tweetText || tweetText.trim().length < 30) {
-      console.warn("⚠️ NDTV AI failed, skipping tweet");
+      if (!tweetBody) {
+        try {
+          tweetBody = await generateGeminiTweet(
+            `${parsed.headline}\n${parsed.body}`
+          );
+        } catch (err) {
+          console.warn("⚠️ Claude failed:", err?.message || err);
+        }
+      }
+
+      if (!tweetBody || tweetBody.trim().length < 30) {
+        throw new Error("AI output invalid");
+      }
+    } catch (err) {
+      console.warn("⚠️ IE AI failed, skipping tweet:", err.message);
       return;
     }
 
-    // ── Image check ───────────────────────────────────────────────────────────
-    const imageUrl = getNDTVImageUrl(selected);
+    let tweetText = tweetBody;
+
+    let imageUrl = getNDTVImageUrl(selected);
 
     if (!imageUrl) {
-      console.log("🚫 Skipping NDTV article — no image found");
+      console.log("🚫 Skipping IE article — no image found");
       const cleanUrl = normalizeNDTVLink(selected.link);
       STATE.ndtv.seen[cleanUrl] = Date.now();
       STATE.ndtv.lastLink = cleanUrl;
       STATE.ndtv.lastTitle = selected.title;
       STATE.ndtv.visibleDate = new Date(getPubDate(selected)).toUTCString();
+
       await saveState(STATE);
       return;
     }
 
-    // ── Enqueue ───────────────────────────────────────────────────────────────
     const cleanUrl = normalizeNDTVLink(selected.link);
     const tweetId = `NDTV:${cleanUrl}`;
 
