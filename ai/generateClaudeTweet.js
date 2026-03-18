@@ -577,6 +577,7 @@ FINAL CHECK before outputting:
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
 - Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
+- For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
