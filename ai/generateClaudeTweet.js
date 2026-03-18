@@ -26,8 +26,8 @@ Classify this cricket article into ONE of these types:
 - player_form         (runs, wickets, performance trend)
 - human_interest      (personal story, family, journey)
 - preview             (upcoming match, what to expect)
-- injury_news         (availability, fitness, ruled out)
-- press_conference    (quotes from coach, captain, player)
+- injury_news         (player availability, fitness, delayed arrival, travel disruption, ruled out)
+- press_conference    (direct quotes from a named individual — coach, captain, or player)
 - milestone_record    (record broken, landmark achieved)
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
@@ -35,14 +35,15 @@ Classify this cricket article into ONE of these types:
 Classification Rules (apply in order):
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
-3. Choose press_conference if the article is primarily built around direct quotes from a named individual (coach, captain, player).
+3. Choose press_conference if the article is primarily built around direct quotes from a NAMED individual (coach, captain, player). Anonymous source quotes ("a source told PTI", "sources say", "according to insiders") do NOT qualify — classify by the article's primary news peg instead.
 4. Choose human_interest if the article centers on a player's personal background, family, or journey — NOT their stats.
 5. Choose milestone_record if a stat or landmark is the central news peg.
 6. Choose match_report if the article covers a completed match result without deep tactical breakdown.
 7. Choose selection_news for squad decisions, dropped or added players.
-8. Choose injury_news for fitness and availability updates.
+8. Choose injury_news if the article is primarily about a player's availability, delayed arrival, fitness clearance, travel disruption, or anything affecting whether a player is ready and present for team preparation — even if no injury is involved.
 9. Choose preview for upcoming match previews.
 10. Default to player_form if unsure between form-related types.
+11. When torn between two types, ask: what is the PRIMARY news peg — the single fact that makes this article worth publishing today? Classify based on that, not the surrounding context.
 
 IMPORTANT: An article that includes match context but whose primary argument is about DECISIONS and TACTICS should be classified as tactical_analysis, not match_report.
 
@@ -66,7 +67,6 @@ ${articleText}
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
-
 // ─── ENGAGEMENT FRAMEWORKS ───────────────────────────────────────────────────
 // These patterns are proven to drive replies, retweets, and bookmarks.
 // Each article type pulls from the most relevant ones.
@@ -340,7 +340,7 @@ Use when: the quote itself is sharp, surprising, or unusually candid.
 Lead with the quote (under 12 words), then frame what it reveals.
 Attribute in the first or second sentence. Never absorb the quote into the narrator's voice.
 
-MODE 2 — ACT OVER QUOTE  
+MODE 2 — ACT OVER QUOTE
 Use when: the significance of WHO is speaking, or THAT they chose to speak at all, is more newsworthy than what they said.
 Use PATTERN G (Act-Over-Quote) from the engagement mechanics.
 Example: "MS Dhoni breaks a near two-year social media silence to validate Gambhir. The first public endorsement from the man who started this World Cup dynasty."
@@ -349,22 +349,45 @@ Rules for both modes:
 - Name the speaker in the first or second sentence — no vague attribution
 - Frame around what the statement or act reveals about team thinking, internal dynamics, or relationships
 - Avoid paraphrasing quotes so loosely that the speaker's actual position is lost
+
+ATTRIBUTION STAYS TO THE END (strict):
+The closing verdict must still be framed as the speaker's position — not the narrator's conclusion.
+The reader must always know whose argument they are evaluating.
+Wrong: "The pitch preparation is the strategy — not the team selection."
+Right: "Faf's point: KKR's problem last season wasn't the spinners — it was the surface they were handed."
+If the closing line could have been written without reading the article — it has lost its attribution. Rewrite it.
+
+MULTI-SPEAKER RULE:
+If the article quotes more than one named individual, do not try to include both equally.
+Pick the speaker whose claim is most analytically significant or most likely to generate debate.
+The second speaker can appear only if their quote directly reinforces or contradicts the first.
 `,
 
   milestone_record: `
 ARTICLE TYPE: Milestone / Record
 
+STAT SELECTION RULE (do this before writing anything):
+Scan the full article and list every stat mentioned.
+The most tweet-worthy number is rarely the first one — it is the one with the most
+historical context, or the one no player has achieved before, or the one closest to
+an unprecedented landmark. Choose that number as your anchor, not the most obvious one.
+If the headline stat and a deeper stat both exist — the deeper one wins.
+
 The number is your entry point, not your destination.
 
 ENGAGEMENT TARGET: Bookmarks + shares (legacy debate)
-The tweet should add one layer of analytical depth beyond the stat — context that makes the number meaningful.
+The tweet should add one layer of analytical depth beyond the stat — context that
+makes the number feel inevitable in hindsight, or genuinely unprecedented going forward.
 
 Focus on:
 - What this milestone reveals about the player's career arc, not just the achievement
 - Who else has done this, when, and under what conditions — context that adds weight
 - What the record says about the era, the format, or the team around them
+- If an upcoming landmark is more significant than the current one — lead with that
 
-Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch), or PATTERN L (Number Sandwich) from the engagement mechanics.
+Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch),
+or PATTERN L (Number Sandwich) from the engagement mechanics.
+PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
 `,
 };
@@ -554,6 +577,11 @@ FINAL CHECK before outputting:
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
 - Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
+
+SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
+- Does the closing line name a specific decision, match, moment, or person?
+- If the closing line could apply to ANY article about ANY captain or coach — it is too vague. Rewrite it with one concrete anchor from the article.
+- Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
 
 RULES:
 - No Emoji at all

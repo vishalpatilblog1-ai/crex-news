@@ -8,7 +8,16 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-async function classifyArticle(articleText) {
+// Article types that are exempt from significance score filtering.
+// These drive shares/saves through emotional resonance or legacy value —
+// NOT through news urgency. Filtering them by news significance score
+// would systematically kill your best-performing content.
+export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
+  "human_interest",
+  "milestone_record",
+]);
+
+export async function classifyArticle(articleText) {
   const prompt = `
 Classify this cricket article into ONE of these types:
 
@@ -513,27 +522,9 @@ ${articleTypeInstruction}
 `;
 }
 
-export async function generateClaudeTweet(articleText) {
-  console.log("generateClaudeTweet::");
-  let articleType = "player_form";
-
-  try {
-    const classified = await classifyArticle(articleText);
-    if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
-      articleType = classified;
-      console.log("articleType::", articleType);
-    } else {
-      console.warn(`⚠️ Unknown article type "${classified}", using default`);
-    }
-  } catch (err) {
-    console.warn(
-      "⚠️ classifyArticle failed, using default:",
-      err?.message || err
-    );
-  }
-
-  console.log(`🏷️ Article classified as: ${articleType}`);
-
+// Internal tweet generator — accepts a pre-classified article type to avoid
+// a redundant classifyArticle call when the polling loop has already classified.
+async function _generateTweet(articleText, articleType) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
 
@@ -574,37 +565,87 @@ RULES:
   A tweet that fits on one screen without "show more" gets more impressions.
 `;
 
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 280,
+    temperature: 0.85,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const rawText = response.content[0].text;
+
+  const tweetText = rawText
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!tweetText || tweetText.length < 30) {
+    console.warn("⚠️ Claude returned empty or too-short tweet");
+    return null;
+  }
+
+  if (tweetText.length > 280) {
+    console.warn(
+      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`
+    );
+  }
+
+  return tweetText;
+}
+
+// Standard entry point — classifies internally, used when polling loop
+// does not need to know the article type for gate logic.
+export async function generateClaudeTweet(articleText) {
+  console.log("generateClaudeTweet::");
+  let articleType = "player_form";
+
   try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 280,
-      temperature: 0.85,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    });
-
-    const rawText = response.content[0].text;
-
-    const tweetText = rawText
-      .replace(/\n[ \t]+/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-
-    if (!tweetText || tweetText.length < 30) {
-      console.warn("⚠️ Claude returned empty or too-short tweet");
-      return null;
+    const classified = await classifyArticle(articleText);
+    if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
+      articleType = classified;
+    } else {
+      console.warn(`⚠️ Unknown article type "${classified}", using default`);
     }
+  } catch (err) {
+    console.warn(
+      "⚠️ classifyArticle failed, using default:",
+      err?.message || err
+    );
+  }
 
-    // Safety: warn if tweet exceeds X's character limit (for logging)
-    if (tweetText.length > 280) {
-      console.warn(
-        `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`
-      );
-    }
+  console.log(`🏷️ Article classified as: ${articleType}`);
 
-    return tweetText;
+  try {
+    return await _generateTweet(articleText, articleType);
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
     return null;
+  }
+}
+
+// Extended entry point — accepts a pre-classified type from the polling loop.
+// Avoids a duplicate classifyArticle call and returns the type alongside the tweet
+// so the polling loop can make gate decisions without re-classifying.
+export async function generateClaudeTweetWithType(articleText, articleType) {
+  console.log("generateClaudeTweetWithType::");
+
+  let resolvedType = articleType;
+
+  if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
+    console.warn(
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
+    );
+    resolvedType = "player_form";
+  }
+
+  console.log(`🏷️ Article type (pre-classified): ${resolvedType}`);
+
+  try {
+    const tweetText = await _generateTweet(articleText, resolvedType);
+    return { tweetText, articleType: resolvedType };
+  } catch (err) {
+    console.error("❌ Claude Tweet Generation Error:", err);
+    return { tweetText: null, articleType: resolvedType };
   }
 }
