@@ -16,25 +16,32 @@ const MAX_TWEET_DELAY = 10 * 60 * 1000;
 
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-// function randomTweetDelay() {
-//   return (
-//     MIN_TWEET_DELAY +
-//     Math.floor(Math.random() * (MAX_TWEET_DELAY - MIN_TWEET_DELAY))
-//   );
-// }
-
 function randomTweetDelay(source) {
   if (source === "NDTV") {
-    const MIN = 30 * 1000;
-    const MAX = 90 * 1000;
+    const MIN = 20 * 60 * 1000;
+    const MAX = 45 * 60 * 1000;
     return MIN + Math.random() * (MAX - MIN);
   }
 
-  const MIN = 5 * 60 * 1000;
-  const MAX = 10 * 60 * 1000;
+  // Cricbuzz
+  const MIN = 45 * 60 * 1000;
+  const MAX = 90 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
+
+// function randomTweetDelay(source) {
+//   if (source === "NDTV") {
+//     const MIN = 30 * 1000;
+//     const MAX = 90 * 1000;
+//     return MIN + Math.random() * (MAX - MIN);
+//   }
+
+//   const MIN = 5 * 60 * 1000;
+//   const MAX = 10 * 60 * 1000;
+
+//   return MIN + Math.random() * (MAX - MIN);
+// }
 
 function canTweetNow(source) {
   if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
