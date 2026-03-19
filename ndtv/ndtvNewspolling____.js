@@ -151,7 +151,9 @@ export async function ndtvNewspolling____() {
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = contextDecision?.significanceScore ?? 10;
 
-      if (!isExempt && score < 7) {
+      // temporary commented but very important and needed for future use
+      // if (!isExempt && score < 7) {
+      if (!isExempt && score < 9) {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`
         );
