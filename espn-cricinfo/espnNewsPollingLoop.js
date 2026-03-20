@@ -17,7 +17,7 @@ import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { parseESPNArticle } from "./parseESPNArticle.js";
 
-const MAX_AGE_MIN = 300;
+const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000;
 
 export async function espnNewsPollingLoop() {
