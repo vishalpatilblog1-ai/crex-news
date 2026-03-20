@@ -23,25 +23,11 @@ function randomTweetDelay(source) {
     return MIN + Math.random() * (MAX - MIN);
   }
 
-  // Cricbuzz
   const MIN = 45 * 60 * 1000;
   const MAX = 90 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
-
-// function randomTweetDelay(source) {
-//   if (source === "NDTV") {
-//     const MIN = 30 * 1000;
-//     const MAX = 90 * 1000;
-//     return MIN + Math.random() * (MAX - MIN);
-//   }
-
-//   const MIN = 5 * 60 * 1000;
-//   const MAX = 10 * 60 * 1000;
-
-//   return MIN + Math.random() * (MAX - MIN);
-// }
 
 function canTweetNow(source) {
   if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
@@ -88,26 +74,7 @@ function markTweeted(trigger, source) {
   console.log(
     `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`
   );
-
-  // console.log(
-  //   `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${Math.round(
-  //     delay / 60000
-  //   )} min`
-  // );
 }
-
-// function markTweeted(source) {
-//   const delay = randomTweetDelay();
-
-//   global.LAST_TWEET_AT = Date.now();
-//   global.NEXT_TWEET_ALLOWED_AT = Date.now() + delay;
-
-//   console.log(
-//     `🟢 Tweet sent by ${source}. Next tweet in ~${Math.round(
-//       delay / 60000
-//     )} min`
-//   );
-// }
 
 export function enqueueTweet({ id, source, text, imageUrl, articleBody }) {
   const STATE = global.STATE;

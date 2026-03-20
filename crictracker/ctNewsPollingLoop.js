@@ -96,7 +96,9 @@ export async function ctNewsPollingLoop() {
     return true;
   }
 
-  const fullText = `${parsed.headline}\n${parsed.body}`;
+  const fullText = `${parsed.headline}\n${parsed.body} ${JSON.stringify(
+    parsed.table
+  )}`;
 
   // ── Step 1: Classify article type first ──────────────────────────────────
   let articleType = "player_form";

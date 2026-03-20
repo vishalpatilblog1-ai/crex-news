@@ -11,6 +11,7 @@ import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
 import { ndtvNewspolling____ } from "./ndtv/ndtvNewspolling____.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
+import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
@@ -68,6 +69,10 @@ async function bootstrap() {
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     console.log("The Crictracker news polling enabled");
     setInterval(ctNewsPollingLoop, 1000 * 60 * 8);
+  }
+  if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
+    console.log("The ESPN news polling enabled");
+    setInterval(espnNewsPollingLoop, 1000 * 60 * 7);
   }
 
   // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {

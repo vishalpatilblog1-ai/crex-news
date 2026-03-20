@@ -26,20 +26,47 @@ export function parseNDTVArticle(html) {
       if (
         text.length > 40 &&
         !text.toLowerCase().includes("advertisement") &&
-        !text.toLowerCase().includes("ndtv") &&
         !text.toLowerCase().includes("subscribe")
       ) {
         paragraphs.push(text);
       }
     });
-
-    // stop early (enough context for AI)
-    if (paragraphs.length >= 3) break;
   }
+
+  // 🆕 TABLE PARSING START
+  const tableData = [];
+
+  $("table tr").each((_, row) => {
+    const cols = $(row)
+      .find("th, td")
+      .map((_, col) => $(col).text().trim())
+      .get();
+
+    if (cols.length > 0) {
+      tableData.push(cols);
+    }
+  });
+
+  // Convert to structured format (skip header row)
+  let formattedTable = [];
+
+  if (tableData.length > 1) {
+    const headers = tableData[0];
+
+    formattedTable = tableData.slice(1).map((row) => {
+      const obj = {};
+      headers.forEach((key, index) => {
+        obj[key] = row[index];
+      });
+      return obj;
+    });
+  }
+  // 🆕 TABLE PARSING END
 
   return {
     headline,
     body: paragraphs.join("\n"),
     paragraphCount: paragraphs.length,
+    table: formattedTable, // 🔥 NEW FIELD
   };
 }

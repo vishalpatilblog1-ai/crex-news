@@ -10,7 +10,7 @@ import { downloadNDTVImage } from "../ndtv/downloadNDTVImage.js";
 dotenv.config();
 const log = createLogger("prod");
 
-const twitterClient = new TwitterApi({
+export const twitterClient = new TwitterApi({
   appKey: process.env.X_API_KEY,
   appSecret: process.env.X_API_SECRET,
   accessToken: process.env.X_ACCESS_TOKEN,
@@ -351,5 +351,36 @@ export async function postTweet_web(text) {
   } catch (err) {
     log("❌ Error posting tweet (API):");
     log(err);
+  }
+}
+
+export async function quoteTweet(payload) {
+  try {
+    const text = payload?.text;
+    const quoteTweetId = payload?.quoteTweetId;
+
+    if (!text || !quoteTweetId) {
+      console.log("❌ Invalid quote tweet payload:", payload);
+      return null;
+    }
+
+    if (process.env.CONSOLE_ONLY === "true") {
+      console.log("\n🧪 [QUOTE TWEET - CONSOLE MODE]");
+      console.log("Text:\n", text);
+      console.log("Quote Tweet ID:", quoteTweetId);
+      console.log("👉 https://twitter.com/i/web/status/" + quoteTweetId);
+      return { id: `console_${Date.now()}` };
+    }
+
+    const res = await twitterClient.v2.tweet({
+      text,
+      quote_tweet_id: quoteTweetId,
+    });
+
+    console.log("🚀 Quote Tweet Posted:", res.data.id);
+    return res.data;
+  } catch (err) {
+    console.error("❌ Error in quoteTweet:", err);
+    return null;
   }
 }
