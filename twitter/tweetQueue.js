@@ -1,6 +1,5 @@
 // twitter/tweetQueue.js
 
-import { generateNewsReplyTweet } from "../ai/generateNewsReplyTweet.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 // import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
 import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
@@ -11,23 +10,38 @@ import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
  */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-const MIN_TWEET_DELAY = 5 * 60 * 1000;
-const MAX_TWEET_DELAY = 10 * 60 * 1000;
+// const MIN_TWEET_DELAY = 5 * 60 * 1000;
+// const MAX_TWEET_DELAY = 10 * 60 * 1000;
 
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay(source) {
-  if (source === "NDTV") {
-    const MIN = 20 * 60 * 1000;
-    const MAX = 45 * 60 * 1000;
+  // Breaking / fast sources
+  if (["NDTV", "CT", "CB", "ESPN"].includes(source)) {
+    const MIN = 60 * 1000; // 1 min
+    const MAX = 2 * 60 * 1000; // 2 min
     return MIN + Math.random() * (MAX - MIN);
   }
 
-  const MIN = 45 * 60 * 1000;
-  const MAX = 90 * 60 * 1000;
+  // fallback (rare)
+  const MIN = 2 * 60 * 1000;
+  const MAX = 5 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
+
+// function randomTweetDelay(source) {
+//   if (source === "NDTV") {
+//     const MIN = 20 * 60 * 1000;
+//     const MAX = 45 * 60 * 1000;
+//     return MIN + Math.random() * (MAX - MIN);
+//   }
+
+//   const MIN = 45 * 60 * 1000;
+//   const MAX = 90 * 60 * 1000;
+
+//   return MIN + Math.random() * (MAX - MIN);
+// }
 
 function canTweetNow(source) {
   if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
