@@ -127,8 +127,8 @@ export async function ctNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
-    if (!isExempt) {
-      // if (!isExempt && score < 7) {
+    // if (!isExempt) {
+    if (!isExempt && score < 7) {
       console.log(
         `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
       );

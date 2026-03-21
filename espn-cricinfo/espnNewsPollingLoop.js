@@ -112,8 +112,8 @@ export async function espnNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = contextDecision?.significanceScore ?? 10;
-    if (!isExempt) {
-      // if (!isExempt && score < 7) {
+    // if (!isExempt) {
+    if (!isExempt && score < 7) {
       console.log(`⬇️ ESPN low significance (${score}/10) — skipping`);
 
       STATE.espn.seen[cleanUrl] = Date.now();
