@@ -48,31 +48,31 @@ async function bootstrap() {
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 10);
+    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 2);
   }
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 8);
+    setInterval(ieNewsPollingLoop, 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
     console.log("📰 Ndtv news polling enabled");
-    setInterval(ndtvNewspolling____, 1000 * 60 * 3);
+    setInterval(ndtvNewspolling____, 1000 * 60 * 4);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("The Hindu news polling enabled");
-    setInterval(hinduNewsPollingLoop, 1000 * 60 * 6);
+    setInterval(hinduNewsPollingLoop, 1000 * 60 * 2);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     console.log("The Crictracker news polling enabled");
-    setInterval(ctNewsPollingLoop, 1000 * 60 * 8);
+    setInterval(ctNewsPollingLoop, 1000 * 60 * 3);
   }
   if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
     console.log("The ESPN news polling enabled");
-    setInterval(espnNewsPollingLoop, 1000 * 60 * 7);
+    setInterval(espnNewsPollingLoop, 1000 * 60 * 4);
   }
 
   // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {

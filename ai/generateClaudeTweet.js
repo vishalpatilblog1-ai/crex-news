@@ -8,16 +8,12 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Article types that are exempt from significance score filtering.
-// These drive shares/saves through emotional resonance or legacy value —
-// NOT through news urgency. Filtering them by news significance score
-// would systematically kill your best-performing content.
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
   "milestone_record",
-  "press_conference", // add
-  "injury_news", // add
-  "selection_news", // add
+  "press_conference",
+  "injury_news",
+  "selection_news",
 ]);
 
 export async function classifyArticle(articleText) {

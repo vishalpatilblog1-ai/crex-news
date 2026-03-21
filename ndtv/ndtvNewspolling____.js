@@ -15,7 +15,7 @@ import { isNDTVArticle, normalizeNDTVLink } from "./isNDTVArticle.js";
 import { fetchNDTVCricketRSS } from "./ndtvRssFetcher.js";
 import { parseNDTVArticle } from "./parseNDTVArticle.js";
 
-const MAX_AGE_MIN = 90;
+const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
@@ -152,8 +152,8 @@ export async function ndtvNewspolling____() {
       const score = contextDecision?.significanceScore ?? 10;
 
       // temporary commented but very important and needed for future use
-      if (!isExempt && score < 7) {
-        // if (!isExempt) {
+      // if (!isExempt && score < 7) {
+      if (!isExempt) {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`
         );

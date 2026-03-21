@@ -20,7 +20,7 @@ import {
 } from "../ai/generateClaudeTweet.js";
 import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 
-const MAX_AGE_MIN = 120;
+const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 
@@ -127,8 +127,8 @@ export async function ctNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
-
-    if (!isExempt && score < 7) {
+    if (!isExempt) {
+      // if (!isExempt && score < 7) {
       console.log(
         `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
       );

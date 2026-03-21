@@ -17,7 +17,7 @@ import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { parseESPNArticle } from "./parseESPNArticle.js";
 
-const MAX_AGE_MIN = 60;
+const MAX_AGE_MIN = 45;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000;
 
 export async function espnNewsPollingLoop() {
@@ -112,8 +112,8 @@ export async function espnNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = contextDecision?.significanceScore ?? 10;
-
-    if (!isExempt && score < 7) {
+    if (!isExempt) {
+      // if (!isExempt && score < 7) {
       console.log(`⬇️ ESPN low significance (${score}/10) — skipping`);
 
       STATE.espn.seen[cleanUrl] = Date.now();
