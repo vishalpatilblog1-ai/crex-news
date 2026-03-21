@@ -10,10 +10,10 @@ const client = new Anthropic({
 
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
-  "milestone_record",
-  "press_conference",
-  "injury_news",
   "selection_news",
+  // "press_conference",
+  // "injury_news",
+  // "milestone_record",
 ]);
 
 export async function classifyArticle(articleText) {
