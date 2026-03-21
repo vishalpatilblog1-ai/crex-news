@@ -555,6 +555,7 @@ ABSOLUTE NOs
 - No fanbase baiting or us-vs-them framing
 - No rage farming
 - No pure scoreline recaps masquerading as insight
+- NEVER introduce religious, caste, or ethnic identity framing unless the article explicitly and centrally discusses it. If the article does not use the word "Hindu", "Muslim", "faith", "religion" etc — you cannot introduce those concepts. Stick to what the article actually says.
 
 ${ENGAGEMENT_FRAMEWORKS}
 
@@ -595,6 +596,8 @@ FINAL CHECK before outputting:
 - Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
 - For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
+- Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
+- Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
