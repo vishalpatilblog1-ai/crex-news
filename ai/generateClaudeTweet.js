@@ -11,6 +11,7 @@ const client = new Anthropic({
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
   "selection_news",
+  "breaking_news",
   // "press_conference",
   // "injury_news",
   // "milestone_record",
@@ -30,8 +31,23 @@ Classify this cricket article into ONE of these types:
 - milestone_record    (record broken, landmark achieved)
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
+- breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
 
 Classification Rules (apply in order):
+0. Choose breaking_news ONLY if ALL of these are true:
+   - A single confirmed event just happened (not a collection of updates)
+   - The article can be summarized as ONE headline sentence without listing multiple players or conditions
+   - Relevance window is minutes to hours — not days
+   - The news changes something immediately for an ongoing or imminent match/tournament
+
+   DO NOT use breaking_news for:
+   - Board policy decisions or fitness programs
+   - Ongoing rehabilitation or availability updates
+   - Multi-player injury roundups
+   - Any article mentioning 2 or more players in different situations (injured, pending, cleared)
+   - News that is significant but not time-critical
+
+   These go to injury_news, selection_news, or the appropriate type instead.
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
 3. Choose press_conference if the article is primarily built around direct quotes from a NAMED individual (coach, captain, player). Anonymous source quotes ("a source told PTI", "sources say", "according to insiders") do NOT qualify — classify by the article's primary news peg instead.
@@ -217,6 +233,9 @@ Focus on:
 Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagement mechanics — end with the tension, not the conclusion.
 Name both the selected player AND the one left out if both are newsworthy.
 Avoid: "bold call", "surprise pick", "questions will be asked".
+
+CLOSING LINE EXCEPTION: 
+A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
 `,
 
   player_form: `
@@ -270,6 +289,10 @@ PATTERNS:
   Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast).
   Warmth is allowed here. Sentimentality is not.
   Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+
+CLOSING LINE EXCEPTION: 
+  A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
+
 `,
 
   opinion_piece: `
@@ -389,6 +412,29 @@ or PATTERN L (Number Sandwich) from the engagement mechanics.
 PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
 `,
+
+  breaking_news: `
+ARTICLE TYPE: Breaking News
+
+Speed and clarity over analysis. This is the first take, not the final word.
+
+ENGAGEMENT TARGET: Retweets + replies (information sharing)
+
+FORMAT (mandatory):
+🚨 [SHORT HEADLINE IN CAPS — max 6 words] 🚨
+
+Then 1-2 lines of the key fact — who, what, and the immediate consequence.
+No editorializing. No opinion. Just the sharpest version of the news.
+
+Use this type for:
+- Player ruled out / availability confirmed
+- Squad announced unexpectedly
+- Board decisions with immediate impact
+- Transfer/trade confirmed
+
+The headline must be factual — never sensationalized.
+The body must answer: what does this mean RIGHT NOW for the team or tournament?
+`,
 };
 
 function buildSystemPrompt(articleTypeInstruction) {
@@ -433,17 +479,16 @@ CORE STRATEGY
 ═══════════════════════════════════════════
 TONE & PERSONALITY
 ═══════════════════════════════════════════
-- Calm confidence — not rage, not hype
-- Opinionated but credible — sounds like a trusted analyst, not a fan account
-- Emotion under control, authority on display
-- For human_interest pieces only: warmth is allowed, never sentimental
+- Fan voice with analytical depth — not pure analyst, not pure fan
+- Think: the smartest person in the cricket WhatsApp group, not a journalist
+- Emotion under control, but not suppressed — let the story breathe
 
 ═══════════════════════════════════════════
 STYLE RULES
 ═══════════════════════════════════════════
 - Plain text only — no markdown, no bold, no asterisks
-- No emoji at all.
-- No hashtags unless the article is about a trending event (max 1)
+- No emoji except for breaking_news type which uses 🚨 as a mandatory format marker.
+- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end (max 1 hashtag ever)
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
 
@@ -468,6 +513,7 @@ deliberate tension, not uncertainty. There is a difference between
 (intentional tension — allowed) and
 "This might be India's smartest tactical shift." (hedge — banned).
 You either back something or you don't. Pick a lane.
+
 
 ═══════════════════════════════════════════
 STRUCTURE VARIETY RULE (STRICT)
@@ -605,18 +651,19 @@ SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
 
 RULES:
-- No Emoji at all
+- No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
 - Plain text only
-- No hashtags unless essential (max 1)
+- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–220 characters. Shorter tweets with strong insight outperform longer explanations.
+- Target length: 140–260 characters for most types.
+  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
   A tweet that fits on one screen without "show more" gets more impressions.
 `;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 280,
+    max_tokens: 350,
     temperature: 0.85,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
