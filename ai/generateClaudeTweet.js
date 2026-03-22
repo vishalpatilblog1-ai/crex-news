@@ -10,8 +10,8 @@ const client = new Anthropic({
 
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
-  "selection_news",
   "breaking_news",
+  // "selection_news",
   // "press_conference",
   // "injury_news",
   // "milestone_record",
@@ -82,9 +82,6 @@ ${articleText}
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
-// ─── ENGAGEMENT FRAMEWORKS ───────────────────────────────────────────────────
-// These patterns are proven to drive replies, retweets, and bookmarks.
-// Each article type pulls from the most relevant ones.
 
 const ENGAGEMENT_FRAMEWORKS = `
 ENGAGEMENT MECHANICS — apply at least ONE per tweet:
