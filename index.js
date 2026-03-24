@@ -70,15 +70,16 @@ async function bootstrap() {
     console.log("The Crictracker news polling enabled");
     setInterval(ctNewsPollingLoop, 1000 * 60 * 3);
   }
+
   if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
     console.log("The ESPN news polling enabled");
     setInterval(espnNewsPollingLoop, 1000 * 60 * 4);
   }
 
-  // if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-  //   console.log("The cricker addictore news polling enabled");
-  //   setInterval(caNewsPollingLoop, 1000 * 60 * 8);
-  // }
+  if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
+    console.log("The cricker addictore news polling enabled");
+    setInterval(caNewsPollingLoop, 1000 * 60 * 2);
+  }
 }
 
 bootstrap();

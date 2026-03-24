@@ -51,7 +51,10 @@ export async function caNewsPollingLoop() {
 
   if (!Array.isArray(items) || items.length === 0) return false;
 
-  const sorted = [...items].filter(isCAArticle);
+  // const sorted = [...items].filter(isCAArticle);
+  const sorted = [...items]
+    .filter(isCAArticle)
+    .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   let selected = null;
 
@@ -124,9 +127,9 @@ export async function caNewsPollingLoop() {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
         );
-        STATE.ca.seen[cleanLink] = Date.now();
-        await saveState(STATE, "low significance skipped");
-        return false;
+        STATE.cricktracker.seen[cleanLink] = Date.now();
+        await saveState(STATE);
+        return true;
       }
 
       if (isExempt) {
