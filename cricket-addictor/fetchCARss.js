@@ -17,47 +17,13 @@ const USER_AGENTS = [
 function pickUA() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
-// export async function fetchCARSS() {
-//   console.log("---- CA via gotScraping ----");
-
-//   try {
-//     const response = await gotScraping({
-//       url: CA_RSS,
-//       headerGeneratorOptions: {
-//         browsers: [
-//           { name: "chrome", minVersion: 120 },
-//           { name: "firefox", minVersion: 120 },
-//         ],
-//         devices: ["desktop"],
-//         locales: ["en-US"],
-//       },
-//       timeout: { request: 8000 },
-//     });
-
-//     if (!response?.body) {
-//       throw new Error("Empty body from CA");
-//     }
-
-//     const parsed = await parseStringPromise(response.body, {
-//       explicitArray: false,
-//       mergeAttrs: true,
-//       trim: true,
-//     });
-
-//     return parsed?.rss?.channel?.item || [];
-//   } catch (err) {
-//     throw new Error(`CA RSS via gotScraping failed: ${err.message || err}`);
-//   }
-// }
 
 export async function fetchCARSS() {
-  console.log("-------- A1 --------");
   await delay(Math.floor(Math.random() * 800));
-  console.log("-------- B1 --------");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
-  console.log("-------- C1 --------");
+
   let res;
   try {
     res = await fetch(CA_RSS, {
@@ -72,9 +38,7 @@ export async function fetchCARSS() {
         Connection: "keep-alive",
       },
     });
-    console.log("-------- D1 --------");
   } catch (err) {
-    console.log("-------- E1 --------");
     clearTimeout(timeout);
     throw new Error(
       `CA RSS network error: ${err.name || ""} ${err.message || err}`
@@ -82,14 +46,12 @@ export async function fetchCARSS() {
   }
 
   clearTimeout(timeout);
-  console.log("-------- F1 --------");
 
   if (!res.ok) {
     throw new Error(`CA RSS HTTP ${res.status} ${res.statusText}`);
   }
-  console.log("-------- G1 --------");
+
   const xml = await res.text();
-  console.log("-------- H1 --------");
 
   try {
     const parsed = await parseStringPromise(xml, {
@@ -97,7 +59,7 @@ export async function fetchCARSS() {
       mergeAttrs: true,
       trim: true,
     });
-    console.log("-------- I1 --------", parsed);
+
     return parsed?.rss?.channel?.item || [];
   } catch (err) {
     throw new Error(`CA RSS parse error: ${err.message || err}`);
