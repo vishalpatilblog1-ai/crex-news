@@ -530,6 +530,21 @@ Ask before writing: does this article earn a 2-line tweet? A verdict-first tweet
 If yes — use it. Compression is a strength.
 
 ═══════════════════════════════════════════
+HOOK PRIORITY RULE:
+═══════════════════════════════════════════
+If the article contains a strong insight or contradiction,
+start the tweet with that insight — not context.
+The first line must be scroll-stopping, not explanatory.
+
+═══════════════════════════════════════════
+ENERGY VARIATION RULE:
+═══════════════════════════════════════════
+Not all tweets should feel calm and analytical.
+Some tweets should be sharper and more assertive.
+If the article supports it, take a clear, debatable stance on decisions, strategy, or roles — without personal attacks.
+
+
+═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 - If a named individual makes a strong claim — name them in tweet

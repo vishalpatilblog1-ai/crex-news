@@ -8,13 +8,13 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Article types that are exempt from significance score filtering.
-// These drive shares/saves through emotional resonance or legacy value —
-// NOT through news urgency. Filtering them by news significance score
-// would systematically kill your best-performing content.
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
-  "milestone_record",
+  "breaking_news",
+  // "selection_news",
+  // "press_conference",
+  // "injury_news",
+  // "milestone_record",
 ]);
 
 export async function classifyArticle(articleText) {
@@ -26,23 +26,39 @@ Classify this cricket article into ONE of these types:
 - player_form         (runs, wickets, performance trend)
 - human_interest      (personal story, family, journey)
 - preview             (upcoming match, what to expect)
-- injury_news         (availability, fitness, ruled out)
-- press_conference    (quotes from coach, captain, player)
+- injury_news         (player availability, fitness, delayed arrival, travel disruption, ruled out)
+- press_conference    (direct quotes from a named individual — coach, captain, or player)
 - milestone_record    (record broken, landmark achieved)
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
+- breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
 
 Classification Rules (apply in order):
+0. Choose breaking_news ONLY if ALL of these are true:
+   - A single confirmed event just happened (not a collection of updates)
+   - The article can be summarized as ONE headline sentence without listing multiple players or conditions
+   - Relevance window is minutes to hours — not days
+   - The news changes something immediately for an ongoing or imminent match/tournament
+
+   DO NOT use breaking_news for:
+   - Board policy decisions or fitness programs
+   - Ongoing rehabilitation or availability updates
+   - Multi-player injury roundups
+   - Any article mentioning 2 or more players in different situations (injured, pending, cleared)
+   - News that is significant but not time-critical
+
+   These go to injury_news, selection_news, or the appropriate type instead.
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
-3. Choose press_conference if the article is primarily built around direct quotes from a named individual (coach, captain, player).
+3. Choose press_conference if the article is primarily built around direct quotes from a NAMED individual (coach, captain, player). Anonymous source quotes ("a source told PTI", "sources say", "according to insiders") do NOT qualify — classify by the article's primary news peg instead.
 4. Choose human_interest if the article centers on a player's personal background, family, or journey — NOT their stats.
 5. Choose milestone_record if a stat or landmark is the central news peg.
 6. Choose match_report if the article covers a completed match result without deep tactical breakdown.
 7. Choose selection_news for squad decisions, dropped or added players.
-8. Choose injury_news for fitness and availability updates.
+8. Choose injury_news if the article is primarily about a player's availability, delayed arrival, fitness clearance, travel disruption, or anything affecting whether a player is ready and present for team preparation — even if no injury is involved.
 9. Choose preview for upcoming match previews.
 10. Default to player_form if unsure between form-related types.
+11. When torn between two types, ask: what is the PRIMARY news peg — the single fact that makes this article worth publishing today? Classify based on that, not the surrounding context.
 
 IMPORTANT: An article that includes match context but whose primary argument is about DECISIONS and TACTICS should be classified as tactical_analysis, not match_report.
 
@@ -66,10 +82,6 @@ ${articleText}
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
-
-// ─── ENGAGEMENT FRAMEWORKS ───────────────────────────────────────────────────
-// These patterns are proven to drive replies, retweets, and bookmarks.
-// Each article type pulls from the most relevant ones.
 
 const ENGAGEMENT_FRAMEWORKS = `
 ENGAGEMENT MECHANICS — apply at least ONE per tweet:
@@ -218,6 +230,9 @@ Focus on:
 Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagement mechanics — end with the tension, not the conclusion.
 Name both the selected player AND the one left out if both are newsworthy.
 Avoid: "bold call", "surprise pick", "questions will be asked".
+
+CLOSING LINE EXCEPTION: 
+A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
 `,
 
   player_form: `
@@ -271,6 +286,10 @@ PATTERNS:
   Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast).
   Warmth is allowed here. Sentimentality is not.
   Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+
+CLOSING LINE EXCEPTION: 
+  A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
+
 `,
 
   opinion_piece: `
@@ -340,7 +359,7 @@ Use when: the quote itself is sharp, surprising, or unusually candid.
 Lead with the quote (under 12 words), then frame what it reveals.
 Attribute in the first or second sentence. Never absorb the quote into the narrator's voice.
 
-MODE 2 — ACT OVER QUOTE  
+MODE 2 — ACT OVER QUOTE
 Use when: the significance of WHO is speaking, or THAT they chose to speak at all, is more newsworthy than what they said.
 Use PATTERN G (Act-Over-Quote) from the engagement mechanics.
 Example: "MS Dhoni breaks a near two-year social media silence to validate Gambhir. The first public endorsement from the man who started this World Cup dynasty."
@@ -349,23 +368,69 @@ Rules for both modes:
 - Name the speaker in the first or second sentence — no vague attribution
 - Frame around what the statement or act reveals about team thinking, internal dynamics, or relationships
 - Avoid paraphrasing quotes so loosely that the speaker's actual position is lost
+
+ATTRIBUTION STAYS TO THE END (strict):
+The closing verdict must still be framed as the speaker's position — not the narrator's conclusion.
+The reader must always know whose argument they are evaluating.
+Wrong: "The pitch preparation is the strategy — not the team selection."
+Right: "Faf's point: KKR's problem last season wasn't the spinners — it was the surface they were handed."
+If the closing line could have been written without reading the article — it has lost its attribution. Rewrite it.
+
+MULTI-SPEAKER RULE:
+If the article quotes more than one named individual, do not try to include both equally.
+Pick the speaker whose claim is most analytically significant or most likely to generate debate.
+The second speaker can appear only if their quote directly reinforces or contradicts the first.
 `,
 
   milestone_record: `
 ARTICLE TYPE: Milestone / Record
 
+STAT SELECTION RULE (do this before writing anything):
+Scan the full article and list every stat mentioned.
+The most tweet-worthy number is rarely the first one — it is the one with the most
+historical context, or the one no player has achieved before, or the one closest to
+an unprecedented landmark. Choose that number as your anchor, not the most obvious one.
+If the headline stat and a deeper stat both exist — the deeper one wins.
+
 The number is your entry point, not your destination.
 
 ENGAGEMENT TARGET: Bookmarks + shares (legacy debate)
-The tweet should add one layer of analytical depth beyond the stat — context that makes the number meaningful.
+The tweet should add one layer of analytical depth beyond the stat — context that
+makes the number feel inevitable in hindsight, or genuinely unprecedented going forward.
 
 Focus on:
 - What this milestone reveals about the player's career arc, not just the achievement
 - Who else has done this, when, and under what conditions — context that adds weight
 - What the record says about the era, the format, or the team around them
+- If an upcoming landmark is more significant than the current one — lead with that
 
-Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch), or PATTERN L (Number Sandwich) from the engagement mechanics.
+Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch),
+or PATTERN L (Number Sandwich) from the engagement mechanics.
+PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
+`,
+
+  breaking_news: `
+ARTICLE TYPE: Breaking News
+
+Speed and clarity over analysis. This is the first take, not the final word.
+
+ENGAGEMENT TARGET: Retweets + replies (information sharing)
+
+FORMAT (mandatory):
+🚨 [SHORT HEADLINE IN CAPS — max 6 words] 🚨
+
+Then 1-2 lines of the key fact — who, what, and the immediate consequence.
+No editorializing. No opinion. Just the sharpest version of the news.
+
+Use this type for:
+- Player ruled out / availability confirmed
+- Squad announced unexpectedly
+- Board decisions with immediate impact
+- Transfer/trade confirmed
+
+The headline must be factual — never sensationalized.
+The body must answer: what does this mean RIGHT NOW for the team or tournament?
 `,
 };
 
@@ -411,17 +476,16 @@ CORE STRATEGY
 ═══════════════════════════════════════════
 TONE & PERSONALITY
 ═══════════════════════════════════════════
-- Calm confidence — not rage, not hype
-- Opinionated but credible — sounds like a trusted analyst, not a fan account
-- Emotion under control, authority on display
-- For human_interest pieces only: warmth is allowed, never sentimental
+- Fan voice with analytical depth — not pure analyst, not pure fan
+- Think: the smartest person in the cricket WhatsApp group, not a journalist
+- Emotion under control, but not suppressed — let the story breathe
 
 ═══════════════════════════════════════════
 STYLE RULES
 ═══════════════════════════════════════════
 - Plain text only — no markdown, no bold, no asterisks
-- No emoji at all.
-- No hashtags unless the article is about a trending event (max 1)
+- No emoji except for breaking_news type which uses 🚨 as a mandatory format marker.
+- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end (max 1 hashtag ever)
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
 
@@ -446,6 +510,7 @@ deliberate tension, not uncertainty. There is a difference between
 (intentional tension — allowed) and
 "This might be India's smartest tactical shift." (hedge — banned).
 You either back something or you don't. Pick a lane.
+
 
 ═══════════════════════════════════════════
 STRUCTURE VARIETY RULE (STRICT)
@@ -486,6 +551,24 @@ Preferred analyst verbs: exposes, confirms, undermines, justifies, forces, settl
 One strong evaluative phrase per tweet — make it count.
 
 ═══════════════════════════════════════════
+TABLE DATA RULE
+═══════════════════════════════════════════
+If the article contains a JSON table (structured list of players, stats, or records),
+use it as a data source — do NOT ignore it.
+
+Do NOT list everything from the table. Pick the most tweet-worthy subset based on:
+- The most surprising or unexpected entry
+- The most impactful name (biggest star, most relevant to current debate)
+- A pattern across entries (multiple players from same team, severity split, trend)
+- An upcoming landmark or threshold visible in the numbers
+
+Frame extracted data as a punchy inline enumeration — never as a bullet list.
+Example: "Harshit Rana (season), Pathirana (early games), Curran (season) — three franchises just lost their plans before IPL 2026 starts."
+
+The table is raw material. Your job is to find the one angle inside it that earns the tweet.
+If the table adds nothing beyond what the article text already says — ignore it.
+
+═══════════════════════════════════════════
 BOOKMARK VALUE RULE
 ═══════════════════════════════════════════
 Every tweet must contain at least one insight the reader will want to reference again.
@@ -515,6 +598,7 @@ ABSOLUTE NOs
 - No fanbase baiting or us-vs-them framing
 - No rage farming
 - No pure scoreline recaps masquerading as insight
+- NEVER introduce religious, caste, or ethnic identity framing unless the article explicitly and centrally discusses it. If the article does not use the word "Hindu", "Muslim", "faith", "religion" etc — you cannot introduce those concepts. Stick to what the article actually says.
 
 ${ENGAGEMENT_FRAMEWORKS}
 
@@ -554,20 +638,29 @@ FINAL CHECK before outputting:
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
 - Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
+- For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
+- Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
+- Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
+
+SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
+- Does the closing line name a specific decision, match, moment, or person?
+- If the closing line could apply to ANY article about ANY captain or coach — it is too vague. Rewrite it with one concrete anchor from the article.
+- Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
 
 RULES:
-- No Emoji at all
+- No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
 - Plain text only
-- No hashtags unless essential (max 1)
+- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–220 characters. Shorter tweets with strong insight outperform longer explanations.
+- Target length: 140–260 characters for most types.
+  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
   A tweet that fits on one screen without "show more" gets more impressions.
 `;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 280,
+    max_tokens: 350,
     temperature: 0.85,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
