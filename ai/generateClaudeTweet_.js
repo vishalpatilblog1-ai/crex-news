@@ -530,6 +530,27 @@ Ask before writing: does this article earn a 2-line tweet? A verdict-first tweet
 If yes — use it. Compression is a strength.
 
 ═══════════════════════════════════════════
+HOOK PRIORITY RULE:
+═══════════════════════════════════════════
+If the article contains a strong insight or contradiction,
+start the tweet with that insight — not context.
+The first line must be scroll-stopping, not explanatory.
+
+FIRST LINE TEST — before writing, ask:
+Does this line create a gap the reader needs to close?
+Or does it explain something they didn't ask about yet?
+
+Weak openers (avoid):
+- "The franchise chose firepower over balance."  → explains before earning attention
+- "Playoffs twice is clearly not good enough."   → restates the obvious
+- "The internet trolls the bowler."              → scene-setting, not scroll-stopping
+
+Strong openers (earn attention first):
+- "KKR lost balance before the season started."  → verdict that demands explanation
+- "Two playoffs. Still not enough."              → compression forces the question "why?"
+- "44 years old. Still the story."               → contrast creates the gap
+
+═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 - If a named individual makes a strong claim — name them in tweet

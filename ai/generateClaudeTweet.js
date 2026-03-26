@@ -627,11 +627,26 @@ ${articleTypeInstruction}
 `;
 }
 
-// Internal tweet generator — accepts a pre-classified article type to avoid
-// a redundant classifyArticle call when the polling loop has already classified.
+// ─── CARD TYPES THAT GET AN IMAGE ───────────────────────────────────────────
+// human_interest and opinion_piece go text-only (copy carries the weight)
+// everything else gets a typography card
+const CARD_IMAGE_TYPES = new Set([
+  "match_report",
+  "selection_news",
+  "player_form",
+  "preview",
+  "injury_news",
+  "press_conference",
+  "milestone_record",
+  "tactical_analysis",
+  "breaking_news",
+]);
+
 async function _generateTweet(articleText, articleType) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
+
+  const needsCard = CARD_IMAGE_TYPES.has(articleType);
 
   const userPrompt = `
 [NEWS CONTEXT]
@@ -677,11 +692,36 @@ RULES:
 - Target length: 140–260 characters for most types.
   human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
   A tweet that fits on one screen without "show more" gets more impressions.
+
+${
+  needsCard
+    ? `
+─────────────────────────────────────────
+CARD FIELDS (required — output after tweet)
+─────────────────────────────────────────
+After the tweet text, output a JSON block on a new line in this exact format:
+CARD_JSON:{"category":"SELECTION NEWS","headline":"Jitesh to RCB","subline":"PBKS couldn't match ₹11Cr bid","player":"Jitesh Sharma"}
+
+Rules for card fields:
+- category: UPPERCASE label matching the article type. Use one of:
+  SELECTION NEWS / INJURY NEWS / BREAKING NEWS / MATCH REPORT /
+  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION
+- headline: max 5 words, punchy, title case. The single most important fact.
+- subline: max 8 words, supporting context. Can be a short phrase or stat.
+- player: primary player's full name, or "" if no single player is central.
+
+Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
+Do not add any explanation around the JSON.
+`
+    : `
+No card needed for this article type. Output tweet text only.
+`
+}
 `;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 350,
+    max_tokens: 400, // bumped from 350 to accommodate card JSON
     temperature: 0.85,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -689,14 +729,37 @@ RULES:
 
   const rawText = response.content[0].text;
 
-  const tweetText = rawText
+  // ── Parse tweet + card fields ──────────────────────────────────────────────
+  let tweetText = rawText;
+  let card = null;
+
+  if (needsCard) {
+    const cardMarker = "CARD_JSON:";
+    const markerIndex = rawText.indexOf(cardMarker);
+
+    if (markerIndex !== -1) {
+      tweetText = rawText.slice(0, markerIndex).trim();
+      const jsonStr = rawText.slice(markerIndex + cardMarker.length).trim();
+      try {
+        card = JSON.parse(jsonStr);
+      } catch (e) {
+        console.warn("⚠️ Failed to parse card JSON:", jsonStr);
+        card = null;
+      }
+    } else {
+      console.warn("⚠️ CARD_JSON marker not found in response");
+    }
+  }
+
+  // ── Clean tweet whitespace ─────────────────────────────────────────────────
+  tweetText = tweetText
     .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
   if (!tweetText || tweetText.length < 30) {
     console.warn("⚠️ Claude returned empty or too-short tweet");
-    return null;
+    return { tweetText: null, card: null };
   }
 
   if (tweetText.length > 280) {
@@ -705,11 +768,11 @@ RULES:
     );
   }
 
-  return tweetText;
+  console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
+
+  return { tweetText, card };
 }
 
-// Standard entry point — classifies internally, used when polling loop
-// does not need to know the article type for gate logic.
 export async function generateClaudeTweet(articleText) {
   console.log("generateClaudeTweet::");
   let articleType = "player_form";
@@ -732,15 +795,15 @@ export async function generateClaudeTweet(articleText) {
 
   try {
     return await _generateTweet(articleText, articleType);
+    // returns { tweetText, card }
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
-    return null;
+    return { tweetText: null, card: null };
   }
 }
 
-// Extended entry point — accepts a pre-classified type from the polling loop.
-// Avoids a duplicate classifyArticle call and returns the type alongside the tweet
-// so the polling loop can make gate decisions without re-classifying.
+// ─── UPDATED generateClaudeTweetWithType ─────────────────────────────────────
+// Now returns { tweetText, articleType, card }
 export async function generateClaudeTweetWithType(articleText, articleType) {
   console.log("generateClaudeTweetWithType::");
 
@@ -756,10 +819,11 @@ export async function generateClaudeTweetWithType(articleText, articleType) {
   console.log(`🏷️ Article type (pre-classified): ${resolvedType}`);
 
   try {
-    const tweetText = await _generateTweet(articleText, resolvedType);
-    return { tweetText, articleType: resolvedType };
+    const { tweetText, card } = await _generateTweet(articleText, resolvedType);
+    return { tweetText, articleType: resolvedType, card };
+    // returns { tweetText, articleType, card }
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
-    return { tweetText: null, articleType: resolvedType };
+    return { tweetText: null, articleType: resolvedType, card: null };
   }
 }

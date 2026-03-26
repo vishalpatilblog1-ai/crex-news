@@ -10,9 +10,6 @@ import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
  */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-// const MIN_TWEET_DELAY = 5 * 60 * 1000;
-// const MAX_TWEET_DELAY = 10 * 60 * 1000;
-
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay(source) {
@@ -29,19 +26,6 @@ function randomTweetDelay(source) {
 
   return MIN + Math.random() * (MAX - MIN);
 }
-
-// function randomTweetDelay(source) {
-//   if (source === "NDTV") {
-//     const MIN = 20 * 60 * 1000;
-//     const MAX = 45 * 60 * 1000;
-//     return MIN + Math.random() * (MAX - MIN);
-//   }
-
-//   const MIN = 45 * 60 * 1000;
-//   const MAX = 90 * 60 * 1000;
-
-//   return MIN + Math.random() * (MAX - MIN);
-// }
 
 function canTweetNow(source) {
   if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
@@ -130,19 +114,19 @@ export async function tryFlushTweetQueue() {
     }
 
     let tweetResponse;
-    tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+    // tweetResponse = await tweetNewsWithoutImage({ text: next.text });
 
     // temporary commented
 
-    // if (next.imageUrl) {
-    //   tweetResponse = await tweetNewsWithImage(
-    //     next.text,
-    //     next.imageUrl,
-    //     next.source
-    //   );
-    // } else {
-    //   tweetResponse = await tweetNewsWithoutImage({ text: next.text });
-    // }
+    if (next.imageUrl) {
+      tweetResponse = await tweetNewsWithImage(
+        next.text,
+        next.imageUrl,
+        next.source
+      );
+    } else {
+      tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+    }
 
     const tweetId = tweetResponse?.data?.id;
 

@@ -19,26 +19,77 @@ export const twitterClient = new TwitterApi({
 
 const rwClient = twitterClient.readWrite;
 
-async function downloadImage(url) {
+// commented temporary. dont delete it.
+// async function downloadImage(url) {
+//   fs.mkdirSync("./tmp", { recursive: true });
+//   const filePath = "./tmp/news.jpg";
+
+//   const res = await axios.get(url, {
+//     responseType: "arraybuffer",
+//     headers: {
+//       "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+//       "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
+//     },
+//   });
+
+//   fs.writeFileSync(filePath, res.data);
+//   return filePath;
+// }
+
+async function downloadImageGP(urlOrPath) {
   fs.mkdirSync("./tmp", { recursive: true });
+
+  // ✅ IF LOCAL FILE → USE DIRECTLY
+  if (urlOrPath.startsWith("./") || urlOrPath.startsWith("/")) {
+    console.log("📁 Using local generated image");
+
+    return urlOrPath; // 🔥 RETURN ORIGINAL
+  }
+
+  // 🌐 remote case
   const filePath = "./tmp/news.jpg";
 
-  const res = await axios.get(url, {
+  const res = await axios.get(urlOrPath, {
     responseType: "arraybuffer",
-    headers: {
-      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-      "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
-    },
   });
 
   fs.writeFileSync(filePath, res.data);
   return filePath;
 }
+// async function downloadImageGP(urlOrPath) {
+//   fs.mkdirSync("./tmp", { recursive: true });
+
+//   const filePath = "./tmp/news.jpg";
+
+//   if (urlOrPath.startsWith("./") || urlOrPath.startsWith("/")) {
+//     console.log("📁 Using local generated image");
+
+//     const data = fs.readFileSync(urlOrPath);
+
+//     fs.writeFileSync(filePath, data);
+
+//     return filePath;
+//   }
+
+//   console.log("⬇ Downloading image from URL...");
+
+//   const res = await axios.get(urlOrPath, {
+//     responseType: "arraybuffer",
+//     headers: {
+//       "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+//       "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
+//     },
+//   });
+
+//   fs.writeFileSync(filePath, res.data);
+//   return filePath;
+// }
 
 export async function tweetNewsWithImage(text, imageUrl, source) {
+  let downloadedPath = null;
+
   try {
     const EXPERIMENT_TAGS = [];
-
     let finalText = text;
 
     const missingTags = EXPERIMENT_TAGS.filter(
@@ -51,14 +102,14 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
 
     console.log("⬇ Downloading image...", source);
 
-    let downloadedPath = null;
-
     try {
-      if (source === "NDTV") {
-        downloadedPath = await downloadNDTVImage(imageUrl);
-      } else {
-        downloadedPath = await downloadImage(imageUrl);
-      }
+      downloadedPath = await downloadImageGP(imageUrl);
+
+      // if (source === "NDTV") {
+      //   downloadedPath = await downloadNDTVImage(imageUrl);
+      // } else {
+      //   downloadedPath = await downloadImage(imageUrl);
+      // }
     } catch (err) {
       console.warn(
         "⚠️ Image download failed, tweeting text only:",
@@ -66,13 +117,13 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
       );
     }
 
-    // IMAGE SUCCESS
-    if (downloadedPath) {
+    if (downloadedPath && fs.existsSync(downloadedPath)) {
       console.log("📤 Uploading image to Twitter...");
+
       const data = fs.readFileSync(downloadedPath);
 
       const mediaId = await rwClient.v1.uploadMedia(data, {
-        mimeType: "image/jpeg",
+        mimeType: "image/png", // 🔥 match your generated file
       });
 
       console.log("📝 Tweeting with image...");
@@ -83,12 +134,13 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
 
       console.log("🚀 Tweet Posted:", tweet.data.id);
 
-      fs.unlinkSync(downloadedPath);
       return tweet;
     }
 
-    // FALLBACK TEXT TWEET
-    console.log("📝 Tweeting text only (image unavailable)...");
+    // =============================
+    // 📝 FALLBACK
+    // =============================
+    console.log("📝 Tweeting text only...");
     const tweet = await rwClient.v2.tweet({
       text: finalText,
     });
@@ -98,8 +150,82 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
     return tweet;
   } catch (err) {
     console.error("❌ Error tweeting news:", err);
+    throw err;
+  } finally {
+    // 🔥 DELETE AFTER EVERYTHING
+    if (downloadedPath && fs.existsSync(downloadedPath)) {
+      fs.unlinkSync(downloadedPath);
+      console.log("🧹 Temp image deleted:", downloadedPath);
+    }
   }
 }
+
+// export async function tweetNewsWithImage(text, imageUrl, source) {
+//   try {
+//     const EXPERIMENT_TAGS = [];
+
+//     let finalText = text;
+
+//     const missingTags = EXPERIMENT_TAGS.filter(
+//       (tag) => !finalText.includes(tag)
+//     );
+
+//     if (missingTags.length > 0) {
+//       finalText += `\n\n${missingTags.join(" ")}`;
+//     }
+
+//     console.log("⬇ Downloading image...", source);
+
+//     let downloadedPath = null;
+
+//     try {
+//       downloadedPath = await downloadImageGP(imageUrl);
+//       // if (source === "NDTV") {
+//       //   downloadedPath = await downloadNDTVImage(imageUrl);
+//       // } else {
+//       //   downloadedPath = await downloadImageGP(imageUrl);
+//       // }
+//     } catch (err) {
+//       console.warn(
+//         "⚠️ Image download failed, tweeting text only:",
+//         err.message
+//       );
+//     }
+
+//     // IMAGE SUCCESS
+//     if (downloadedPath) {
+//       console.log("📤 Uploading image to Twitter...");
+//       const data = fs.readFileSync(downloadedPath);
+
+//       const mediaId = await rwClient.v1.uploadMedia(data, {
+//         mimeType: "image/jpeg",
+//       });
+
+//       console.log("📝 Tweeting with image...");
+//       const tweet = await rwClient.v2.tweet({
+//         text: finalText,
+//         media: { media_ids: [mediaId] },
+//       });
+
+//       console.log("🚀 Tweet Posted:", tweet.data.id);
+
+//       fs.unlinkSync(downloadedPath);
+//       return tweet;
+//     }
+
+//     // FALLBACK TEXT TWEET
+//     console.log("📝 Tweeting text only (image unavailable)...");
+//     const tweet = await rwClient.v2.tweet({
+//       text: finalText,
+//     });
+
+//     console.log("🚀 Tweet Posted:", tweet.data.id);
+
+//     return tweet;
+//   } catch (err) {
+//     console.error("❌ Error tweeting news:", err);
+//   }
+// }
 
 // export async function tweetNewsWithImage(text, imageUrl, source) {
 //   try {
