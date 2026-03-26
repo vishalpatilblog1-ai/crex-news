@@ -130,16 +130,19 @@ export async function tryFlushTweetQueue() {
     }
 
     let tweetResponse;
+    tweetResponse = await tweetNewsWithoutImage({ text: next.text });
 
-    if (next.imageUrl) {
-      tweetResponse = await tweetNewsWithImage(
-        next.text,
-        next.imageUrl,
-        next.source
-      );
-    } else {
-      tweetResponse = await tweetNewsWithoutImage({ text: next.text });
-    }
+    // temporary commented
+
+    // if (next.imageUrl) {
+    //   tweetResponse = await tweetNewsWithImage(
+    //     next.text,
+    //     next.imageUrl,
+    //     next.source
+    //   );
+    // } else {
+    //   tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+    // }
 
     const tweetId = tweetResponse?.data?.id;
 
