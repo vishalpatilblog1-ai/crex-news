@@ -806,8 +806,6 @@ export async function generateClaudeTweet(articleText) {
 // ─── UPDATED generateClaudeTweetWithType ─────────────────────────────────────
 // Now returns { tweetText, articleType, card }
 export async function generateClaudeTweetWithType(articleText, articleType) {
-  console.log("generateClaudeTweetWithType::");
-
   let resolvedType = articleType;
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {

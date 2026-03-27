@@ -24,7 +24,7 @@ async function bootstrap() {
 
   setInterval(async () => {
     try {
-      console.log("tryFlushTweetQueue::");
+      // console.log("tryFlushTweetQueue::");
       await tryFlushTweetQueue();
     } catch (err) {
       console.error("❌ Queue flush error:", err?.message || err);
