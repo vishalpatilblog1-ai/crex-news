@@ -8,11 +8,11 @@ global.NEXT_TWEET_ALLOWED_AT ??= 0;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay(source) {
-  if (["NDTV", "CT", "CB", "ESPN"].includes(source)) {
-    const MIN = 60 * 1000;
-    const MAX = 2 * 60 * 1000;
-    return MIN + Math.random() * (MAX - MIN);
-  }
+  // if (["NDTV", "CT", "CB", "ESPN"].includes(source)) {
+  //   const MIN = 60 * 1000;
+  //   const MAX = 2 * 60 * 1000;
+  //   return MIN + Math.random() * (MAX - MIN);
+  // }
 
   const MIN = 2 * 60 * 1000;
   const MAX = 5 * 60 * 1000;
@@ -108,11 +108,11 @@ export async function tryFlushTweetQueue() {
 
   if (!STATE?.tweetQueue?.length) return false;
 
-  const next = STATE.tweetQueue[0]; // 👈 peek first
+  const next = STATE.tweetQueue[0];
 
   if (!canTweetNow(next.source)) return false;
 
-  STATE.tweetQueue.shift(); // 👈 now remove
+  STATE.tweetQueue.shift();
 
   try {
     if (CONSOLE_ONLY) {

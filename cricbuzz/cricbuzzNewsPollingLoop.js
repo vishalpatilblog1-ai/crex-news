@@ -83,7 +83,7 @@ export async function cricbuzzNewsPollingLoop() {
     let articleType = "player_form";
     try {
       articleType = await classifyArticle(fullText);
-      console.log(`🏷️ Classified as: ${articleType}`);
+      // console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }

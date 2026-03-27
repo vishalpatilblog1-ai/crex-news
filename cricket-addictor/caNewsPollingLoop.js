@@ -101,7 +101,7 @@ export async function caNewsPollingLoop() {
     let articleType = "player_form";
     try {
       articleType = await classifyArticle(fullText);
-      console.log(`🏷️ Classified as: ${articleType}`);
+      // console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
@@ -155,18 +155,8 @@ export async function caNewsPollingLoop() {
       );
       tweetText = claudeTweet;
 
-      console.log("claudeTweet CA:::", tweetText, "card::", card);
-
-      // ✅ Only generate image if card exists
       if (card) {
         try {
-          // const imageBuffer = await renderNewsCardImage(
-          //   CREX_BASE_IMAGE_TEMPLATE,
-          //   card
-          // );
-
-          // generatedPath = saveGeneratedImage(imageBuffer);
-
           generatedPath = await generateCardImage(
             CREX_BASE_IMAGE_TEMPLATE,
             card
@@ -175,7 +165,6 @@ export async function caNewsPollingLoop() {
           console.log("generatedPath:::", generatedPath);
         } catch (err) {
           console.error("❌ Image generation failed:", err);
-          // ⚠️ Do NOT return → fallback to text-only
         }
       } else {
         console.log("📝 Text-only tweet (no card)");
