@@ -18,43 +18,21 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // 🔥 FIX: Force PNG (avoid WEBP issue)
+  // 🔥 Force PNG
   const finalBaseUrl = baseImageUrl.replace("/upload/", "/upload/f_png/");
 
   const baseImage = await loadImage(finalBaseUrl);
   ctx.drawImage(baseImage, 0, 0, width, height);
 
-  // temporary for testing
+  // 🔥 Overlay for readability
   ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.fillRect(0, 0, width, height);
 
   // ===============================
   // 🔴 CATEGORY BADGE
-  // // ===============================
-  // if (card.category) {
-  //   // ctx.font = "bold 32px Arial";
-  //   ctx.font = "32px InterBold";
-  //   ctx.textBaseline = "middle";
-
-  //   const paddingX = 30;
-  //   const boxHeight = 60;
-
-  //   const textWidth = ctx.measureText(card.category).width;
-
-  //   const boxX = 100;
-  //   const boxY = 80;
-  //   const boxWidth = textWidth + paddingX * 2;
-
-  //   drawRoundedRect(ctx, boxX, boxY, boxWidth, boxHeight, 20, "#E74C3C");
-
-  //   ctx.fillStyle = "#FFFFFF";
-  //   ctx.fillText(card.category, boxX + paddingX, boxY + boxHeight / 2 + 2);
-  // }
-
-  // if (card.category) {
+  // ===============================
   if (card.category?.trim()) {
     const normalizedCategory = card.category.trim().toUpperCase();
-
     const badgeColor = CATEGORY_COLOR_MAP[normalizedCategory] || DEFAULT_COLOR;
 
     ctx.font = "32px InterBold";
@@ -72,7 +50,8 @@ export async function renderNewsCardImage(baseImageUrl, card) {
     drawRoundedRect(ctx, boxX, boxY, boxWidth, boxHeight, 20, badgeColor);
 
     ctx.fillStyle = "#FFFFFF";
-    // ctx.fillText(normalizedCategory, boxX + paddingX, boxY + boxHeight / 2 + 2);
+
+    // ✅ ONLY HERE spacing is used
     drawTextWithSpacing(
       ctx,
       normalizedCategory,
@@ -86,25 +65,23 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   // 📰 HEADLINE
   // ===============================
   ctx.fillStyle = "#FFFFFF";
-  // ctx.font = "bold 68px Arial";
   ctx.font = "68px InterBold";
 
-  // shadow
   ctx.shadowColor = "rgba(0,0,0,0.5)";
   ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 2;
 
-  const headlineLines = wrapText(ctx, card.headline, 100, 200, 750, 85) || 1;
+  const headlineText = card.headline || "Breaking Update";
 
-  // reset shadow
+  const headlineLines = wrapText(ctx, headlineText, 100, 200, 750, 85) || 1;
+
   ctx.shadowColor = "transparent";
 
   // ===============================
-  // 📌 SUBLINE (dynamic position)
+  // 📌 SUBLINE
   // ===============================
   if (card.subline) {
     ctx.fillStyle = "#FFD54F";
-    // ctx.font = "36px Arial";
     ctx.font = "36px InterRegular";
 
     const sublineY = 200 + headlineLines * 85 + 10;
@@ -115,6 +92,9 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   return canvas.toBuffer("image/png");
 }
 
+// ===============================
+// SAVE IMAGE
+// ===============================
 export function saveGeneratedImage(buffer) {
   try {
     fs.mkdirSync("./tmp", { recursive: true });
@@ -131,7 +111,7 @@ export function saveGeneratedImage(buffer) {
 }
 
 // ===============================
-// 🎨 HELPERS
+// HELPERS
 // ===============================
 function drawRoundedRect(ctx, x, y, width, height, radius, color) {
   ctx.fillStyle = color;
@@ -170,12 +150,12 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
 
   lines.push(line);
 
+  // ✅ NORMAL TEXT (no spacing here)
   lines.forEach((l, i) => {
-    // ctx.fillText(l.trim(), x, y + i * lineHeight);
-    drawTextWithSpacing(ctx, l.trim(), x, y + i * lineHeight);
+    ctx.fillText(l.trim(), x, y + i * lineHeight);
   });
 
-  return lines.length; // 🔥 VERY IMPORTANT
+  return lines.length;
 }
 
 function drawTextWithSpacing(ctx, text, x, y, letterSpacing = 1) {
