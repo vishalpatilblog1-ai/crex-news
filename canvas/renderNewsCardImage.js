@@ -1,10 +1,15 @@
-import { createCanvas, loadImage } from "canvas";
+import { createCanvas, loadImage, registerFont } from "canvas";
 import fs from "fs";
 import path from "path";
 
-// ===============================
-// 🎯 MAIN FUNCTION
-// ===============================
+registerFont(path.resolve("./fonts/Inter_28pt-Bold.ttf"), {
+  family: "InterBold",
+});
+
+registerFont(path.resolve("./fonts/Inter_28pt-Regular.ttf"), {
+  family: "InterRegular",
+});
+
 export async function renderNewsCardImage(baseImageUrl, card) {
   const width = 1200;
   const height = 675;
@@ -22,7 +27,8 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   // 🔴 CATEGORY BADGE
   // ===============================
   if (card.category) {
-    ctx.font = "bold 32px Arial";
+    // ctx.font = "bold 32px Arial";
+    ctx.font = "32px InterBold";
     ctx.textBaseline = "middle";
 
     const paddingX = 30;
@@ -44,7 +50,8 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   // 📰 HEADLINE
   // ===============================
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 68px Arial";
+  // ctx.font = "bold 68px Arial";
+  ctx.font = "bold 68px InterBold";
 
   // shadow
   ctx.shadowColor = "rgba(0,0,0,0.5)";
@@ -61,30 +68,13 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   // ===============================
   if (card.subline) {
     ctx.fillStyle = "#FFD54F";
-    ctx.font = "36px Arial";
+    // ctx.font = "36px Arial";
+    ctx.font = "36px InterRegular";
 
     const sublineY = 200 + headlineLines * 85 + 10;
 
     wrapText(ctx, card.subline, 100, sublineY, 800, 50);
   }
-
-  // ctx.fillStyle = "#FFFFFF";
-  // ctx.font = "bold 68px Arial";
-
-  // // subtle shadow (premium feel)
-  // ctx.shadowColor = "rgba(0,0,0,0.5)";
-  // ctx.shadowBlur = 6;
-  // ctx.shadowOffsetY = 2;
-
-  // wrapText(ctx, card.headline, 100, 200, 750, 85);
-
-  // // reset shadow
-  // ctx.shadowColor = "transparent";
-
-  // ctx.fillStyle = "#FFD54F";
-  // ctx.font = "36px Arial";
-
-  // wrapText(ctx, card.subline, 100, 390, 800, 50);
 
   return canvas.toBuffer("image/png");
 }
