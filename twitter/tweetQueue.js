@@ -1,34 +1,59 @@
 // twitter/tweetQueue.js
 
 import { saveState } from "../utils/stateStoreCloud.js";
-// import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
 import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
-/**
- * Global timing controls
- * These survive across polling cycles
- */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay(source) {
-  // Breaking / fast sources
   if (["NDTV", "CT", "CB", "ESPN"].includes(source)) {
-    const MIN = 60 * 1000; // 1 min
-    const MAX = 2 * 60 * 1000; // 2 min
+    const MIN = 60 * 1000;
+    const MAX = 2 * 60 * 1000;
     return MIN + Math.random() * (MAX - MIN);
   }
 
-  // fallback (rare)
   const MIN = 2 * 60 * 1000;
   const MAX = 5 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
 
+function isSleepWindow() {
+  const now = new Date();
+
+  const istTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+
+  const hour = istTime.getHours();
+  console.log("🕒 IST hour:", hour);
+
+  return hour >= 1 && hour < 6;
+}
+
+function isCricketAddictorBlocked(source) {
+  if (source !== "CA") return false;
+
+  const now = new Date();
+
+  const istTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+
+  const hour = istTime.getHours();
+
+  return hour >= 22 || hour < 6;
+}
+
 function canTweetNow(source) {
-  if (isSleepWindow() && !global.LIVE_MATCH_ACTIVE) {
+  if (isCricketAddictorBlocked(source)) {
+    console.log("🚫 CA blocked (10 PM – 6 AM window)");
+    return false;
+  }
+
+  if (isSleepWindow()) {
     console.log("🌙 Sleep window active — queue paused");
     return false;
   }
@@ -48,19 +73,6 @@ function canTweetNow(source) {
   return true;
 }
 
-function isSleepWindow() {
-  const now = new Date();
-
-  const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-  );
-
-  const hour = istTime.getHours();
-  console.log("🕒 IST hour:", hour);
-
-  return hour >= 1 && hour < 6;
-}
-
 function markTweeted(trigger, source) {
   const delay = randomTweetDelay(source);
 
@@ -74,7 +86,7 @@ function markTweeted(trigger, source) {
   );
 }
 
-export function enqueueTweet({ id, source, text, imageUrl, articleBody }) {
+export function enqueueTweet({ id, source, text, imageUrl }) {
   const STATE = global.STATE;
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
@@ -95,9 +107,12 @@ export async function tryFlushTweetQueue() {
   const STATE = global.STATE;
 
   if (!STATE?.tweetQueue?.length) return false;
-  if (!canTweetNow("QUEUE")) return false;
 
-  const next = STATE.tweetQueue.shift();
+  const next = STATE.tweetQueue[0]; // 👈 peek first
+
+  if (!canTweetNow(next.source)) return false;
+
+  STATE.tweetQueue.shift(); // 👈 now remove
 
   try {
     if (CONSOLE_ONLY) {
@@ -114,9 +129,6 @@ export async function tryFlushTweetQueue() {
     }
 
     let tweetResponse;
-    // tweetResponse = await tweetNewsWithoutImage({ text: next.text });
-
-    // temporary commented
 
     if (next.imageUrl) {
       tweetResponse = await tweetNewsWithImage(
@@ -127,30 +139,6 @@ export async function tryFlushTweetQueue() {
     } else {
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
     }
-
-    const tweetId = tweetResponse?.data?.id;
-
-    // temporary commented
-
-    // if (tweetId && next.source == "CB") {
-    //   console.log("started ...");
-    //   setTimeout(async () => {
-    //     try {
-    //       const replyText = await generateNewsReplyTweet(next.text);
-
-    //       if (!replyText) return;
-
-    //       await tweetNewsWithoutImage({
-    //         text: replyText,
-    //         replyTo: tweetId,
-    //       });
-
-    //       console.log(`↪️ ${next.source} reply posted::: ${replyText}`);
-    //     } catch (err) {
-    //       console.error("❌ IE reply failed:", err);
-    //     }
-    //   }, 25000);
-    // }
 
     markTweeted("QUEUE", next.source);
     await saveState(STATE);
@@ -168,12 +156,9 @@ export async function tryFlushTweetQueue() {
 
 export function applySourceSignature(text, source) {
   const signatureMap = {
-    // CA: ".",
     CT: ".",
     CB: ".",
     IE: "_",
-    // GN: "..",
-    // SK: "_",
   };
 
   const signature = signatureMap[source] || ".";

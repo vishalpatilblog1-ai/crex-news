@@ -1,29 +1,26 @@
 // twitter/tweetQueue.js
 
-import { generateNewsReplyTweet } from "../ai/generateNewsReplyTweet.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 // import { tweetNewsWithImage } from "./tweetNewsWithImage.js";
 import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
-/**
- * Global timing controls
- * These survive across polling cycles
- */
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
-
-const MIN_TWEET_DELAY = 5 * 60 * 1000;
-const MAX_TWEET_DELAY = 10 * 60 * 1000;
-
-// const MIN_TWEET_DELAY = 5 * 1000;
-// const MAX_TWEET_DELAY = 10 * 1000;
 
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-function randomTweetDelay() {
-  return (
-    MIN_TWEET_DELAY +
-    Math.floor(Math.random() * (MAX_TWEET_DELAY - MIN_TWEET_DELAY))
-  );
+function randomTweetDelay(source) {
+  // Breaking / fast sources
+  if (["NDTV", "CT", "CB", "ESPN"].includes(source)) {
+    const MIN = 60 * 1000; // 1 min
+    const MAX = 2 * 60 * 1000; // 2 min
+    return MIN + Math.random() * (MAX - MIN);
+  }
+
+  // fallback (rare)
+  const MIN = 2 * 60 * 1000;
+  const MAX = 5 * 60 * 1000;
+
+  return MIN + Math.random() * (MAX - MIN);
 }
 
 function canTweetNow(source) {
@@ -60,16 +57,16 @@ function isSleepWindow() {
   return hour >= 1 && hour < 6;
 }
 
-function markTweeted(source) {
-  const delay = randomTweetDelay();
+function markTweeted(trigger, source) {
+  const delay = randomTweetDelay(source);
 
   global.LAST_TWEET_AT = Date.now();
   global.NEXT_TWEET_ALLOWED_AT = Date.now() + delay;
 
+  const seconds = Math.round(delay / 1000);
+
   console.log(
-    `🟢 Tweet sent by ${source}. Next tweet in ~${Math.round(
-      delay / 60000
-    )} min`
+    `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`
   );
 }
 
@@ -107,12 +104,15 @@ export async function tryFlushTweetQueue() {
         imageUrl: next.imageUrl,
       });
 
-      markTweeted("CONSOLE_ONLY");
+      markTweeted("CONSOLE_ONLY", next.source);
       await saveState(STATE);
       return true;
     }
 
     let tweetResponse;
+    // tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+
+    // temporary commented
 
     if (next.imageUrl) {
       tweetResponse = await tweetNewsWithImage(
@@ -148,7 +148,7 @@ export async function tryFlushTweetQueue() {
     //   }, 25000);
     // }
 
-    markTweeted("QUEUE");
+    markTweeted("QUEUE", next.source);
     await saveState(STATE);
 
     console.log(`🚀 Flushed queued tweet: ${next.id}`);
