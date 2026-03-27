@@ -4,13 +4,9 @@ import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweet,
-  generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
-import {
-  renderNewsCardImage,
-  saveGeneratedImage,
-} from "../canvas/renderNewsCardImage.js";
+import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
@@ -133,7 +129,7 @@ export async function caNewsPollingLoop() {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
         );
-        STATE.cricktracker.seen[cleanLink] = Date.now();
+        STATE.ca.seen[cleanLink] = Date.now();
         await saveState(STATE);
         return true;
       }
@@ -164,12 +160,17 @@ export async function caNewsPollingLoop() {
       // ✅ Only generate image if card exists
       if (card) {
         try {
-          const imageBuffer = await renderNewsCardImage(
+          // const imageBuffer = await renderNewsCardImage(
+          //   CREX_BASE_IMAGE_TEMPLATE,
+          //   card
+          // );
+
+          // generatedPath = saveGeneratedImage(imageBuffer);
+
+          generatedPath = await generateCardImage(
             CREX_BASE_IMAGE_TEMPLATE,
             card
           );
-
-          generatedPath = saveGeneratedImage(imageBuffer);
 
           console.log("generatedPath:::", generatedPath);
         } catch (err) {

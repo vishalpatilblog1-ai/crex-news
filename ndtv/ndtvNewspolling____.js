@@ -3,13 +3,9 @@
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   classifyArticle,
-  generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
-import {
-  renderNewsCardImage,
-  saveGeneratedImage,
-} from "../canvas/renderNewsCardImage.js";
+import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
@@ -204,18 +200,20 @@ export async function ndtvNewspolling____() {
 
       tweetText = claudeTweet;
 
-      // ✅ FIX: correct logging (you were printing claudeTweet twice)
       console.log("claudeTweet NDTV:::", tweetText, "card::", card);
 
-      // ✅ Only generate image if card exists
       if (card) {
         try {
-          const imageBuffer = await renderNewsCardImage(
+          // const imageBuffer = await renderNewsCardImage(
+          //   CREX_BASE_IMAGE_TEMPLATE,
+          //   card
+          // );
+
+          // generatedPath = saveGeneratedImage(imageBuffer);
+          generatedPath = await generateCardImage(
             CREX_BASE_IMAGE_TEMPLATE,
             card
           );
-
-          generatedPath = saveGeneratedImage(imageBuffer);
 
           console.log("generatedPath:::", generatedPath);
         } catch (err) {
@@ -246,19 +244,19 @@ export async function ndtvNewspolling____() {
     }
 
     // ── Image check ───────────────────────────────────────────────────────────
-    const imageUrl = getNDTVImageUrl(selected);
-    // const imageUrl = generatedPath;
+    // temporary commented
+    // const imageUrl = getNDTVImageUrl(selected);
 
-    if (!imageUrl) {
-      console.log("🚫 Skipping NDTV article — no image found");
-      const cleanUrl = normalizeNDTVLink(selected.link);
-      STATE.ndtv.seen[cleanUrl] = Date.now();
-      STATE.ndtv.lastLink = cleanUrl;
-      STATE.ndtv.lastTitle = selected.title;
-      STATE.ndtv.visibleDate = new Date(getPubDate(selected)).toUTCString();
-      await saveState(STATE);
-      return;
-    }
+    // if (!imageUrl) {
+    //   console.log("🚫 Skipping NDTV article — no image found");
+    //   const cleanUrl = normalizeNDTVLink(selected.link);
+    //   STATE.ndtv.seen[cleanUrl] = Date.now();
+    //   STATE.ndtv.lastLink = cleanUrl;
+    //   STATE.ndtv.lastTitle = selected.title;
+    //   STATE.ndtv.visibleDate = new Date(getPubDate(selected)).toUTCString();
+    //   await saveState(STATE);
+    //   return;
+    // }
 
     // ── Enqueue ───────────────────────────────────────────────────────────────
     const cleanUrl = normalizeNDTVLink(selected.link);

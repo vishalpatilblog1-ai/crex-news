@@ -59,6 +59,7 @@ Classification Rules (apply in order):
 9. Choose preview for upcoming match previews.
 10. Default to player_form if unsure between form-related types.
 11. When torn between two types, ask: what is the PRIMARY news peg — the single fact that makes this article worth publishing today? Classify based on that, not the surrounding context.
+12. Choose preview for team schedule releases, fixture announcements, or venue confirmations for upcoming matches. Do NOT use selection_news for schedule/fixture articles.
 
 IMPORTANT: An article that includes match context but whose primary argument is about DECISIONS and TACTICS should be classified as tactical_analysis, not match_report.
 

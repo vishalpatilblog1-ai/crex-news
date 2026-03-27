@@ -1,6 +1,7 @@
 import { createCanvas, loadImage, registerFont } from "canvas";
 import fs from "fs";
 import path from "path";
+import { CATEGORY_COLOR_MAP, DEFAULT_COLOR } from "../utils/config.js";
 
 registerFont(path.resolve("./fonts/Inter_28pt-Bold.ttf"), {
   family: "InterBold",
@@ -25,25 +26,49 @@ export async function renderNewsCardImage(baseImageUrl, card) {
 
   // ===============================
   // 🔴 CATEGORY BADGE
-  // ===============================
-  if (card.category) {
-    // ctx.font = "bold 32px Arial";
+  // // ===============================
+  // if (card.category) {
+  //   // ctx.font = "bold 32px Arial";
+  //   ctx.font = "32px InterBold";
+  //   ctx.textBaseline = "middle";
+
+  //   const paddingX = 30;
+  //   const boxHeight = 60;
+
+  //   const textWidth = ctx.measureText(card.category).width;
+
+  //   const boxX = 100;
+  //   const boxY = 80;
+  //   const boxWidth = textWidth + paddingX * 2;
+
+  //   drawRoundedRect(ctx, boxX, boxY, boxWidth, boxHeight, 20, "#E74C3C");
+
+  //   ctx.fillStyle = "#FFFFFF";
+  //   ctx.fillText(card.category, boxX + paddingX, boxY + boxHeight / 2 + 2);
+  // }
+
+  // if (card.category) {
+  if (card.category?.trim()) {
+    const normalizedCategory = card.category.trim().toUpperCase();
+
+    const badgeColor = CATEGORY_COLOR_MAP[normalizedCategory] || DEFAULT_COLOR;
+
     ctx.font = "32px InterBold";
     ctx.textBaseline = "middle";
 
     const paddingX = 30;
-    const boxHeight = 60;
+    const boxHeight = 64;
 
-    const textWidth = ctx.measureText(card.category).width;
+    const textWidth = ctx.measureText(normalizedCategory).width;
 
     const boxX = 100;
     const boxY = 80;
     const boxWidth = textWidth + paddingX * 2;
 
-    drawRoundedRect(ctx, boxX, boxY, boxWidth, boxHeight, 20, "#E74C3C");
+    drawRoundedRect(ctx, boxX, boxY, boxWidth, boxHeight, 20, badgeColor);
 
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(card.category, boxX + paddingX, boxY + boxHeight / 2 + 2);
+    ctx.fillText(normalizedCategory, boxX + paddingX, boxY + boxHeight / 2 + 2);
   }
 
   // ===============================
@@ -51,11 +76,11 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   // ===============================
   ctx.fillStyle = "#FFFFFF";
   // ctx.font = "bold 68px Arial";
-  ctx.font = "bold 68px InterBold";
+  ctx.font = "68px InterBold";
 
   // shadow
   ctx.shadowColor = "rgba(0,0,0,0.5)";
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 2;
 
   const headlineLines = wrapText(ctx, card.headline, 100, 200, 750, 85) || 1;
@@ -135,18 +160,21 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   lines.push(line);
 
   lines.forEach((l, i) => {
-    ctx.fillText(l.trim(), x, y + i * lineHeight);
+    // ctx.fillText(l.trim(), x, y + i * lineHeight);
+    drawTextWithSpacing(ctx, l.trim(), x, y + i * lineHeight, 1.2);
   });
 
   return lines.length; // 🔥 VERY IMPORTANT
 }
 
-// export function saveGeneratedImage(buffer) {
-//   fs.mkdirSync("./tmp", { recursive: true });
+function drawTextWithSpacing(ctx, text, x, y, letterSpacing = 1) {
+  let currentX = x;
 
-//   const filePath = `./tmp/news_${Date.now()}.png`;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    ctx.fillText(char, currentX, y);
 
-//   fs.writeFileSync(filePath, buffer);
-
-//   return filePath;
-// }
+    const charWidth = ctx.measureText(char).width;
+    currentX += charWidth + letterSpacing;
+  }
+}
