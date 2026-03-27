@@ -72,7 +72,14 @@ export async function renderNewsCardImage(baseImageUrl, card) {
     drawRoundedRect(ctx, boxX, boxY, boxWidth, boxHeight, 20, badgeColor);
 
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(normalizedCategory, boxX + paddingX, boxY + boxHeight / 2 + 2);
+    // ctx.fillText(normalizedCategory, boxX + paddingX, boxY + boxHeight / 2 + 2);
+    drawTextWithSpacing(
+      ctx,
+      normalizedCategory,
+      boxX + paddingX,
+      boxY + boxHeight / 2 + 2,
+      0.6
+    );
   }
 
   // ===============================
@@ -165,7 +172,7 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
 
   lines.forEach((l, i) => {
     // ctx.fillText(l.trim(), x, y + i * lineHeight);
-    drawTextWithSpacing(ctx, l.trim(), x, y + i * lineHeight, 1.2);
+    drawTextWithSpacing(ctx, l.trim(), x, y + i * lineHeight);
   });
 
   return lines.length; // 🔥 VERY IMPORTANT
