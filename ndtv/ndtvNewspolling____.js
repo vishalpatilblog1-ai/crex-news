@@ -119,7 +119,6 @@ export async function ndtvNewspolling____() {
 
     const fullText = `${parsed.headline}\n${parsed.body}`;
 
-    // ── Step 1: Classify article type first ──────────────────────────────────
     let articleType = "player_form";
     try {
       articleType = await classifyArticle(fullText);
@@ -128,7 +127,6 @@ export async function ndtvNewspolling____() {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
 
-    // ── Step 2: Deduplication + significance gate ─────────────────────────────
     let contextDecision = null;
     try {
       contextDecision = await judgeNewsContext({
@@ -211,7 +209,6 @@ export async function ndtvNewspolling____() {
           );
         } catch (err) {
           console.error("❌ Image generation failed:", err);
-          // ⚠️ Do NOT return → fallback to text-only
         }
       } else {
         console.log("📝 Text-only tweet (no card)");
