@@ -1,5 +1,7 @@
 export const CREX_BASE_IMAGE_TEMPLATE =
-  "https://res.cloudinary.com/dgbs4hn5i/image/upload/v1774559672/gp_players/common/crex_base_image_template.webp";
+  "https://res.cloudinary.com/dgbs4hn5i/image/upload/v1774624457/gp_players/common/crex_base_image_template.png";
+// "https://res.cloudinary.com/dgbs4hn5i/image/upload/v1774559672/gp_players/common/crex_base_image_template.webp";
+
 export const CATEGORY_COLOR_MAP = {
   "BREAKING NEWS": "#E74C3C", // 🔴
   "SELECTION NEWS": "#FF6B00", // 🟠

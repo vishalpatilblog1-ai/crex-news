@@ -25,8 +25,8 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   ctx.drawImage(baseImage, 0, 0, width, height);
 
   // 🔥 Overlay for readability
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.fillRect(0, 0, width, height);
+  // ctx.fillStyle = "rgba(0,0,0,0.35)";
+  // ctx.fillRect(0, 0, width, height);
 
   // ===============================
   // 🔴 CATEGORY BADGE
