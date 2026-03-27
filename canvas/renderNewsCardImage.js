@@ -24,6 +24,10 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   const baseImage = await loadImage(finalBaseUrl);
   ctx.drawImage(baseImage, 0, 0, width, height);
 
+  // temporary for testing
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(0, 0, width, height);
+
   // ===============================
   // 🔴 CATEGORY BADGE
   // // ===============================
