@@ -121,25 +121,27 @@ export async function caNewsPollingLoop() {
         return false;
       }
 
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
+      // temporary commented to unlock most of the news
 
-      if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
-        );
-        STATE.ca.seen[cleanLink] = Date.now();
-        await saveState(STATE);
-        return true;
-      }
+      // const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      // const score = decision?.significanceScore ?? 10;
 
-      if (isExempt) {
-        console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
-        );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
+      // if (!isExempt && score < 7) {
+      //   console.log(
+      //     `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
+      //   );
+      //   STATE.ca.seen[cleanLink] = Date.now();
+      //   await saveState(STATE);
+      //   return true;
+      // }
+
+      // if (isExempt) {
+      //   console.log(
+      //     `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
+      //   );
+      // } else {
+      //   console.log(`✅ Significance: ${score}/10 — proceeding`);
+      // }
     } catch (err) {
       console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
     }
