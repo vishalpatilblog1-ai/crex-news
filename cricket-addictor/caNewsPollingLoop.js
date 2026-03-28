@@ -101,7 +101,6 @@ export async function caNewsPollingLoop() {
     let articleType = "player_form";
     try {
       articleType = await classifyArticle(fullText);
-      // console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
@@ -154,6 +153,13 @@ export async function caNewsPollingLoop() {
         fullText
       );
       tweetText = claudeTweet;
+
+      // const mycard = {
+      //   category: "LIVE - MI v CSK",
+      //   headline: "BIG BREAKTHROUGH",
+      //   subline: "c Rohit Sharma b Jasprit Bumrah",
+      //   player: "Josh Clarkson",
+      // };
 
       if (card) {
         try {

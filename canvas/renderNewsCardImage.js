@@ -24,13 +24,6 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   const baseImage = await loadImage(finalBaseUrl);
   ctx.drawImage(baseImage, 0, 0, width, height);
 
-  // 🔥 Overlay for readability
-  // ctx.fillStyle = "rgba(0,0,0,0.35)";
-  // ctx.fillRect(0, 0, width, height);
-
-  // ===============================
-  // 🔴 CATEGORY BADGE
-  // ===============================
   if (card.category?.trim()) {
     const normalizedCategory = card.category.trim().toUpperCase();
     const badgeColor = CATEGORY_COLOR_MAP[normalizedCategory] || DEFAULT_COLOR;
@@ -82,11 +75,11 @@ export async function renderNewsCardImage(baseImageUrl, card) {
   // ===============================
   if (card.subline) {
     ctx.fillStyle = "#FFD54F";
-    ctx.font = "36px InterRegular";
+    ctx.font = "42px InterRegular";
 
-    const sublineY = 200 + headlineLines * 85 + 10;
+    const sublineY = 200 + headlineLines * 85 + 15;
 
-    wrapText(ctx, card.subline, 100, sublineY, 800, 50);
+    wrapText(ctx, card.subline, 100, sublineY, 800, 55, 0.8);
   }
 
   return canvas.toBuffer("image/png");
