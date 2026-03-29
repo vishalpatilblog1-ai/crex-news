@@ -43,8 +43,13 @@ function isCricketAddictorBlocked(source) {
   );
 
   const hour = istTime.getHours();
+  const minutes = istTime.getMinutes();
 
-  return hour >= 22 || hour < 6;
+  // Block from 23:30 to 06:00
+  if (hour > 23 || hour < 6) return true;
+  if (hour === 23 && minutes >= 30) return true;
+
+  return false;
 }
 
 function canTweetNow(source) {
