@@ -632,15 +632,15 @@ ${articleTypeInstruction}
 // human_interest and opinion_piece go text-only (copy carries the weight)
 // everything else gets a typography card
 const CARD_IMAGE_TYPES = new Set([
-  "match_report",
-  "selection_news",
-  "player_form",
-  "preview",
-  "injury_news",
-  "press_conference",
-  "milestone_record",
-  "tactical_analysis",
-  "breaking_news",
+  // "match_report",
+  // "selection_news",
+  // "player_form",
+  // "preview",
+  // "injury_news",
+  // "press_conference",
+  // "milestone_record",
+  // "tactical_analysis",
+  // "breaking_news",
 ]);
 
 async function _generateTweet(articleText, articleType) {
