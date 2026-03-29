@@ -7,50 +7,92 @@ import { setTimeout as delay } from "timers/promises";
 const CA_RSS = "https://cricketaddictor.com/feed/";
 
 const USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
 ];
 
 function pickUA() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-export async function fetchCARSS() {
-  await delay(Math.floor(Math.random() * 800));
+const RETRY_DELAYS_MS = [2000, 5000, 12000]; // 3 attempts with backoff
+
+async function fetchWithRetry(attempt = 0) {
+  await delay(Math.floor(Math.random() * 1000) + 500); // 500–1500ms jitter
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 20000); // bumped to 20s
 
   let res;
   try {
     res = await fetch(CA_RSS, {
       signal: controller.signal,
-
       headers: {
         "User-Agent": pickUA(),
         Accept:
-          "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://www.google.com/",
+        "Accept-Encoding": "gzip, deflate, br",
+        Referer: "https://www.google.com/search?q=cricket+news",
         Connection: "keep-alive",
+        "Cache-Control": "no-cache",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "cross-site",
+        "Upgrade-Insecure-Requests": "1",
       },
     });
   } catch (err) {
     clearTimeout(timeout);
+    const isAbort = err.name === "AbortError";
+
+    if (attempt < RETRY_DELAYS_MS.length) {
+      console.warn(
+        `⚠️ CA RSS attempt ${attempt + 1} failed (${err.name}), retrying in ${
+          RETRY_DELAYS_MS[attempt]
+        }ms...`
+      );
+      await delay(RETRY_DELAYS_MS[attempt]);
+      return fetchWithRetry(attempt + 1);
+    }
+
     throw new Error(
-      `CA RSS network error: ${err.name || ""} ${err.message || err}`
+      `CA RSS network error after ${attempt + 1} attempts: ${err.name} ${
+        err.message
+      }`
     );
   }
 
   clearTimeout(timeout);
 
+  // 525 = Cloudflare SSL handshake fail — retryable
+  // 429 = rate limited — retryable with backoff
+  // 5xx = server error — retryable
+  const retryableStatus = [429, 500, 502, 503, 504, 525, 526];
+
+  if (
+    retryableStatus.includes(res.status) &&
+    attempt < RETRY_DELAYS_MS.length
+  ) {
+    console.warn(
+      `⚠️ CA RSS attempt ${attempt + 1} got HTTP ${res.status}, retrying in ${
+        RETRY_DELAYS_MS[attempt]
+      }ms...`
+    );
+    await delay(RETRY_DELAYS_MS[attempt]);
+    return fetchWithRetry(attempt + 1);
+  }
+
   if (!res.ok) {
     throw new Error(`CA RSS HTTP ${res.status} ${res.statusText}`);
   }
 
+  return res;
+}
+
+export async function fetchCARSS() {
+  const res = await fetchWithRetry();
   const xml = await res.text();
 
   try {
