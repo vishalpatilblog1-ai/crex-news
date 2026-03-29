@@ -8,14 +8,8 @@ global.NEXT_TWEET_ALLOWED_AT ??= 0;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 function randomTweetDelay(source) {
-  // if (["NDTV", "CT", "CB", "ESPN"].includes(source)) {
-  //   const MIN = 60 * 1000;
-  //   const MAX = 2 * 60 * 1000;
-  //   return MIN + Math.random() * (MAX - MIN);
-  // }
-
   const MIN = 2 * 60 * 1000;
-  const MAX = 5 * 60 * 1000;
+  const MAX = 4 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
