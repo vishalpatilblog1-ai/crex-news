@@ -36,57 +36,73 @@ const rwClient = twitterClient.readWrite;
 //   return filePath;
 // }
 
-async function downloadImageGP(urlOrPath) {
-  fs.mkdirSync("./tmp", { recursive: true });
-
-  // ✅ IF LOCAL FILE → USE DIRECTLY
-  if (urlOrPath.startsWith("./") || urlOrPath.startsWith("/")) {
-    console.log("📁 Using local generated image");
-
-    return urlOrPath; // 🔥 RETURN ORIGINAL
-  }
-
-  // 🌐 remote case
-  const filePath = "./tmp/news.jpg";
-
-  const res = await axios.get(urlOrPath, {
-    responseType: "arraybuffer",
-  });
-
-  fs.writeFileSync(filePath, res.data);
-  return filePath;
-}
 // async function downloadImageGP(urlOrPath) {
 //   fs.mkdirSync("./tmp", { recursive: true });
-
-//   const filePath = "./tmp/news.jpg";
 
 //   if (urlOrPath.startsWith("./") || urlOrPath.startsWith("/")) {
 //     console.log("📁 Using local generated image");
 
-//     const data = fs.readFileSync(urlOrPath);
-
-//     fs.writeFileSync(filePath, data);
-
-//     return filePath;
+//     return urlOrPath;
 //   }
 
-//   console.log("⬇ Downloading image from URL...");
+//   const filePath = "./tmp/news.jpg";
 
 //   const res = await axios.get(urlOrPath, {
 //     responseType: "arraybuffer",
-//     headers: {
-//       "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-//       "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
-//     },
 //   });
 
 //   fs.writeFileSync(filePath, res.data);
 //   return filePath;
 // }
 
+export async function downloadImageGP(urlOrPath) {
+  const TMP_DIR = "./tmp";
+  fs.mkdirSync(TMP_DIR, { recursive: true });
+
+  // ✅ LOCAL FILE (generated image)
+  if (urlOrPath.startsWith("./") || urlOrPath.startsWith("/")) {
+    const absolutePath = path.resolve(urlOrPath);
+
+    console.log("📁 Using local generated image:", absolutePath);
+
+    return {
+      path: absolutePath,
+      isLocal: true,
+    };
+  }
+
+  // 🌐 REMOTE IMAGE
+  try {
+    const filePath = path.join(
+      TMP_DIR,
+      `news-${Date.now()}.jpg` // 🔥 avoid overwrite
+    );
+
+    const res = await axios.get(urlOrPath, {
+      responseType: "arraybuffer",
+    });
+
+    fs.writeFileSync(filePath, res.data);
+
+    console.log("⬇️ Downloaded remote image:", filePath);
+
+    return {
+      path: path.resolve(filePath),
+      isLocal: false,
+    };
+  } catch (err) {
+    console.warn("⚠️ Image download failed:", err.message);
+
+    return {
+      path: null,
+      isLocal: false,
+    };
+  }
+}
+
 export async function tweetNewsWithImage(text, imageUrl, source) {
   let downloadedPath = null;
+  let isLocal = false;
 
   try {
     const EXPERIMENT_TAGS = [];
@@ -103,13 +119,9 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
     console.log("⬇ Downloading image...", source);
 
     try {
-      downloadedPath = await downloadImageGP(imageUrl);
-
-      // if (source === "NDTV") {
-      //   downloadedPath = await downloadNDTVImage(imageUrl);
-      // } else {
-      //   downloadedPath = await downloadImage(imageUrl);
-      // }
+      const result = await downloadImageGP(imageUrl);
+      downloadedPath = result.path;
+      isLocal = result.isLocal;
     } catch (err) {
       console.warn(
         "⚠️ Image download failed, tweeting text only:",
@@ -123,7 +135,7 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
       const data = fs.readFileSync(downloadedPath);
 
       const mediaId = await rwClient.v1.uploadMedia(data, {
-        mimeType: "image/png", // 🔥 match your generated file
+        mimeType: "image/png",
       });
 
       console.log("📝 Tweeting with image...");
@@ -137,9 +149,6 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
       return tweet;
     }
 
-    // =============================
-    // 📝 FALLBACK
-    // =============================
     console.log("📝 Tweeting text only...");
     const tweet = await rwClient.v2.tweet({
       text: finalText,
@@ -152,14 +161,12 @@ export async function tweetNewsWithImage(text, imageUrl, source) {
     console.error("❌ Error tweeting news:", err);
     throw err;
   } finally {
-    // 🔥 DELETE AFTER EVERYTHING
-    if (downloadedPath && fs.existsSync(downloadedPath)) {
+    if (!isLocal && downloadedPath && fs.existsSync(downloadedPath)) {
       fs.unlinkSync(downloadedPath);
       console.log("🧹 Temp image deleted:", downloadedPath);
     }
   }
 }
-
 // export async function tweetNewsWithImage(text, imageUrl, source) {
 //   try {
 //     const EXPERIMENT_TAGS = [];

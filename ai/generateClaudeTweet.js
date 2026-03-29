@@ -775,7 +775,6 @@ No card needed for this article type. Output tweet text only.
 }
 
 export async function generateClaudeTweet(articleText) {
-  console.log("generateClaudeTweet::");
   let articleType = "player_form";
 
   try {

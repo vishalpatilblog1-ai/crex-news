@@ -14,22 +14,6 @@ const client = new TwitterApi({
 });
 const rwClient = client.readWrite;
 
-// async function downloadImage(url) {
-//   fs.mkdirSync("./tmp", { recursive: true });
-//   const filePath = "./tmp/news.jpg";
-
-//   const res = await axios.get(url, {
-//     responseType: "arraybuffer",
-//     headers: {
-//       "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-//       "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
-//     },
-//   });
-
-//   fs.writeFileSync(filePath, res.data);
-//   return filePath;
-// }
-
 // export async function tweetNewsWithImage(text, imageUrl) {
 //   try {
 //     const EXPERIMENT_TAGS = [];

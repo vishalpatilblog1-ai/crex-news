@@ -156,12 +156,9 @@ export async function caNewsPollingLoop() {
       );
       tweetText = claudeTweet;
 
-      // const mycard = {
-      //   category: "LIVE - MI v CSK",
-      //   headline: "BIG BREAKTHROUGH",
-      //   subline: "c Rohit Sharma b Jasprit Bumrah",
-      //   player: "Josh Clarkson",
-      // };
+      console.log("CA tweet infor:::");
+      console.log("tweetText::", tweetText);
+      console.log("card::", card);
 
       if (card) {
         try {
