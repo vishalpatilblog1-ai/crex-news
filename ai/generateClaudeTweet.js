@@ -640,7 +640,7 @@ const CARD_IMAGE_TYPES = new Set([
   // "press_conference",
   // "milestone_record",
   // "tactical_analysis",
-  "breaking_news",
+  // "breaking_news",
 ]);
 
 async function _generateTweet(articleText, articleType) {
