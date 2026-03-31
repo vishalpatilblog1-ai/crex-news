@@ -633,14 +633,14 @@ ${articleTypeInstruction}
 // everything else gets a typography card
 const CARD_IMAGE_TYPES = new Set([
   // "match_report",
-  // "selection_news",
+  "selection_news",
   // "player_form",
   // "preview",
-  // "injury_news",
+  "injury_news",
   // "press_conference",
   // "milestone_record",
   // "tactical_analysis",
-  // "breaking_news",
+  "breaking_news",
 ]);
 
 async function _generateTweet(articleText, articleType) {
