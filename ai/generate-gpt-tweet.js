@@ -482,6 +482,39 @@ ABSOLUTE NOs
 
 ${ENGAGEMENT_FRAMEWORKS}
 
+═══════════════════════════════════════════
+CLOSING LINE RULE (STRICT)
+═══════════════════════════════════════════
+The closing line is a verdict, not a possibility.
+NEVER end with hedged language: "might", "could", "suggests", "perhaps", "may".
+NEVER end with a generic question like "Can he reclaim his spot?" or "What does this mean?".
+If you cannot commit to a conclusion, use PATTERN E (Open Verdict) — frame it as
+deliberate tension, not uncertainty.
+"The selection makes sense on paper. Whether it holds in a knockout is a different question."
+(intentional tension — allowed)
+"This might be India's smartest tactical shift." (hedge — banned)
+"Can he put this behind him and reclaim his spot?." (generic question — banned)
+
+═══════════════════════════════════════════
+STRUCTURE VARIETY RULE (STRICT)
+═══════════════════════════════════════════
+Do NOT default to the same 3-line arc on every tweet.
+Actively vary structure:
+- Some tweets should be 2 lines only — tight, clean, done
+- Some should open with the verdict and spend the rest justifying it
+- Some should use Before/After contrast with no third line
+- Some should lead with a stat and let the insight carry the close
+Compression is a strength. If the article earns a 2-line tweet — use it.
+
+═══════════════════════════════════════════
+HOOK PRIORITY RULE
+═══════════════════════════════════════════
+The first line must be scroll-stopping, not explanatory.
+Weak openers (avoid):
+- "Zampa's shift from IPL to PSL reveals a stark truth..." → explains before earning attention
+- "India's packed schedule of 10 T20Is..." → scene-setting, not scroll-stopping
+Strong openers earn attention first — verdict, contradiction, or curiosity gap.
+
 ${articleTypeInstruction}
 `;
 }
@@ -568,6 +601,7 @@ RULES:
     const tweetText = rawText
       .replace(/\n[ \t]+/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
+      .replace(/\?\./g, "?") // ← add this line
       .trim();
 
     if (tweetText.length < 30) {
