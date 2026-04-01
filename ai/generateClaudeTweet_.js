@@ -73,12 +73,13 @@ ARTICLE:
 ${articleText}
 `;
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 20,
-    temperature: 0,
-    messages: [{ role: "user", content: prompt }],
-  });
+  let response;
+  // response = await client.messages.create({
+  //   model: "claude-sonnet-4-20250514",
+  //   max_tokens: 20,
+  //   temperature: 0,
+  //   messages: [{ role: "user", content: prompt }],
+  // });
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }

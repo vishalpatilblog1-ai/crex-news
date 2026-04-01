@@ -53,15 +53,16 @@ OUTPUT ONLY the tweet text. No explanation, no label, no preamble.
 `;
 
   try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 280,
-      temperature: 0.85,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
-    });
+    let response;
+    // response = await client.messages.create({
+    //   model: "claude-haiku-4-5-20251001",
+    //   max_tokens: 280,
+    //   temperature: 0.85,
+    //   system: SYSTEM_PROMPT,
+    //   messages: [{ role: "user", content: userPrompt }],
+    // });
 
-    const rawText = response.content[0].text;
+    const rawText = response.content[0].text || "";
 
     const caption = rawText
       .replace(/\n[ \t]+/g, "\n")
