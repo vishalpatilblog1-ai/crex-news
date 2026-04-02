@@ -8,6 +8,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// ─── SIGNIFICANCE EXEMPT TYPES ────────────────────────────────────────────────
+
+export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
+  "human_interest",
+  "breaking_news",
+]);
+
 // ─── ARTICLE CLASSIFIER ──────────────────────────────────────────────────────
 
 async function classifyArticle(articleText) {
@@ -19,23 +26,40 @@ Classify this cricket article into ONE of these types:
 - player_form         (runs, wickets, performance trend)
 - human_interest      (personal story, family, journey)
 - preview             (upcoming match, what to expect)
-- injury_news         (availability, fitness, ruled out)
-- press_conference    (quotes from coach, captain, player)
+- injury_news         (player availability, fitness, delayed arrival, travel disruption, ruled out)
+- press_conference    (direct quotes from a named individual — coach, captain, or player)
 - milestone_record    (record broken, landmark achieved)
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
+- breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
 
 Classification Rules (apply in order):
+0. Choose breaking_news ONLY if ALL of these are true:
+   - A single confirmed event just happened (not a collection of updates)
+   - The article can be summarized as ONE headline sentence without listing multiple players or conditions
+   - Relevance window is minutes to hours — not days
+   - The news changes something immediately for an ongoing or imminent match/tournament
+
+   DO NOT use breaking_news for:
+   - Board policy decisions or fitness programs
+   - Ongoing rehabilitation or availability updates
+   - Multi-player injury roundups
+   - Any article mentioning 2 or more players in different situations (injured, pending, cleared)
+   - News that is significant but not time-critical
+
+   These go to injury_news, selection_news, or the appropriate type instead.
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
-3. Choose press_conference if the article is primarily built around direct quotes from a named individual (coach, captain, player).
+3. Choose press_conference if the article is primarily built around direct quotes from a NAMED individual (coach, captain, player). Anonymous source quotes ("a source told PTI", "sources say", "according to insiders") do NOT qualify — classify by the article's primary news peg instead.
 4. Choose human_interest if the article centers on a player's personal background, family, or journey — NOT their stats.
 5. Choose milestone_record if a stat or landmark is the central news peg.
 6. Choose match_report if the article covers a completed match result without deep tactical breakdown.
 7. Choose selection_news for squad decisions, dropped or added players.
-8. Choose injury_news for fitness and availability updates.
+8. Choose injury_news if the article is primarily about a player's availability, delayed arrival, fitness clearance, travel disruption, or anything affecting whether a player is ready and present for team preparation — even if no injury is involved.
 9. Choose preview for upcoming match previews.
 10. Default to player_form if unsure between form-related types.
+11. When torn between two types, ask: what is the PRIMARY news peg — the single fact that makes this article worth publishing today? Classify based on that, not the surrounding context.
+12. Choose preview for team schedule releases, fixture announcements, or venue confirmations for upcoming matches. Do NOT use selection_news for schedule/fixture articles.
 
 IMPORTANT: An article that includes match context but whose primary argument is about DECISIONS and TACTICS should be classified as tactical_analysis, not match_report.
 
@@ -74,8 +98,6 @@ ${articleText}
 }
 
 // ─── ENGAGEMENT FRAMEWORKS ───────────────────────────────────────────────────
-// These patterns are proven to drive replies, retweets, and bookmarks.
-// Each article type pulls from the most relevant ones.
 
 const ENGAGEMENT_FRAMEWORKS = `
 ENGAGEMENT MECHANICS — apply at least ONE per tweet:
@@ -226,6 +248,9 @@ Focus on:
 Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagement mechanics — end with the tension, not the conclusion.
 Name both the selected player AND the one left out if both are newsworthy.
 Avoid: "bold call", "surprise pick", "questions will be asked".
+
+CLOSING LINE EXCEPTION:
+A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
 `,
 
   player_form: `
@@ -252,16 +277,36 @@ ARTICLE TYPE: Human Interest
 This is a story, not a debate. Let the narrative carry the weight.
 
 ENGAGEMENT TARGET: Shares + saves (emotional resonance)
-The tweet should surface the contrast — where they started versus where they are now.
 
-Focus on:
-- The specific sacrifice, setback, or struggle that makes this moment meaningful
-- The contrast between past and present — stated in concrete terms, not vague inspiration
-- If a powerful quote exists (especially in a regional language) — consider opening with it
+STRUCTURE — use this two-beat format:
+Beat 1 (Scene): What happened, who was involved, and ONE hyper-specific detail
+  (exact distance, exact time, exact place). Make it visual and concrete.
+  The reader should be able to picture it.
+Beat 2 (Meaning): One universal sentence — the emotional truth this moment represents.
+  This line must make sense and hit hard even if the reader has never watched cricket.
+  It should feel quotable. It should make someone want to share it, not just like it.
 
-Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast) from the engagement mechanics.
-Warmth is allowed here. Sentimentality is not.
-Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+SPECIFICITY RULE:
+  If the article contains any exact number, distance, time, or place — use it verbatim.
+  Exact figures build credibility and make the story feel reported, not invented.
+
+NON-CRICKET READER TEST:
+  Read Beat 2 as if you know nothing about cricket.
+  If it still lands emotionally — it's the right line.
+  If it only works for fans — rewrite it.
+
+STAT SUPPRESSION RULE:
+  Do NOT mention runs, wickets, averages, match results, or rankings.
+  This is about the person, not the player.
+  Stats break the emotional register of this article type.
+
+PATTERNS:
+  Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast).
+  Warmth is allowed here. Sentimentality is not.
+  Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+
+CLOSING LINE EXCEPTION:
+  A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
 `,
 
   opinion_piece: `
@@ -340,25 +385,79 @@ Rules for both modes:
 - Name the speaker in the first or second sentence — no vague attribution
 - Frame around what the statement or act reveals about team thinking, internal dynamics, or relationships
 - Avoid paraphrasing quotes so loosely that the speaker's actual position is lost
+
+ATTRIBUTION STAYS TO THE END (strict):
+The closing verdict must still be framed as the speaker's position — not the narrator's conclusion.
+The reader must always know whose argument they are evaluating.
+Wrong: "The pitch preparation is the strategy — not the team selection."
+Right: "Faf's point: KKR's problem last season wasn't the spinners — it was the surface they were handed."
+If the closing line could have been written without reading the article — it has lost its attribution. Rewrite it.
+
+MULTI-SPEAKER RULE:
+If the article quotes more than one named individual, do not try to include both equally.
+Pick the speaker whose claim is most analytically significant or most likely to generate debate.
+The second speaker can appear only if their quote directly reinforces or contradicts the first.
 `,
 
   milestone_record: `
 ARTICLE TYPE: Milestone / Record
 
+STAT SELECTION RULE (do this before writing anything):
+Scan the full article and list every stat mentioned.
+The most tweet-worthy number is rarely the first one — it is the one with the most
+historical context, or the one no player has achieved before, or the one closest to
+an unprecedented landmark. Choose that number as your anchor, not the most obvious one.
+If the headline stat and a deeper stat both exist — the deeper one wins.
+
 The number is your entry point, not your destination.
 
 ENGAGEMENT TARGET: Bookmarks + shares (legacy debate)
-The tweet should add one layer of analytical depth beyond the stat — context that makes the number meaningful.
+The tweet should add one layer of analytical depth beyond the stat — context that
+makes the number feel inevitable in hindsight, or genuinely unprecedented going forward.
 
 Focus on:
 - What this milestone reveals about the player's career arc, not just the achievement
 - Who else has done this, when, and under what conditions — context that adds weight
 - What the record says about the era, the format, or the team around them
+- If an upcoming landmark is more significant than the current one — lead with that
 
-Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch), or PATTERN L (Number Sandwich) from the engagement mechanics.
+Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch),
+or PATTERN L (Number Sandwich) from the engagement mechanics.
+PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
 `,
+
+  breaking_news: `
+ARTICLE TYPE: Breaking News
+
+Speed and clarity over analysis. This is the first take, not the final word.
+
+ENGAGEMENT TARGET: Retweets + replies (information sharing)
+
+FORMAT (mandatory):
+🚨 [SHORT HEADLINE IN CAPS — max 6 words] 🚨
+
+Then 1-2 lines of the key fact — who, what, and the immediate consequence.
+No editorializing. No opinion. Just the sharpest version of the news.
+
+Use this type for:
+- Player ruled out / availability confirmed
+- Squad announced unexpectedly
+- Board decisions with immediate impact
+- Transfer/trade confirmed
+
+The headline must be factual — never sensationalized.
+The body must answer: what does this mean RIGHT NOW for the team or tournament?
+`,
 };
+
+// ─── CARD TYPES THAT GET AN IMAGE ────────────────────────────────────────────
+
+const CARD_IMAGE_TYPES = new Set([
+  "selection_news",
+  "injury_news",
+  "breaking_news",
+]);
 
 // ─── SYSTEM PROMPT BUILDER ────────────────────────────────────────────────────
 
@@ -404,17 +503,16 @@ CORE STRATEGY
 ═══════════════════════════════════════════
 TONE & PERSONALITY
 ═══════════════════════════════════════════
-- Calm confidence — not rage, not hype
-- Opinionated but credible — sounds like a trusted analyst, not a fan account
-- Emotion under control, authority on display
-- For human_interest pieces only: warmth is allowed, never sentimental
+- Fan voice with analytical depth — not pure analyst, not pure fan
+- Think: the smartest person in the cricket WhatsApp group, not a journalist
+- Emotion under control, but not suppressed — let the story breathe
 
 ═══════════════════════════════════════════
 STYLE RULES
 ═══════════════════════════════════════════
 - Plain text only — no markdown, no bold, no asterisks
-- No Emoji at all
-- No hashtags unless the article is about a trending event (max 1)
+- No emoji except for breaking_news type which uses 🚨 as a mandatory format marker
+- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end (max 1 hashtag ever)
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
 
@@ -429,9 +527,60 @@ Use contrast words — "but", "yet", "instead", "then" — when they create narr
 They make the tweet feel like storytelling, not reporting.
 
 ═══════════════════════════════════════════
+CLOSING LINE RULE (STRICT)
+═══════════════════════════════════════════
+The closing line is a verdict, not a possibility.
+NEVER end with hedged language: "might", "could", "suggests", "perhaps", "may".
+NEVER end with a generic question like "Can he reclaim his spot?" or "What does this mean?".
+If you cannot commit to a conclusion, use PATTERN E (Open Verdict) — frame it as
+deliberate tension, not uncertainty. There is a difference between
+"The selection makes sense on paper. Whether it holds in a knockout is a different question."
+(intentional tension — allowed) and
+"This might be India's smartest tactical shift." (hedge — banned).
+You either back something or you don't. Pick a lane.
+
+═══════════════════════════════════════════
+STRUCTURE VARIETY RULE (STRICT)
+═══════════════════════════════════════════
+Do NOT default to the same 3-line arc on every tweet:
+setup line → context line → poetic closing line.
+That pattern is the floor, not the ceiling.
+
+Actively vary structure across tweets:
+- Some tweets should open with the verdict and spend the rest justifying it
+- Some should be 2 lines only — tight, clean, done
+- Some should use a Before/After contrast (Pattern K) with no third line
+- Some should lead with a stat and let the insight carry the close
+- The 3-line arc is one tool — not the default
+
+Ask before writing: does this article earn a 2-line tweet? A verdict-first tweet?
+If yes — use it. Compression is a strength.
+
+═══════════════════════════════════════════
+HOOK PRIORITY RULE
+═══════════════════════════════════════════
+If the article contains a strong insight or contradiction,
+start the tweet with that insight — not context.
+The first line must be scroll-stopping, not explanatory.
+
+FIRST LINE TEST — before writing, ask:
+Does this line create a gap the reader needs to close?
+Or does it explain something they didn't ask about yet?
+
+Weak openers (avoid):
+- "The franchise chose firepower over balance."  → explains before earning attention
+- "Playoffs twice is clearly not good enough."   → restates the obvious
+- "The internet trolls the bowler."              → scene-setting, not scroll-stopping
+
+Strong openers (earn attention first):
+- "KKR lost balance before the season started."  → verdict that demands explanation
+- "Two playoffs. Still not enough."              → compression forces the question "why?"
+- "44 years old. Still the story."               → contrast creates the gap
+
+═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
-- If a named individual makes a strong claim — name them in the tweet
+- If a named individual makes a strong claim — name them in tweet
 - NEVER absorb named opinions into the narrator's voice
 - Legacy comparisons must keep the original speaker's name
 - If WHO spoke (or that they chose to speak) is more significant than WHAT they said — lead with the act, not the quote
@@ -448,6 +597,24 @@ Banned phrases (never use):
 Preferred analyst verbs: exposes, confirms, undermines, justifies, forces, settles, contradicts
 
 One strong evaluative phrase per tweet — make it count.
+
+═══════════════════════════════════════════
+TABLE DATA RULE
+═══════════════════════════════════════════
+If the article contains a JSON table (structured list of players, stats, or records),
+use it as a data source — do NOT ignore it.
+
+Do NOT list everything from the table. Pick the most tweet-worthy subset based on:
+- The most surprising or unexpected entry
+- The most impactful name (biggest star, most relevant to current debate)
+- A pattern across entries (multiple players from same team, severity split, trend)
+- An upcoming landmark or threshold visible in the numbers
+
+Frame extracted data as a punchy inline enumeration — never as a bullet list.
+Example: "Harshit Rana (season), Pathirana (early games), Curran (season) — three franchises just lost their plans before IPL 2026 starts."
+
+The table is raw material. Your job is to find the one angle inside it that earns the tweet.
+If the table adds nothing beyond what the article text already says — ignore it.
 
 ═══════════════════════════════════════════
 BOOKMARK VALUE RULE
@@ -479,71 +646,21 @@ ABSOLUTE NOs
 - No fanbase baiting or us-vs-them framing
 - No rage farming
 - No pure scoreline recaps masquerading as insight
+- NEVER introduce religious, caste, or ethnic identity framing unless the article explicitly and centrally discusses it. If the article does not use the word "Hindu", "Muslim", "faith", "religion" etc — you cannot introduce those concepts. Stick to what the article actually says.
 
 ${ENGAGEMENT_FRAMEWORKS}
-
-═══════════════════════════════════════════
-CLOSING LINE RULE (STRICT)
-═══════════════════════════════════════════
-The closing line is a verdict, not a possibility.
-NEVER end with hedged language: "might", "could", "suggests", "perhaps", "may".
-NEVER end with a generic question like "Can he reclaim his spot?" or "What does this mean?".
-If you cannot commit to a conclusion, use PATTERN E (Open Verdict) — frame it as
-deliberate tension, not uncertainty.
-"The selection makes sense on paper. Whether it holds in a knockout is a different question."
-(intentional tension — allowed)
-"This might be India's smartest tactical shift." (hedge — banned)
-"Can he put this behind him and reclaim his spot?." (generic question — banned)
-
-═══════════════════════════════════════════
-STRUCTURE VARIETY RULE (STRICT)
-═══════════════════════════════════════════
-Do NOT default to the same 3-line arc on every tweet.
-Actively vary structure:
-- Some tweets should be 2 lines only — tight, clean, done
-- Some should open with the verdict and spend the rest justifying it
-- Some should use Before/After contrast with no third line
-- Some should lead with a stat and let the insight carry the close
-Compression is a strength. If the article earns a 2-line tweet — use it.
-
-═══════════════════════════════════════════
-HOOK PRIORITY RULE
-═══════════════════════════════════════════
-The first line must be scroll-stopping, not explanatory.
-Weak openers (avoid):
-- "Zampa's shift from IPL to PSL reveals a stark truth..." → explains before earning attention
-- "India's packed schedule of 10 T20Is..." → scene-setting, not scroll-stopping
-Strong openers earn attention first — verdict, contradiction, or curiosity gap.
 
 ${articleTypeInstruction}
 `;
 }
 
-// ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
+// ─── CORE TWEET GENERATOR ─────────────────────────────────────────────────────
 
-export async function generateGPTTweet(articleText) {
-  console.log("generateGPTTweet::");
-  let articleType = "player_form";
-
-  try {
-    const classified = await classifyArticle(articleText);
-    if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
-      articleType = classified;
-      console.log("articleType::", articleType);
-    } else {
-      console.warn(`⚠️ Unknown article type "${classified}", using default`);
-    }
-  } catch (err) {
-    console.warn(
-      "⚠️ classifyArticle failed, using default:",
-      err?.message || err
-    );
-  }
-
-  console.log(`🏷️ Article classified as: ${articleType}`);
-
+async function _generateTweet(articleText, articleType) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemInstruction = buildSystemInstruction(articleTypeInstruction);
+
+  const needsCard = CARD_IMAGE_TYPES.has(articleType);
 
   const userPrompt = `
 [NEWS CONTEXT]
@@ -569,22 +686,58 @@ FINAL CHECK before outputting:
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
+- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
+- Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
+- For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
+- Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
+- Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
+
+SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
+- Does the closing line name a specific decision, match, moment, or person?
+- If the closing line could apply to ANY article about ANY captain or coach — it is too vague. Rewrite it with one concrete anchor from the article.
+- Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
 
 RULES:
-- No Emoji at all
+- No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
 - Plain text only
-- No hashtags unless essential (max 1)
+- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–220 characters. Shorter tweets with strong insight outperform longer explanations.
+- Target length: 140–260 characters for most types.
+  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
   A tweet that fits on one screen without "show more" gets more impressions.
+
+${
+  needsCard
+    ? `
+─────────────────────────────────────────
+CARD FIELDS (required — output after tweet)
+─────────────────────────────────────────
+After the tweet text, output a JSON block on a new line in this exact format:
+CARD_JSON:{"category":"SELECTION NEWS","headline":"Jitesh to RCB","subline":"PBKS couldn't match ₹11Cr bid","player":"Jitesh Sharma"}
+
+Rules for card fields:
+- category: UPPERCASE label matching the article type. Use one of:
+  SELECTION NEWS / INJURY NEWS / BREAKING NEWS / MATCH REPORT /
+  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION
+- headline: max 5 words, punchy, title case. The single most important fact.
+- subline: max 8 words, supporting context. Can be a short phrase or stat.
+- player: primary player's full name, or "" if no single player is central.
+
+Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
+Do not add any explanation around the JSON.
+`
+    : `
+No card needed for this article type. Output tweet text only.
+`
+}
 `;
 
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.85,
-      max_tokens: 280,
+      max_tokens: 400,
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: userPrompt },
@@ -595,18 +748,41 @@ RULES:
 
     if (!rawText) {
       console.warn("⚠️ GPT returned empty response");
-      return null;
+      return { tweetText: null, card: null };
     }
 
-    const tweetText = rawText
+    // ── Parse tweet + card fields ────────────────────────────────────────────
+    let tweetText = rawText;
+    let card = null;
+
+    if (needsCard) {
+      const cardMarker = "CARD_JSON:";
+      const markerIndex = rawText.indexOf(cardMarker);
+
+      if (markerIndex !== -1) {
+        tweetText = rawText.slice(0, markerIndex).trim();
+        const jsonStr = rawText.slice(markerIndex + cardMarker.length).trim();
+        try {
+          card = JSON.parse(jsonStr);
+        } catch (e) {
+          console.warn("⚠️ Failed to parse card JSON:", jsonStr);
+          card = null;
+        }
+      } else {
+        console.warn("⚠️ CARD_JSON marker not found in response");
+      }
+    }
+
+    // ── Clean tweet whitespace ───────────────────────────────────────────────
+    tweetText = tweetText
       .replace(/\n[ \t]+/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
-      .replace(/\?\./g, "?") // ← add this line
+      .replace(/\?\./g, "?")
       .trim();
 
     if (tweetText.length < 30) {
       console.warn("⚠️ GPT returned too-short tweet");
-      return null;
+      return { tweetText: null, card: null };
     }
 
     if (tweetText.length > 280) {
@@ -615,9 +791,64 @@ RULES:
       );
     }
 
-    return tweetText;
+    console.log("tweet generated by GPT prompt::", tweetText);
+    console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
+
+    return { tweetText, card };
   } catch (err) {
     console.error("❌ GPT Tweet Generation Error:", err);
-    return null;
+    return { tweetText: null, card: null };
+  }
+}
+
+// ─── MAIN EXPORTS ─────────────────────────────────────────────────────────────
+
+export async function generateGPTTweet(articleText) {
+  console.log("Prompt generated by GPT ....");
+  let articleType = "player_form";
+
+  try {
+    const classified = await classifyArticle(articleText);
+    if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
+      articleType = classified;
+      console.log("articleType::", articleType);
+    } else {
+      console.warn(`⚠️ Unknown article type "${classified}", using default`);
+    }
+  } catch (err) {
+    console.warn(
+      "⚠️ classifyArticle failed, using default:",
+      err?.message || err
+    );
+  }
+
+  console.log(`🏷️ Article classified as: ${articleType}`);
+
+  try {
+    return await _generateTweet(articleText, articleType);
+  } catch (err) {
+    console.error("❌ GPT Tweet Generation Error:", err);
+    return { tweetText: null, card: null };
+  }
+}
+
+export async function generateGPTTweetWithType(articleText, articleType) {
+  let resolvedType = articleType;
+
+  if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
+    console.warn(
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
+    );
+    resolvedType = "player_form";
+  }
+
+  console.log(`🏷️ Article type (pre-classified): ${resolvedType}`);
+
+  try {
+    const { tweetText, card } = await _generateTweet(articleText, resolvedType);
+    return { tweetText, articleType: resolvedType, card };
+  } catch (err) {
+    console.error("❌ GPT Tweet Generation Error:", err);
+    return { tweetText: null, articleType: resolvedType, card: null };
   }
 }
