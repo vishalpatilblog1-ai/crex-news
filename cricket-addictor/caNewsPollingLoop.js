@@ -150,14 +150,17 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-        fullText
-      );
-      tweetText = claudeTweet;
+      // const { tweetText: claudeTweet, card } = await generateClaudeTweet(
+      //   fullText
+      // );
+      // tweetText = claudeTweet;
 
-      console.log("Claude CA tweet infor:::");
-      console.log("Claude tweetText::", tweetText);
-      console.log("Claude card::", card);
+      const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+      tweetText = gptTweet;
+
+      console.log("First Block tweet infor:::");
+      console.log("First Block  tweetText::", tweetText);
+      console.log("First Block  card::", card);
 
       if (card) {
         try {
@@ -179,13 +182,17 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        // tweetText = await generateGPTTweet(fullText);
-        const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
-        tweetText = gptTweet;
+        // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+        // tweetText = gptTweet;
 
-        console.log("GPT tweet infor:::");
-        console.log("GPT tweetText::", tweetText);
-        console.log("GPT card::", card);
+        const { tweetText: claudeTweet, card } = await generateClaudeTweet(
+          fullText
+        );
+        tweetText = claudeTweet;
+
+        console.log("Second Block tweet infor:::");
+        console.log("Second Block  tweetText::", tweetText);
+        console.log("Second Block  card::", card);
         if (card) {
           try {
             generatedPath = await generateCardImage(
