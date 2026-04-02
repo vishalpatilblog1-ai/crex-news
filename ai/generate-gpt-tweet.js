@@ -704,8 +704,23 @@ RULES:
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
 - Target length: 140–260 characters for most types.
-  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
+  human_interest and selection_news can go up to 320 characters.
   A tweet that fits on one screen without "show more" gets more impressions.
+
+LINE BREAK RULE (strict):
+  Each distinct thought, beat, or contrast must be on its own line.
+  Never run two separate ideas into the same paragraph block.
+  A 3-beat tweet looks like this:
+
+  "KKR lost balance before the season started.
+
+  Starc gone. Pathirana pending. Russell carrying the attack alone.
+
+  That's not a bowling unit — that's a gamble."
+
+  Even a 2-beat tweet uses a line break between the hook and the verdict.
+  The line break IS the pause. It makes the reader feel the weight of each line separately.
+
 
 ${
   needsCard
