@@ -150,13 +150,13 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      // const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-      //   fullText
-      // );
-      // tweetText = claudeTweet;
+      const { tweetText: claudeTweet, card } = await generateClaudeTweet(
+        fullText
+      );
+      tweetText = claudeTweet;
 
-      const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
-      tweetText = gptTweet;
+      // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+      // tweetText = gptTweet;
 
       console.log("First Block tweet infor:::");
       console.log("First Block  tweetText::", tweetText);
@@ -182,13 +182,13 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
-        // tweetText = gptTweet;
+        const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+        tweetText = gptTweet;
 
-        const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-          fullText
-        );
-        tweetText = claudeTweet;
+        // const { tweetText: claudeTweet, card } = await generateClaudeTweet(
+        //   fullText
+        // );
+        // tweetText = claudeTweet;
 
         console.log("Second Block tweet infor:::");
         console.log("Second Block  tweetText::", tweetText);
