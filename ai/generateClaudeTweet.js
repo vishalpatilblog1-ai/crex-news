@@ -807,6 +807,9 @@ FINAL CHECK before outputting:
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
 - For rivalry_bait: are both sides EQUALLY defensible? Does the tweet declare a winner anywhere — even subtly? (It must not.)
+- Does the closing line give the reader something to disagree with or pick a side on?
+  If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
+  The reader should finish thinking "but wait, actually..." or "no, I think..."
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
