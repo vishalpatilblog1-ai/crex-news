@@ -224,6 +224,10 @@ Focus on:
 Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
 Lead with insight. The scoreline is context, not the point.
 Avoid: ball-by-ball recap, "team played well", generic momentum language.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   tactical_analysis: `
@@ -263,6 +267,10 @@ Avoid: "bold call", "surprise pick", "questions will be asked".
 
 CLOSING LINE EXCEPTION:
 A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   player_form: `
@@ -281,6 +289,11 @@ Focus on:
 Use PATTERN C (Loaded Stat), PATTERN F (Earned Compliment), or PATTERN L (Number Sandwich) from the engagement mechanics.
 Use stats only when they reveal a trend. One strong evaluative phrase allowed.
 Avoid single-match overreaction. Avoid pure celebration without substance.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
+
 `,
 
   human_interest: `
@@ -373,6 +386,10 @@ Focus on:
 
 Use PATTERN B (Specific Contradiction) or PATTERN E (Open Verdict) from the engagement mechanics.
 Lead with impact. Avoid sympathy framing entirely.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   press_conference: `
@@ -422,6 +439,7 @@ historical context, or the one no player has achieved before, or the one closest
 an unprecedented landmark. Choose that number as your anchor, not the most obvious one.
 If the headline stat and a deeper stat both exist — the deeper one wins.
 
+
 The number is your entry point, not your destination.
 
 ENGAGEMENT TARGET: Bookmarks + shares (legacy debate)
@@ -438,6 +456,10 @@ Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Pun
 or PATTERN L (Number Sandwich) from the engagement mechanics.
 PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   breaking_news: `
@@ -461,6 +483,11 @@ Use this type for:
 
 The headline must be factual — never sensationalized.
 The body must answer: what does this mean RIGHT NOW for the team or tournament?
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
+
 `,
 
   rivalry_bait: `
@@ -517,6 +544,10 @@ CONTENT GUARDRAILS:
 
 CLOSING LINE RULE FOR THIS TYPE:
 The tweet has no closing line. Pattern M IS the structure. It ends where the split ends.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 };
 
@@ -565,6 +596,7 @@ TONE & PERSONALITY
 - Fan voice with analytical depth — not pure analyst, not pure fan
 - Think: the smartest person in the cricket WhatsApp group, not a journalist
 - Emotion under control, but not suppressed — let the story breathe
+- Tone must be analytical, not outraged — the algorithm actively suppresses negative sentiment even when engagement is high. Controversy comes from the insight, never from the anger.
 
 ═══════════════════════════════════════════
 STYLE RULES
@@ -699,6 +731,17 @@ If two named individuals are quoted in the article:
 - Reference the second only if it adds a contrasting or reinforcing layer
 - Never try to include both equally — one must anchor the tweet
 
+
+═══════════════════════════════════════════
+REPLY TRIGGER RULE:
+═══════════════════════════════════════════
+Every tweet must contain at least one element that compels a reply —
+not just a read. This means:
+- A verdict someone can disagree with (not just a question)
+- A two-camp framing where the reader must pick a side
+- A named claim specific enough that fans of the other side will push back
+A tweet that everyone agrees with is algorithmically dead.
+
 ═══════════════════════════════════════════
 ABSOLUTE NOs
 ═══════════════════════════════════════════
@@ -715,20 +758,17 @@ ${articleTypeInstruction}
 `;
 }
 
-// ─── CARD TYPES THAT GET AN IMAGE ───────────────────────────────────────────
-// human_interest and opinion_piece go text-only (copy carries the weight)
-// everything else gets a typography card
 const CARD_IMAGE_TYPES = new Set([
-  // "match_report",
+  "match_report",
   "selection_news",
-  // "player_form",
-  // "preview",
+  "player_form",
   "injury_news",
-  // "press_conference",
-  // "milestone_record",
-  // "tactical_analysis",
+  "milestone_record",
   "breaking_news",
   "rivalry_bait",
+  // "press_conference",
+  // "preview",
+  // "tactical_analysis",
 ]);
 
 async function _generateTweet(articleText, articleType) {
@@ -773,15 +813,18 @@ SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - If the closing line could apply to ANY article about ANY captain or coach — it is too vague. Rewrite it with one concrete anchor from the article.
 - Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
 
+
 RULES:
 - No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
 - Plain text only
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–260 characters for most types.
-  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
-  rivalry_bait: 2 lines, clean split — aim for 160–240 characters total. No more.
+- Target length:
+  news types (player_form, injury_news, press_conference, tactical_analysis, match_report): 180–280 characters
+  selection_news and human_interest: up to 320 characters — debates and emotional stories need space
+  rivalry_bait: 160–240 characters, clean 2-line split, no more
+  breaking_news: as short as needed — clarity over length
   A tweet that fits on one screen without "show more" gets more impressions.
 
 ${
@@ -855,7 +898,7 @@ No card needed for this article type. Output tweet text only.
 
   if (tweetText.length > 280) {
     console.warn(
-      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`
+      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`,
     );
   }
   console.log("tweet generated by claude prompt::", tweetText);
@@ -878,7 +921,7 @@ export async function generateClaudeTweet(articleText) {
   } catch (err) {
     console.warn(
       "⚠️ classifyArticle failed, using default:",
-      err?.message || err
+      err?.message || err,
     );
   }
 
@@ -897,7 +940,7 @@ export async function generateClaudeTweetWithType(articleText, articleType) {
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
     console.warn(
-      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`,
     );
     resolvedType = "player_form";
   }

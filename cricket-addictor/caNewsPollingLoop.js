@@ -150,13 +150,12 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      // const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-      //   fullText
-      // );
-      // tweetText = claudeTweet;
+      const { tweetText: claudeTweet, card } =
+        await generateClaudeTweet(fullText);
+      tweetText = claudeTweet;
 
-      const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
-      tweetText = gptTweet;
+      // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+      // tweetText = gptTweet;
 
       console.log("First Block tweet infor:::");
       console.log("First Block  tweetText::", tweetText);
@@ -166,7 +165,7 @@ export async function caNewsPollingLoop() {
         try {
           generatedPath = await generateCardImage(
             CREX_BASE_IMAGE_TEMPLATE,
-            card
+            card,
           );
 
           console.log("Claude generatedPath:::", generatedPath);
@@ -182,13 +181,12 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
-        // tweetText = gptTweet;
+        const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+        tweetText = gptTweet;
 
-        const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-          fullText
-        );
-        tweetText = claudeTweet;
+        // const { tweetText: claudeTweet, card } =
+        //   await generateClaudeTweet(fullText);
+        // tweetText = claudeTweet;
 
         console.log("Second Block tweet infor:::");
         console.log("Second Block  tweetText::", tweetText);
@@ -197,7 +195,7 @@ export async function caNewsPollingLoop() {
           try {
             generatedPath = await generateCardImage(
               CREX_BASE_IMAGE_TEMPLATE,
-              card
+              card,
             );
 
             console.log("GPT generatedPath:::", generatedPath);
@@ -377,7 +375,7 @@ function contextExists(STATE, summary) {
   if (!STATE.dailyContext?.contexts?.length) return false;
   const norm = normalizeSummary(summary);
   return STATE.dailyContext.contexts.some(
-    (c) => normalizeSummary(c.summary) === norm
+    (c) => normalizeSummary(c.summary) === norm,
   );
 }
 
