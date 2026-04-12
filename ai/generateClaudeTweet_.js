@@ -11,6 +11,7 @@ const client = new Anthropic({
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
   "breaking_news",
+  "rivalry_bait",
   // "selection_news",
   // "press_conference",
   // "injury_news",
@@ -32,6 +33,7 @@ Classify this cricket article into ONE of these types:
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
 - breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
+- rivalry_bait        (explicit comparison between two players, teams, eras, or fanbases that naturally divides opinion)
 
 Classification Rules (apply in order):
 0. Choose breaking_news ONLY if ALL of these are true:
@@ -48,6 +50,14 @@ Classification Rules (apply in order):
    - News that is significant but not time-critical
 
    These go to injury_news, selection_news, or the appropriate type instead.
+
+0b. Choose rivalry_bait if the article's PRIMARY purpose is to compare two named players,
+   two teams, or two eras — and the comparison naturally splits opinion between two camps.
+   Examples: "Kohli vs Rohit as captains", "CSK vs MI dynasty debate",
+   "Dhoni era vs current team", "Gill vs Pant for the No. 4 slot".
+   DO NOT use rivalry_bait for articles that merely mention two players in passing.
+   The comparison must be the central news peg.
+
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
 3. Choose press_conference if the article is primarily built around direct quotes from a NAMED individual (coach, captain, player). Anonymous source quotes ("a source told PTI", "sources say", "according to insiders") do NOT qualify — classify by the article's primary news peg instead.
@@ -59,6 +69,7 @@ Classification Rules (apply in order):
 9. Choose preview for upcoming match previews.
 10. Default to player_form if unsure between form-related types.
 11. When torn between two types, ask: what is the PRIMARY news peg — the single fact that makes this article worth publishing today? Classify based on that, not the surrounding context.
+12. Choose preview for team schedule releases, fixture announcements, or venue confirmations for upcoming matches. Do NOT use selection_news for schedule/fixture articles.
 
 IMPORTANT: An article that includes match context but whose primary argument is about DECISIONS and TACTICS should be classified as tactical_analysis, not match_report.
 
@@ -73,13 +84,13 @@ ARTICLE:
 ${articleText}
 `;
 
-  let response;
-  // response = await client.messages.create({
-  //   model: "claude-sonnet-4-20250514",
-  //   max_tokens: 20,
-  //   temperature: 0,
-  //   messages: [{ role: "user", content: prompt }],
-  // });
+  const response = await client.messages.create({
+    // model: "claude-sonnet-4-20250514",
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 20,
+    temperature: 0,
+    messages: [{ role: "user", content: prompt }],
+  });
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
@@ -171,10 +182,28 @@ Rules:
 - The insight between them must connect the two, not just list them
 - Works best for milestone_record and player_form types
 
+PATTERN M — THE DIVIDING LINE
+Split the tweet into two camps with no declared winner. Each side gets one clean, specific line.
+The reader self-selects their camp and goes to the replies to defend it.
+Examples (structure only — NEVER repeat these lines):
+"Dhoni fans: the era built the template.
+Rohit fans: the era scaled it."
+"CSK fans: culture wins trophies.
+MI fans: systems win trophies."
+"Selectors say Gill is the future.
+The stats say Pant never left."
+Rules:
+- Both sides must be EQUALLY defensible — never subtly favour one camp
+- Each line must be concrete — name a player, stat, or specific claim, not vibes
+- No declared winner — the tweet ends at the split. No third line that resolves the tension.
+- No emoji, no "who wins?" call-to-action — the structure IS the provocation
+- Works best for rivalry_bait, but can be used in selection_news, player_form, and milestone_record
+  when a genuine two-camp debate exists in the article
+
 PATTERN DIVERSITY RULE (important):
 Do not default to the same pattern repeatedly.
 Rotate across patterns based on what the article genuinely supports.
-If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, or M this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
@@ -195,6 +224,10 @@ Focus on:
 Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
 Lead with insight. The scoreline is context, not the point.
 Avoid: ball-by-ball recap, "team played well", generic momentum language.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   tactical_analysis: `
@@ -232,8 +265,12 @@ Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagem
 Name both the selected player AND the one left out if both are newsworthy.
 Avoid: "bold call", "surprise pick", "questions will be asked".
 
-CLOSING LINE EXCEPTION: 
+CLOSING LINE EXCEPTION:
 A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   player_form: `
@@ -252,6 +289,11 @@ Focus on:
 Use PATTERN C (Loaded Stat), PATTERN F (Earned Compliment), or PATTERN L (Number Sandwich) from the engagement mechanics.
 Use stats only when they reveal a trend. One strong evaluative phrase allowed.
 Avoid single-match overreaction. Avoid pure celebration without substance.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
+
 `,
 
   human_interest: `
@@ -288,7 +330,7 @@ PATTERNS:
   Warmth is allowed here. Sentimentality is not.
   Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
 
-CLOSING LINE EXCEPTION: 
+CLOSING LINE EXCEPTION:
   A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
 
 `,
@@ -344,6 +386,10 @@ Focus on:
 
 Use PATTERN B (Specific Contradiction) or PATTERN E (Open Verdict) from the engagement mechanics.
 Lead with impact. Avoid sympathy framing entirely.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   press_conference: `
@@ -393,6 +439,7 @@ historical context, or the one no player has achieved before, or the one closest
 an unprecedented landmark. Choose that number as your anchor, not the most obvious one.
 If the headline stat and a deeper stat both exist — the deeper one wins.
 
+
 The number is your entry point, not your destination.
 
 ENGAGEMENT TARGET: Bookmarks + shares (legacy debate)
@@ -409,6 +456,10 @@ Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Pun
 or PATTERN L (Number Sandwich) from the engagement mechanics.
 PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   breaking_news: `
@@ -432,6 +483,71 @@ Use this type for:
 
 The headline must be factual — never sensationalized.
 The body must answer: what does this mean RIGHT NOW for the team or tournament?
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
+
+`,
+
+  rivalry_bait: `
+ARTICLE TYPE: Rivalry Bait
+
+This is the fan war tweet. Your job is to draw the line — and let both sides charge at it.
+
+ENGAGEMENT TARGET: Replies + retweets (two-camp debate)
+The tweet must split the audience into exactly two defensible camps with zero resolution.
+Do NOT declare a winner. Do NOT lean toward one side. The tension IS the product.
+
+FOUR TRIGGERS — identify which one this article belongs to:
+
+TRIGGER 1 — PLAYER VS PLAYER
+Two named players being compared directly (stats, role, legacy, selection).
+The tweet must give each player one concrete, specific claim — not vibes.
+Example structure: "[Player A] did X. [Player B] did Y. Pick your side."
+
+TRIGGER 2 — TEAM VS TEAM (or franchise vs franchise)
+Two teams' philosophies, dynasties, or approaches being contrasted.
+Lean into what each team REPRESENTS, not just their trophies.
+Example structure: "[Team A] fans believe X built the template. [Team B] fans believe Y scaled it."
+
+TRIGGER 3 — ERA VS ERA (legend vs current gen)
+Dhoni era vs Rohit era, 90s Test cricket vs T20 era, etc.
+The tweet must acknowledge what each era genuinely did well — no nostalgia bias, no recency bias.
+Example structure: "That era gave India X. This era gave India Y. The debate isn't which was better — it's which mattered more."
+
+TRIGGER 4 — FANBASE VS MEDIA / SELECTORS
+When the article's core tension is fans defending a player against an institutional decision.
+The tweet must frame the institutional logic AND the fan counter-argument with equal weight.
+Example structure: "Selectors' logic: [specific reason]. Fans' counter: [specific reason]. One of them is wrong."
+
+STRUCTURE RULES (non-negotiable):
+- Use PATTERN M (The Dividing Line) as the primary structure
+- Two clean lines — one per camp — separated by a line break
+- Each line must be EQUALLY defensible — no subtle favouritism
+- No third line that resolves the tension. The tweet ends at the split.
+- No "who wins?" or "comment below" call-to-action — the structure does the work
+- No emoji
+
+TONE RULES:
+- Calm and analytical — the controversy comes from the setup, not the language
+- Never manufactured — both sides must be grounded in what the article actually says
+- Never personal — compare decisions, eras, stats, philosophies — never character
+- No fanbase slurs, no tribal baiting, no inflammatory language
+
+CONTENT GUARDRAILS:
+- Both sides must be extractable from the article — never fabricate a position
+- If the article clearly favours one side — do not invent a counter-argument
+  Instead, use a different article type (player_form, opinion_piece, etc.)
+- Never introduce religious, ethnic, or identity framing
+- Criticism must be of decisions and results — never of personal character
+
+CLOSING LINE RULE FOR THIS TYPE:
+The tweet has no closing line. Pattern M IS the structure. It ends where the split ends.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 };
 
@@ -480,6 +596,7 @@ TONE & PERSONALITY
 - Fan voice with analytical depth — not pure analyst, not pure fan
 - Think: the smartest person in the cricket WhatsApp group, not a journalist
 - Emotion under control, but not suppressed — let the story breathe
+- Tone must be analytical, not outraged — the algorithm actively suppresses negative sentiment even when engagement is high. Controversy comes from the insight, never from the anger.
 
 ═══════════════════════════════════════════
 STYLE RULES
@@ -512,6 +629,8 @@ deliberate tension, not uncertainty. There is a difference between
 "This might be India's smartest tactical shift." (hedge — banned).
 You either back something or you don't. Pick a lane.
 
+CLOSING LINE RULE EXCEPTION — rivalry_bait type:
+Pattern M has no closing line by design. The tweet ends at the split. This is intentional.
 
 ═══════════════════════════════════════════
 STRUCTURE VARIETY RULE (STRICT)
@@ -612,6 +731,17 @@ If two named individuals are quoted in the article:
 - Reference the second only if it adds a contrasting or reinforcing layer
 - Never try to include both equally — one must anchor the tweet
 
+
+═══════════════════════════════════════════
+REPLY TRIGGER RULE:
+═══════════════════════════════════════════
+Every tweet must contain at least one element that compels a reply —
+not just a read. This means:
+- A verdict someone can disagree with (not just a question)
+- A two-camp framing where the reader must pick a side
+- A named claim specific enough that fans of the other side will push back
+A tweet that everyone agrees with is algorithmically dead.
+
 ═══════════════════════════════════════════
 ABSOLUTE NOs
 ═══════════════════════════════════════════
@@ -628,11 +758,24 @@ ${articleTypeInstruction}
 `;
 }
 
-// Internal tweet generator — accepts a pre-classified article type to avoid
-// a redundant classifyArticle call when the polling loop has already classified.
+const CARD_IMAGE_TYPES = new Set([
+  "match_report",
+  "selection_news",
+  "player_form",
+  "injury_news",
+  "milestone_record",
+  "breaking_news",
+  "rivalry_bait",
+  // "press_conference",
+  // "preview",
+  // "tactical_analysis",
+]);
+
 async function _generateTweet(articleText, articleType) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
+
+  const needsCard = CARD_IMAGE_TYPES.has(articleType);
 
   const userPrompt = `
 [NEWS CONTEXT]
@@ -658,16 +801,21 @@ FINAL CHECK before outputting:
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
-- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
+- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed — EXCEPTION: rivalry_bait ends at the split, no closing line needed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
 - For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
+- For rivalry_bait: are both sides EQUALLY defensible? Does the tweet declare a winner anywhere — even subtly? (It must not.)
+- Does the closing line give the reader something to disagree with or pick a side on?
+  If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
+  The reader should finish thinking "but wait, actually..." or "no, I think..."
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
 - If the closing line could apply to ANY article about ANY captain or coach — it is too vague. Rewrite it with one concrete anchor from the article.
 - Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
+
 
 RULES:
 - No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
@@ -675,14 +823,42 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–260 characters for most types.
-  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
+- Target length:
+  news types (player_form, injury_news, press_conference, tactical_analysis, match_report): 180–280 characters
+  selection_news and human_interest: up to 320 characters — debates and emotional stories need space
+  rivalry_bait: 160–240 characters, clean 2-line split, no more
+  breaking_news: as short as needed — clarity over length
   A tweet that fits on one screen without "show more" gets more impressions.
+
+${
+  needsCard
+    ? `
+─────────────────────────────────────────
+CARD FIELDS (required — output after tweet)
+─────────────────────────────────────────
+After the tweet text, output a JSON block on a new line in this exact format:
+CARD_JSON:{"category":"SELECTION NEWS","headline":"Jitesh to RCB","subline":"PBKS couldn't match ₹11Cr bid","player":"Jitesh Sharma"}
+
+Rules for card fields:
+- category: UPPERCASE label matching the article type. Use one of:
+  SELECTION NEWS / INJURY NEWS / BREAKING NEWS / MATCH REPORT /
+  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION / RIVALRY
+- headline: max 5 words, punchy, title case. The single most important fact.
+- subline: max 8 words, supporting context. Can be a short phrase or stat.
+- player: primary player's full name, or "" if no single player is central (common for rivalry_bait).
+
+Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
+Do not add any explanation around the JSON.
+`
+    : `
+No card needed for this article type. Output tweet text only.
+`
+}
 `;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 350,
+    max_tokens: 400,
     temperature: 0.85,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -690,29 +866,52 @@ RULES:
 
   const rawText = response.content[0].text;
 
-  const tweetText = rawText
+  // ── Parse tweet + card fields ──────────────────────────────────────────────
+  let tweetText = rawText;
+  let card = null;
+
+  if (needsCard) {
+    const cardMarker = "CARD_JSON:";
+    const markerIndex = rawText.indexOf(cardMarker);
+
+    if (markerIndex !== -1) {
+      tweetText = rawText.slice(0, markerIndex).trim();
+      const jsonStr = rawText.slice(markerIndex + cardMarker.length).trim();
+      try {
+        card = JSON.parse(jsonStr);
+      } catch (e) {
+        console.warn("⚠️ Failed to parse card JSON:", jsonStr);
+        card = null;
+      }
+    } else {
+      console.warn("⚠️ CARD_JSON marker not found in response");
+    }
+  }
+
+  // ── Clean tweet whitespace ─────────────────────────────────────────────────
+  tweetText = tweetText
     .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
   if (!tweetText || tweetText.length < 30) {
     console.warn("⚠️ Claude returned empty or too-short tweet");
-    return null;
+    return { tweetText: null, card: null };
   }
 
   if (tweetText.length > 280) {
     console.warn(
-      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`
+      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`,
     );
   }
+  console.log("tweet generated by claude prompt::", tweetText);
+  console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
 
-  return tweetText;
+  return { tweetText, card };
 }
 
-// Standard entry point — classifies internally, used when polling loop
-// does not need to know the article type for gate logic.
 export async function generateClaudeTweet(articleText) {
-  console.log("generateClaudeTweet::");
+  console.log("Prompt generated by Claude ....");
   let articleType = "player_form";
 
   try {
@@ -725,7 +924,7 @@ export async function generateClaudeTweet(articleText) {
   } catch (err) {
     console.warn(
       "⚠️ classifyArticle failed, using default:",
-      err?.message || err
+      err?.message || err,
     );
   }
 
@@ -735,21 +934,16 @@ export async function generateClaudeTweet(articleText) {
     return await _generateTweet(articleText, articleType);
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
-    return null;
+    return { tweetText: null, card: null };
   }
 }
 
-// Extended entry point — accepts a pre-classified type from the polling loop.
-// Avoids a duplicate classifyArticle call and returns the type alongside the tweet
-// so the polling loop can make gate decisions without re-classifying.
 export async function generateClaudeTweetWithType(articleText, articleType) {
-  console.log("generateClaudeTweetWithType::");
-
   let resolvedType = articleType;
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
     console.warn(
-      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`,
     );
     resolvedType = "player_form";
   }
@@ -757,10 +951,10 @@ export async function generateClaudeTweetWithType(articleText, articleType) {
   console.log(`🏷️ Article type (pre-classified): ${resolvedType}`);
 
   try {
-    const tweetText = await _generateTweet(articleText, resolvedType);
-    return { tweetText, articleType: resolvedType };
+    const { tweetText, card } = await _generateTweet(articleText, resolvedType);
+    return { tweetText, articleType: resolvedType, card };
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
-    return { tweetText: null, articleType: resolvedType };
+    return { tweetText: null, articleType: resolvedType, card: null };
   }
 }

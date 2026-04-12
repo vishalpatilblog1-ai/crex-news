@@ -835,8 +835,9 @@ FINAL CHECK before outputting:
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
 - If the closing line could apply to ANY article about ANY captain or coach — it is too vague. Rewrite it with one concrete anchor from the article.
-- Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
-
+- Phrases like "That changes how we read everything", "This reframes the entire narrative", or "That changes how we read every run/ball/over/moment" are banned — these are generic wrappers with no specific anchor.
+  The standard: "That changes how we read the Sri Lanka captaincy call" or "That changes how we read every boundary hit after Jadeja and Curran were traded away."
+  If the closing line could have been written without reading the article — delete it and rewrite with one concrete detail from the article.
 
 RULES:
 - No Emoji at all — EXCEPTION: breaking_news type uses ⚡️ as specified in its format
