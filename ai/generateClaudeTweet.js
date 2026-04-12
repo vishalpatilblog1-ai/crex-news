@@ -369,6 +369,8 @@ Focus on:
 Use PATTERN E (Open Verdict) from the engagement mechanics.
 Frame around what is being tested, not who is playing.
 Avoid: "high-stakes clash", "must-win game", "both teams will be eager".
+Don't preview the match — preview the question the match will answer.
+The SO WHAT is what's genuinely at stake beyond the result.
 `,
 
   injury_news: `
@@ -386,6 +388,9 @@ Focus on:
 
 Use PATTERN B (Specific Contradiction) or PATTERN E (Open Verdict) from the engagement mechanics.
 Lead with impact. Avoid sympathy framing entirely.
+The consequence must reveal something about team structure —
+not just "X is out, Y comes in." That's the WHAT.
+The SO WHAT is what this exposes about the squad's depth or planning.
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -427,6 +432,11 @@ MULTI-SPEAKER RULE:
 If the article quotes more than one named individual, do not try to include both equally.
 Pick the speaker whose claim is most analytically significant or most likely to generate debate.
 The second speaker can appear only if their quote directly reinforces or contradicts the first.
+
+SO WHAT RULE:
+The quote is raw material. Your job is to say what it reveals
+that the speaker didn't intend to reveal.
+A tweet that could have been written before reading the article has failed this rule.
 `,
 
   milestone_record: `
@@ -473,7 +483,9 @@ FORMAT (mandatory):
 ⚡️ [SHORT HEADLINE IN CAPS — max 6 words] -
 
 Then 1-2 lines of the key fact — who, what, and the immediate consequence.
-No editorializing. No opinion. Just the sharpest version of the news.
+Lead with the consequence, not the act. If the news reveals something non-obvious
+about the team, tournament, or system — state that instead of repeating the headline.
+No rage, no opinion. But if there's a SO WHAT — say it in one clean line.
 
 Use this type for:
 - Player ruled out / availability confirmed
