@@ -858,6 +858,11 @@ Rules for card fields:
 
 Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
 Do not add any explanation around the JSON.
+
+CARD SYNERGY CHECK:
+- Does the tweet text complement the card without repeating it?
+  The card shows the WHAT. The tweet must show the SO WHAT.
+  If the tweet and card headline say the same thing in different words — rewrite the tweet.
 `
     : `
 No card needed for this article type. Output tweet text only.
