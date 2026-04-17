@@ -392,6 +392,18 @@ The consequence must reveal something about team structure —
 not just "X is out, Y comes in." That's the WHAT.
 The SO WHAT is what this exposes about the squad's depth or planning.
 
+REPLACEMENT CANDIDATE RULE:
+If the article lists multiple replacement candidates (2 or more named players),
+do NOT focus on just one. The tweet must either:
+  a) Name all candidates as a punchy inline list — never bullets
+     Example: "Sakariya, Simarjeet, Madhwal — three different solutions to the same problem."
+  b) Frame the replacement question as the tension — what the choice reveals about team priorities
+     Example: "Like-for-like or upgrade? CSK's replacement call says more about their season plan than the injury does."
+DO NOT pick one candidate and ignore the rest unless the article itself clearly
+identifies one as the frontrunner with specific reasoning.
+DO NOT treat squad players mentioned as context (existing XI options) as replacement candidates.
+Only players explicitly recommended as replacements qualify.
+
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
@@ -812,6 +824,7 @@ STRUCTURE GUIDANCE (optional — use only if it fits naturally):
 - Stance: a clear analytical conclusion or open tension that pulls people into replies
 
 FINAL CHECK before outputting:
+
 - Does the tweet say something the article doesn't explicitly state? (It should)
 - Is there at least one specific detail (name, number, decision) that grounds the opinion?
 - Could a journalist or selector quote this tweet? (It should pass that test)
@@ -829,6 +842,9 @@ FINAL CHECK before outputting:
   The reader should finish thinking "but wait, actually..." or "no, I think..."
 - Does this tweet say something the source article's headline does NOT say?
   If your tweet reads like a rewritten version of the article's own headline or lede — it is a summary, not an insight. Rewrite entirely.
+- If the article mentions a player as existing squad context (already in the XI),
+  do NOT treat them as a replacement candidate. Only players brought in from outside
+  the current playing XI qualify as replacements.
 - Could a reader skip the article after reading your tweet and feel fully informed?
   If yes — you summarized. Insight tweets make the reader WANT to read more, not less.
 
