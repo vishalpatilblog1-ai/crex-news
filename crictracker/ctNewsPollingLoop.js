@@ -16,12 +16,11 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweet,
-  generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
-import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
+import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
+import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
 
 const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
@@ -100,7 +99,7 @@ export async function ctNewsPollingLoop() {
   }
 
   const fullText = `${parsed.headline}\n${parsed.body} ${JSON.stringify(
-    parsed.table
+    parsed.table,
   )}`;
 
   // ── Step 1: Classify article type first ──────────────────────────────────
@@ -133,7 +132,7 @@ export async function ctNewsPollingLoop() {
     // if (!isExempt) {
     if (!isExempt && score < 7) {
       console.log(
-        `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`
+        `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
       );
       STATE.cricktracker.seen[cleanLink] = Date.now();
       await saveState(STATE);
@@ -142,7 +141,7 @@ export async function ctNewsPollingLoop() {
 
     if (isExempt) {
       console.log(
-        `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
+        `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
       );
     } else {
       console.log(`✅ Significance: ${score}/10 — proceeding`);
@@ -161,13 +160,15 @@ export async function ctNewsPollingLoop() {
   let tweetText = null;
   let generatedPath = null;
   try {
-    const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-      fullText
-    );
+    const { tweetText: claudeTweet, card } =
+      await generateClaudeTweet(fullText);
     tweetText = claudeTweet;
     if (card) {
       try {
-        generatedPath = await generateCardImage(CREX_BASE_IMAGE_TEMPLATE, card);
+        generatedPath = await generateCardImage(
+          CREX_BASE_IMAGE_TEMPLATE_NEW,
+          card,
+        );
       } catch (err) {
         console.error("❌ Image generation failed:", err);
       }
@@ -276,7 +277,7 @@ function pruneDailyContext(STATE, retentionMs) {
       console.log(
         `🧹 Pruned ${
           before - STATE.dailyContext.contexts.length
-        } old dailyContext entries`
+        } old dailyContext entries`,
       );
       return true;
     }
@@ -343,7 +344,7 @@ function contextExists(STATE, summary) {
   if (!STATE.dailyContext?.contexts?.length) return false;
   const norm = normalizeSummary(summary);
   return STATE.dailyContext.contexts.some(
-    (c) => normalizeSummary(c.summary) === norm
+    (c) => normalizeSummary(c.summary) === norm,
   );
 }
 

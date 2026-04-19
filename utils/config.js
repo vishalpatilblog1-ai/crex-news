@@ -1,6 +1,9 @@
 export const CREX_BASE_IMAGE_TEMPLATE =
   "https://res.cloudinary.com/dgbs4hn5i/image/upload/v1774624457/gp_players/common/crex_base_image_template.png";
 
+export const CREX_BASE_IMAGE_TEMPLATE_NEW =
+  "https://res.cloudinary.com/dgbs4hn5i/image/upload/q_auto/f_auto/v1776609509/gp_players/common/gullypointnow_.webp";
+
 export const CATEGORY_COLOR_MAP = {
   "BREAKING NEWS": "#E74C3C",
   "SELECTION NEWS": "#FF6B00",

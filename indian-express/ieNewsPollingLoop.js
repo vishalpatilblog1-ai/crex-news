@@ -8,7 +8,7 @@ import {
 } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
+import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { judgeNewsContext } from "./ai/judgeNewsContext.js";
@@ -87,7 +87,7 @@ export async function ieNewsPollingLoop() {
       "🆕 IE news detected:",
       selected.title,
       "| pubDate:",
-      selected.pubDate
+      selected.pubDate,
     );
 
     // ── Fetch article body ────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ export async function ieNewsPollingLoop() {
 
       if (!isExempt && score < 7) {
         console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`
+          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
         );
         const cleanLink = normalizeIELink(selected.link);
         STATE.ie.seen[cleanLink] = Date.now();
@@ -150,7 +150,7 @@ export async function ieNewsPollingLoop() {
 
       if (isExempt) {
         console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
         );
       } else {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
@@ -158,7 +158,7 @@ export async function ieNewsPollingLoop() {
     } catch (err) {
       console.warn(
         "⚠️ IE context judge failed, proceeding without dedup:",
-        err.message
+        err.message,
       );
     }
 
@@ -167,17 +167,16 @@ export async function ieNewsPollingLoop() {
     let generatedPath = null;
     try {
       // const result = await generateClaudeTweetWithType(fullText, articleType);
-      const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-        fullText
-      );
+      const { tweetText: claudeTweet, card } =
+        await generateClaudeTweet(fullText);
       tweetText = claudeTweet;
       console.log("claudeTweet IE:::", tweetText, "card::", card);
 
       if (card) {
         try {
           generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE,
-            card
+            CREX_BASE_IMAGE_TEMPLATE_NEW,
+            card,
           );
         } catch (err) {
           console.error("❌ Image generation failed:", err);
