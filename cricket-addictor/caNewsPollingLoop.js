@@ -8,7 +8,7 @@ import {
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
+import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
@@ -164,7 +164,7 @@ export async function caNewsPollingLoop() {
       if (card) {
         try {
           generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE_NEW,
+            CREX_BASE_IMAGE_TEMPLATE,
             card,
           );
 
@@ -194,7 +194,7 @@ export async function caNewsPollingLoop() {
         if (card) {
           try {
             generatedPath = await generateCardImage(
-              CREX_BASE_IMAGE_TEMPLATE_NEW,
+              CREX_BASE_IMAGE_TEMPLATE,
               card,
             );
 
