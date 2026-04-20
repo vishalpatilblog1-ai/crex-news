@@ -21,6 +21,7 @@ import {
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
+import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 
 const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
@@ -160,8 +161,9 @@ export async function ctNewsPollingLoop() {
   let tweetText = null;
   let generatedPath = null;
   try {
-    const { tweetText: claudeTweet, card } =
-      await generateClaudeTweet(fullText);
+    // const { tweetText: claudeTweet, card } =
+    //   await generateClaudeTweet(fullText);
+    const { tweetText: claudeTweet, card } = await generateGPTTweet(fullText);
     tweetText = claudeTweet;
     if (card) {
       try {
