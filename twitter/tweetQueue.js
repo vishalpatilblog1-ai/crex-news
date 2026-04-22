@@ -14,17 +14,33 @@ function randomTweetDelay(source) {
   return MIN + Math.random() * (MAX - MIN);
 }
 
+// function isSleepWindow() {
+//   const now = new Date();
+
+//   const istTime = new Date(
+//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+//   );
+
+//   const hour = istTime.getHours();
+//   console.log("🕒 IST hour:", hour);
+
+//   return hour >= 1 && hour < 6;
+// }
+
 function isSleepWindow() {
   const now = new Date();
 
   const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
   );
 
   const hour = istTime.getHours();
   console.log("🕒 IST hour:", hour);
 
-  return hour >= 1 && hour < 6;
+  const isNightSleep = hour >= 1 && hour < 6;
+  const isAfternoonSleep = hour >= 13 && hour < 16; // 1 PM - 4 PM
+
+  return isNightSleep || isAfternoonSleep;
 }
 
 function isCricketAddictorBlocked(source) {
@@ -33,7 +49,7 @@ function isCricketAddictorBlocked(source) {
   const now = new Date();
 
   const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
   );
 
   const hour = istTime.getHours();
@@ -63,8 +79,8 @@ function canTweetNow(source) {
   if (now < nextAllowed) {
     console.log(
       `⏳ Tweet cooldown (${Math.ceil(
-        (nextAllowed - now) / 1000
-      )}s left) — ${source} skipped`
+        (nextAllowed - now) / 1000,
+      )}s left) — ${source} skipped`,
     );
     return false;
   }
@@ -81,7 +97,7 @@ function markTweeted(trigger, source) {
   const seconds = Math.round(delay / 1000);
 
   console.log(
-    `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`
+    `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`,
   );
 }
 
@@ -133,7 +149,7 @@ export async function tryFlushTweetQueue() {
       tweetResponse = await tweetNewsWithImage(
         next.text,
         next.imageUrl,
-        next.source
+        next.source,
       );
     } else {
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
