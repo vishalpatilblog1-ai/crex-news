@@ -1,9 +1,13 @@
 // cricket-addictor/caNewsPollingLoop.js
 
-import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import {
+  generateGPTTweet,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweet,
+  generateClaudeTweetWithType,
 } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
@@ -151,7 +155,7 @@ export async function caNewsPollingLoop() {
 
     try {
       const { tweetText: claudeTweet, card } =
-        await generateClaudeTweet(fullText);
+        await generateClaudeTweetWithType(fullText, articleType);
       tweetText = claudeTweet;
 
       // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
@@ -181,7 +185,10 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
+        const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+          fullText,
+          articleType,
+        );
         tweetText = gptTweet;
 
         // const { tweetText: claudeTweet, card } =

@@ -847,6 +847,10 @@ FINAL CHECK before outputting:
   the current playing XI qualify as replacements.
 - Could a reader skip the article after reading your tweet and feel fully informed?
   If yes — you summarized. Insight tweets make the reader WANT to read more, not less.
+- Does the tweet contain any specific number (runs, balls, target, strike rate, overs) 
+  not explicitly stated in the article? If yes — DELETE that number. 
+  Do not infer or reconstruct stats from context. Only use figures the article 
+  directly states in plain text.
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
