@@ -101,7 +101,7 @@ ${articleText}
   } catch (err) {
     console.warn(
       "⚠️ classifyArticle failed, using default:",
-      err?.message || err
+      err?.message || err,
     );
     return "player_form";
   }
@@ -537,11 +537,24 @@ The tweet has no closing line. Pattern M IS the structure. It ends where the spl
 
 // ─── CARD TYPES THAT GET AN IMAGE ────────────────────────────────────────────
 
+// const CARD_IMAGE_TYPES = new Set([
+//   "selection_news",
+//   "injury_news",
+//   "breaking_news",
+//   // "rivalry_bait",
+// ]);
+
 const CARD_IMAGE_TYPES = new Set([
+  "match_report",
   "selection_news",
+  "player_form",
   "injury_news",
+  "milestone_record",
   "breaking_news",
-  // "rivalry_bait",
+  "rivalry_bait",
+  // "press_conference",
+  // "preview",
+  // "tactical_analysis",
 ]);
 
 // ─── SYSTEM PROMPT BUILDER ────────────────────────────────────────────────────
@@ -894,7 +907,7 @@ No card needed for this article type. Output tweet text only.
 
     if (tweetText.length > 280) {
       console.warn(
-        `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`
+        `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`,
       );
     }
 
@@ -925,7 +938,7 @@ export async function generateGPTTweet(articleText) {
   } catch (err) {
     console.warn(
       "⚠️ classifyArticle failed, using default:",
-      err?.message || err
+      err?.message || err,
     );
   }
 
@@ -944,7 +957,7 @@ export async function generateGPTTweetWithType(articleText, articleType) {
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
     console.warn(
-      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`,
     );
     resolvedType = "player_form";
   }
