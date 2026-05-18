@@ -4,6 +4,7 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweet,
+  generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
@@ -97,7 +98,7 @@ export async function ndtvNewspolling____() {
     } catch (err) {
       console.warn(
         "⚠️ NDTV article fetch failed, falling back to RSS description:",
-        err.message
+        err.message,
       );
 
       const rssDesc = selected.description?.trim();
@@ -155,7 +156,7 @@ export async function ndtvNewspolling____() {
       if (!isExempt && score < 7) {
         // if (!isExempt) {
         console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`
+          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
         );
         const cleanLink = normalizeNDTVLink(selected.link);
         STATE.ndtv.seen[cleanLink] = Date.now();
@@ -168,7 +169,7 @@ export async function ndtvNewspolling____() {
 
       if (isExempt) {
         console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
         );
       } else {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
@@ -176,7 +177,7 @@ export async function ndtvNewspolling____() {
     } catch (err) {
       console.warn(
         "⚠️ NDTV context judge failed, proceeding without dedup:",
-        err.message
+        err.message,
       );
     }
 
@@ -193,19 +194,25 @@ export async function ndtvNewspolling____() {
     let generatedPath = null;
 
     try {
-      const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-        `${parsed.headline}\n${parsed.body}`
-      );
+      // const { tweetText: claudeTweet, card } = await generateClaudeTweet(
+      //   `${parsed.headline}\n${parsed.body}`
+      // );
 
-      tweetText = claudeTweet;
+      const { tweetText: tweetToPost, card } =
+        await generateClaudeTweetWithType(
+          `${parsed.headline}\n${parsed.body}`,
+          articleType,
+        );
 
-      console.log("claudeTweet NDTV:::", tweetText, "card::", card);
+      tweetText = tweetToPost;
+
+      console.log("tweetToPost NDTV:::", tweetToPost, "card::", card);
 
       if (card) {
         try {
           generatedPath = await generateCardImage(
             CREX_BASE_IMAGE_TEMPLATE,
-            card
+            card,
           );
         } catch (err) {
           console.error("❌ Image generation failed:", err);
