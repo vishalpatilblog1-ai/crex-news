@@ -12,6 +12,7 @@ import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
 import { ndtvNewspolling____ } from "./ndtv/ndtvNewspolling____.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
+import { ndtvFootballNewspolling } from "./ndtv/ndtvNewspollingFootball.js";
 
 const log = createLogger("prod");
 
@@ -59,6 +60,11 @@ async function bootstrap() {
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
     console.log("📰 Ndtv news polling enabled");
     setInterval(ndtvNewspolling____, 1000 * 60 * 4);
+  }
+
+  if (process.env.ENABLE_NDTV_FOOTBALL_NEWS_POLLING === "true") {
+    console.log("📰 Ndtv news polling enabled");
+    setInterval(ndtvFootballNewspolling, 1000 * 60 * 4);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
