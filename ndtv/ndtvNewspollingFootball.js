@@ -264,6 +264,8 @@ export async function ndtvFootballNewspolling() {
       return;
     }
 
+    tweetText = `${tweetText}\n\n#FIFAWorldCup2026`;
+
     // ── Enqueue ───────────────────────────────────────────────────────────────
     const cleanUrl = normalizeNDTVFootballLink(selected.link);
     const tweetId = `FOOTBALL:${cleanUrl}`;

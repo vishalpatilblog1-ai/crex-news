@@ -63,8 +63,8 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_NDTV_FOOTBALL_NEWS_POLLING === "true") {
-    console.log("📰 Ndtv news polling enabled");
-    setInterval(ndtvFootballNewspolling, 1000 * 60 * 4);
+    console.log("📰 Ndtv football news polling enabled");
+    setInterval(ndtvFootballNewspolling, 1000 * 60 * 5);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {

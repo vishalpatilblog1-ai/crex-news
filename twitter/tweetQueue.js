@@ -37,8 +37,8 @@ function isSleepWindow() {
   const hour = istTime.getHours();
   console.log("🕒 IST hour:", hour);
 
-  // const isNightSleep = hour >= 1 && hour < 6;
-  const isNightSleep = hour >= 5 && hour < 6;
+  const isNightSleep = hour >= 1 && hour < 6;
+
   const isAfternoonSleep = hour >= 13 && hour < 16; // 1 PM - 4 PM
 
   return isNightSleep || isAfternoonSleep;
