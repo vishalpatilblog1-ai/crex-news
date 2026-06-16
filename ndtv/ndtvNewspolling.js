@@ -3,9 +3,14 @@
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   classifyArticle,
-  generateClaudeTweetWithType,
+  generateGPTTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet.js";
+} from "../ai/generate-gpt-tweet.js";
+// import {
+//   classifyArticle,
+//   generateClaudeTweetWithType,
+//   SIGNIFICANCE_EXEMPT_TYPES,
+// } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
@@ -20,7 +25,7 @@ const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-export async function ndtvNewspolling____() {
+export async function ndtvNewspolling() {
   if (!global.STATE) {
     console.log("⚠️ global.STATE not ready. Skipping NDTV polling.");
     return;
@@ -120,7 +125,9 @@ export async function ndtvNewspolling____() {
 
     let articleType = "player_form";
     try {
+      // articleType = await classifyArticle(fullText);
       articleType = await classifyArticle(fullText);
+
       console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
@@ -183,15 +190,16 @@ export async function ndtvNewspolling____() {
     let generatedPath = null;
 
     try {
-      // const { tweetText: claudeTweet, card } = await generateClaudeTweet(
-      //   `${parsed.headline}\n${parsed.body}`
-      // );
+      // const { tweetText: tweetToPost, card } =
+      //   await generateClaudeTweetWithType(
+      //     `${parsed.headline}\n${parsed.body}`,
+      //     articleType,
+      //   );
 
-      const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(
-          `${parsed.headline}\n${parsed.body}`,
-          articleType,
-        );
+      const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
+        `${parsed.headline}\n${parsed.body}`,
+        articleType,
+      );
 
       tweetText = tweetToPost;
 

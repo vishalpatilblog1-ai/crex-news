@@ -9,10 +9,11 @@ import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
-import { ndtvNewspolling____ } from "./ndtv/ndtvNewspolling____.js";
+// import { ndtvNewspolling____ } from "./ndtv/ndtvNewspolling____.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
 import { ndtvFootballNewspolling } from "./ndtv/ndtvNewspollingFootball.js";
+import { ndtvNewspolling } from "./ndtv/ndtvNewspolling.js";
 
 const log = createLogger("prod");
 
@@ -59,12 +60,12 @@ async function bootstrap() {
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
     console.log("📰 Ndtv news polling enabled");
-    setInterval(ndtvNewspolling____, 1000 * 60 * 4);
+    setInterval(ndtvNewspolling, 1000 * 60 * 4);
   }
 
   if (process.env.ENABLE_NDTV_FOOTBALL_NEWS_POLLING === "true") {
     console.log("📰 Ndtv football news polling enabled");
-    setInterval(ndtvFootballNewspolling, 1000 * 60 * 5);
+    setInterval(ndtvFootballNewspolling, 1000 * 60 * 0.2);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {

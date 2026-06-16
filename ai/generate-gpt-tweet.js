@@ -18,7 +18,7 @@ export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
 
 // ─── ARTICLE CLASSIFIER ──────────────────────────────────────────────────────
 
-async function classifyArticle(articleText) {
+export async function classifyArticle(articleText) {
   const prompt = `
 Classify this cricket article into ONE of these types:
 

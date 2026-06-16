@@ -1,12 +1,12 @@
 // footballNewsPollingLoop.js
 
 import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-
 import {
-  classifyArticle,
-  generateClaudeTweetWithType,
+  classifyFootballArticle,
+  generateFootbalGPTTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet_football.js";
+} from "../ai/generate-gpt-tweet-football.js";
+
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeFootballNewsContext } from "../indian-express/ai/judgeFootballNewsContext.js";
 
@@ -130,7 +130,7 @@ export async function ndtvFootballNewspolling() {
     // ── Classify ──────────────────────────────────────────────────────────────
     let articleType = "player_form";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyFootballArticle(fullText);
       console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
@@ -199,8 +199,13 @@ export async function ndtvFootballNewspolling() {
     let generatedPath = null;
 
     try {
+      // const { tweetText: tweetToPost, card } =
+      //   await generateClaudeTweetWithType(
+      //     `${parsed.headline}\n${parsed.body}`,
+      //     articleType,
+      //   );
       const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(
+        await generateFootbalGPTTweetWithType(
           `${parsed.headline}\n${parsed.body}`,
           articleType,
         );
