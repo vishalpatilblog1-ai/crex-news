@@ -41,7 +41,8 @@ function isSleepWindow() {
 
   const isAfternoonSleep = hour >= 13 && hour < 16; // 1 PM - 4 PM
 
-  return isNightSleep || isAfternoonSleep;
+  // return isNightSleep || isAfternoonSleep;
+  return isAfternoonSleep; // temporary, let run tweet whole night
 }
 
 function isCricketAddictorBlocked(source) {
