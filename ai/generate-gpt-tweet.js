@@ -240,6 +240,8 @@ Focus on:
 Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
 Lead with insight. The scoreline is context, not the point.
 Avoid: ball-by-ball recap, "team played well", generic momentum language.
+FRICTION REQUIREMENT: If the tweet only confirms what the scoreline already told the reader —
+no turning point, no reveal — REWRITE. A result recap with a nice sentence is still a recap.
 `,
 
   tactical_analysis: `
@@ -258,6 +260,8 @@ Focus on:
 Use PATTERN B (Specific Contradiction), PATTERN C (Loaded Stat), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
 The reader should finish the tweet thinking: "I'll watch for that next time."
 Avoid: vague "poor decision-making", scoreline recap, praise without a specific reason.
+FRICTION REQUIREMENT: If the tweet describes what happened without naming what SHOULD have
+happened instead — REWRITE. Analysis without a counterfactual is just narration.
 `,
 
   selection_news: `
@@ -276,6 +280,8 @@ Focus on:
 Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagement mechanics — end with the tension, not the conclusion.
 Name both the selected player AND the one left out if both are newsworthy.
 Avoid: "bold call", "surprise pick", "questions will be asked".
+FRICTION REQUIREMENT: If the tweet announces the pick without taking a position on whether it's
+right — REWRITE. Naming who's out isn't enough; say what it costs or proves.
 
 CLOSING LINE EXCEPTION:
 A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
@@ -297,6 +303,8 @@ Focus on:
 Use PATTERN C (Loaded Stat), PATTERN F (Earned Compliment), or PATTERN L (Number Sandwich) from the engagement mechanics.
 Use stats only when they reveal a trend. One strong evaluative phrase allowed.
 Avoid single-match overreaction. Avoid pure celebration without substance.
+FRICTION REQUIREMENT: If the tweet states the numbers without answering "blip or trend" —
+REWRITE. Stats without a verdict on what they mean is a scorecard, not a take.
 `,
 
   human_interest: `
@@ -371,6 +379,8 @@ Focus on:
 Use PATTERN E (Open Verdict) from the engagement mechanics.
 Frame around what is being tested, not who is playing.
 Avoid: "high-stakes clash", "must-win game", "both teams will be eager".
+FRICTION REQUIREMENT: If the tweet previews both teams without staking a position on what the
+match will actually answer — REWRITE. A preview with no prediction is a fixture list.
 `,
 
   injury_news: `
@@ -388,6 +398,9 @@ Focus on:
 
 Use PATTERN B (Specific Contradiction) or PATTERN E (Open Verdict) from the engagement mechanics.
 Lead with impact. Avoid sympathy framing entirely.
+FRICTION REQUIREMENT: If the tweet states who's out without naming what the team structurally
+loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so Y" is a take.
+
 `,
 
   press_conference: `
@@ -453,6 +466,14 @@ Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Pun
 or PATTERN L (Number Sandwich) from the engagement mechanics.
 PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
+
+FRICTION REQUIREMENT (mandatory — not optional):
+A milestone tweet must do at least ONE of the following, or it fails and must be rewritten:
+- Name a specific player/record this milestone should be compared against (better, worse, faster, a snub)
+- Take an explicit side on whether it's deserved, overdue, or arguable
+- Surface a tension the article doesn't resolve (who built it vs who inherited it, who's still waiting, etc.)
+Do NOT default to "here's what happened, the impact is undeniable" — that's a press release,
+not a take. If the article gives you a sharp fact, turn it into a comparison instead of just stating it.
 `,
 
   breaking_news: `
@@ -793,6 +814,7 @@ FINAL CHECK before outputting:
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
 - For rivalry_bait: are both sides EQUALLY defensible? Does the tweet declare a winner anywhere — even subtly? (It must not.)
+- For milestone_record: does the tweet name a comparison, take a side, or surface unresolved tension — or does it just restate the achievement? If it only restates — REWRITE before output, don't send it.
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
