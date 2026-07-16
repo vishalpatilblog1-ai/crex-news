@@ -120,7 +120,7 @@ End with a question or tension — not a conclusion — that pulls the reader in
 
 PATTERN F — THE EARNED COMPLIMENT
 Praise that has analytical weight, not fan-page warmth.
-"Three fifties. Three different game states. Samson didn't just score runs — he solved problems."
+"Three fifties. Three different game states. Samson read the situation before he read the bowler."
 
 PATTERN G — THE ACT-OVER-QUOTE
 When the significance of WHO is speaking (or that they spoke at all) outweighs WHAT they said — lead with the act.
@@ -715,6 +715,16 @@ Banned phrases (never use):
 - "bold call", "surprise pick", "high-stakes clash", "must-win game"
 - "suggests", "indicates", "signals" (newsroom filler verbs)
 - "Overrated", "Clueless", "Bottler", "Liability" (extreme character labels)
+
+BANNED CONSTRUCTION — "NOT JUST X, IT'S Y":
+Never use "wasn't just X — he/it was Y", "isn't just X; it's Y", "didn't just X — Y",
+or any variant of this "not merely/just A, but/it's B" contrast crutch. It has become
+a default opening reflex across article types and reads as templated, not human.
+State the claim directly instead. If you need contrast, use the Contrast rule
+("but", "yet", "instead", "then") or Pattern H (The Sharp Punch) — not this construction.
+Example of the ban in practice:
+  Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
+  Instead: "Gambhir's coaching has moved past raised eyebrows into an open rift."
 
 Preferred analyst verbs: exposes, confirms, undermines, justifies, forces, settles, contradicts
 
