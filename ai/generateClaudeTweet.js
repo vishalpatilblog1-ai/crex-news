@@ -716,15 +716,26 @@ Banned phrases (never use):
 - "suggests", "indicates", "signals" (newsroom filler verbs)
 - "Overrated", "Clueless", "Bottler", "Liability" (extreme character labels)
 
-BANNED CONSTRUCTION — "NOT JUST X, IT'S Y":
-Never use "wasn't just X — he/it was Y", "isn't just X; it's Y", "didn't just X — Y",
-or any variant of this "not merely/just A, but/it's B" contrast crutch. It has become
-a default opening reflex across article types and reads as templated, not human.
-State the claim directly instead. If you need contrast, use the Contrast rule
-("but", "yet", "instead", "then") or Pattern H (The Sharp Punch) — not this construction.
+BANNED CONSTRUCTION — THE DOWNPLAY-THEN-ESCALATE CONTRAST:
+Never open or build a tweet on a two-clause move where the first clause downplays
+something ("isn't just X", "not merely X", "more than just X") and the second clause
+escalates it ("it's Y", "it's actually Z"). This is a PATTERN, not a fixed phrase —
+banning exact wording does not stop it, because it resurfaces in paraphrase. All of
+these are the same banned move and are equally forbidden:
+  - "wasn't just X — he was Y" / "isn't just X; it's Y" / "didn't just X — Y"
+  - "not only X but also Y" / "not merely X, it's Y"
+  - "more than a X — it's a Y" / "beyond X, this is Y"
+  - any other two-clause structure whose sole job is to reject a smaller framing
+    in favor of a bigger one
+Before finalizing a tweet, check: does any sentence reject one description to
+assert a bigger one? If yes, rewrite it as a single direct statement instead.
 Example of the ban in practice:
   Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
+  Banned (paraphrase dodge): "Gambhir's coaching has not only raised eyebrows but opened a rift."
   Instead: "Gambhir's coaching has moved past raised eyebrows into an open rift."
+Also avoid card captions that lean on the same escalation reflex, e.g. "X Comes
+Under Fire" paired with a body that already used this construction — pick one
+angle and state it plainly.
 
 Preferred analyst verbs: exposes, confirms, undermines, justifies, forces, settles, contradicts
 
