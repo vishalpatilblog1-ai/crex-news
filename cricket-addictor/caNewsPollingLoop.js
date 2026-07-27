@@ -154,12 +154,16 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const { tweetText: claudeTweet, card } =
+      const { tweetText: tweetToPost, card } =
         await generateClaudeTweetWithType(fullText, articleType);
-      tweetText = claudeTweet;
 
-      // const { tweetText: gptTweet, card } = await generateGPTTweet(fullText);
-      // tweetText = gptTweet;
+      tweetText = tweetToPost;
+
+      // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
+      //   fullText,
+      //   articleType,
+      // );
+      // tweetText = tweetToPost;
 
       console.log("First Block tweet infor:::");
       console.log("First Block  tweetText::", tweetText);
