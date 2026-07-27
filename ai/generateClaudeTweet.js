@@ -792,6 +792,23 @@ not just a read. This means:
 - A named claim specific enough that fans of the other side will push back
 A tweet that everyone agrees with is algorithmically dead.
 
+CLOSING LINE — TAKE THE SIDE, DON'T SUMMARIZE IT:
+Your last line must commit to a specific stance, not describe that a
+tension/debate/decision exists.
+
+WEAK (describes the tension): "It highlights the selectors' priorities
+in a pivotal cycle."
+STRONG (takes a side): "Saransh has earned that spot on form — Jadeja's
+comeback shouldn't come at his expense."
+
+WEAK: "This series victory hints at a promising future for India."
+STRONG: "A 3-0 sweep over Zimbabwe means nothing until this squad wins
+away from home against a top-4 side."
+
+Test before finalizing: could a reasonable cricket fan quote-tweet your
+closer with "disagree" or "nah" and mean it? If the closer is too safe
+to argue with, rewrite it.
+
 ═══════════════════════════════════════════
 ABSOLUTE NOs
 ═══════════════════════════════════════════
