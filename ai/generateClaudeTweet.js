@@ -950,7 +950,7 @@ No card needed for this article type. Output tweet text only.
     // model: "claude-sonnet-4-20250514",
     model: "claude-sonnet-5",
     max_tokens: 400,
-    temperature: 0.85,
+    // temperature: 0.85,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
