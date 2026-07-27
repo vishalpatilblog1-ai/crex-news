@@ -955,7 +955,18 @@ No card needed for this article type. Output tweet text only.
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  const rawText = response.content[0].text;
+  // const rawText = response.content[0].text;
+
+  const textBlock = response.content.find((block) => block.type === "text");
+  const rawText = textBlock?.text;
+
+  if (!rawText) {
+    console.error(
+      "⚠️ No text block in Claude response:",
+      JSON.stringify(response.content),
+    );
+    return { tweetText: null, card: null };
+  }
 
   // ── Parse tweet + card fields ──────────────────────────────────────────────
   let tweetText = rawText;

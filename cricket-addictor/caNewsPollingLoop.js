@@ -8,6 +8,7 @@ import {
   classifyArticle,
   generateClaudeTweet,
   generateClaudeTweetWithType,
+  SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
