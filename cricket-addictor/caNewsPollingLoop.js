@@ -23,7 +23,7 @@ import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticleRss } from "./parseCAArticleRss.js";
 
-const MAX_AGE_MIN = 360;
+const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 
