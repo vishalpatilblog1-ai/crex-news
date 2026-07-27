@@ -949,7 +949,7 @@ No card needed for this article type. Output tweet text only.
   const response = await client.messages.create({
     // model: "claude-sonnet-4-20250514",
     model: "claude-sonnet-5",
-    max_tokens: 400,
+    max_tokens: 1500,
     // temperature: 0.85,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
