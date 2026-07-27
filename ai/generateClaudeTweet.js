@@ -878,6 +878,11 @@ FINAL CHECK before outputting:
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
   The reader should finish thinking "but wait, actually..." or "no, I think..."
+  BANNED closing patterns (these only describe tension, they don't take a side):
+  "reveals their true priorities", "raises questions about", "highlights the
+  selectors'/selectors priorities", "shows the challenge ahead", "hints at a
+  promising future". If your closer uses any of these constructions or their
+  paraphrase, you have failed this check — rewrite with an actual verdict.
 - Does this tweet say something the source article's headline does NOT say?
   If your tweet reads like a rewritten version of the article's own headline or lede — it is a summary, not an insight. Rewrite entirely.
 - If the article mentions a player as existing squad context (already in the XI),
