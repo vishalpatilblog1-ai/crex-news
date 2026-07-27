@@ -70,10 +70,10 @@ function canTweetNow(source) {
     return false;
   }
 
-  if (isSleepWindow()) {
-    console.log("🌙 Sleep window active — queue paused");
-    return false;
-  }
+  // if (isSleepWindow()) {
+  //   console.log("🌙 Sleep window active — queue paused");
+  //   return false;
+  // }
 
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
