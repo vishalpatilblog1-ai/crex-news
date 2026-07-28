@@ -6,7 +6,6 @@ import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 
 function randomTweetDelay(source) {
   const MIN = 2 * 60 * 1000;
@@ -15,9 +14,38 @@ function randomTweetDelay(source) {
   return MIN + Math.random() * (MAX - MIN);
 }
 
-// Blocks CricketAddictor polling + tweeting from 11:30 PM to 6:00 AM IST.
-// Exported so caNewsPollingLoop can also skip fetching/queueing during this window.
-export function isCricketAddictorBlocked(source) {
+// function isSleepWindow() {
+//   const now = new Date();
+
+//   const istTime = new Date(
+//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+//   );
+
+//   const hour = istTime.getHours();
+//   console.log("🕒 IST hour:", hour);
+
+//   return hour >= 1 && hour < 6;
+// }
+
+function isSleepWindow() {
+  const now = new Date();
+
+  const istTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+  );
+
+  const hour = istTime.getHours();
+  console.log("🕒 IST hour:", hour);
+
+  const isNightSleep = hour >= 1 && hour < 6;
+
+  const isAfternoonSleep = hour >= 13 && hour < 16; // 1 PM - 4 PM
+
+  // return isNightSleep || isAfternoonSleep;
+  return isAfternoonSleep; // temporary, let run tweet whole night
+}
+
+function isCricketAddictorBlocked(source) {
   if (source !== "CA") return false;
 
   const now = new Date();
@@ -38,9 +66,14 @@ export function isCricketAddictorBlocked(source) {
 
 function canTweetNow(source) {
   if (isCricketAddictorBlocked(source)) {
-    console.log("🚫 CA blocked (11:30 PM – 6 AM window)");
+    console.log("🚫 CA blocked (10 PM – 6 AM window)");
     return false;
   }
+
+  // if (isSleepWindow()) {
+  //   console.log("🌙 Sleep window active — queue paused");
+  //   return false;
+  // }
 
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
@@ -70,14 +103,7 @@ function markTweeted(trigger, source) {
   );
 }
 
-export function enqueueTweet({
-  id,
-  source,
-  text,
-  imageUrl,
-  seenKey,
-  publishedAt,
-}) {
+export function enqueueTweet({ id, source, text, imageUrl }) {
   const STATE = global.STATE;
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
@@ -88,44 +114,16 @@ export function enqueueTweet({
     source,
     text,
     imageUrl,
-    seenKey,
-    publishedAt: publishedAt ?? Date.now(), // real article pubDate, used for the 60-min freshness check at flush time
     createdAt: Date.now(),
   });
 
   console.log(`📥 Queued tweet from ${source}: ${id}`);
 }
 
-// Removes anything sitting in the queue that's now older than MAX_TWEET_AGE_MS.
-// Prevents stale news from firing once a blocked window lifts (e.g. overnight backlog).
-function dropStaleQueuedTweets(STATE) {
-  let droppedAny = false;
-
-  while (STATE.tweetQueue.length) {
-    const head = STATE.tweetQueue[0];
-    const age = Date.now() - (head.publishedAt ?? head.createdAt);
-
-    if (age <= MAX_TWEET_AGE_MS) break;
-
-    console.log(
-      `🗑️ Dropping stale queued tweet (${Math.round(age / 60000)}m old): ${head.id}`,
-    );
-    STATE.tweetQueue.shift();
-    droppedAny = true;
-  }
-
-  return droppedAny;
-}
-
 export async function tryFlushTweetQueue() {
   const STATE = global.STATE;
 
   if (!STATE?.tweetQueue?.length) return false;
-
-  const droppedStale = dropStaleQueuedTweets(STATE);
-  if (droppedStale) await saveState(STATE, "dropped stale queued tweets");
-
-  if (!STATE.tweetQueue.length) return false;
 
   const next = STATE.tweetQueue[0];
 

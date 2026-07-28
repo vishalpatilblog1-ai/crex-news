@@ -12,11 +12,7 @@ import {
 } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import {
-  applySourceSignature,
-  enqueueTweet,
-  isCricketAddictorBlocked,
-} from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
@@ -29,17 +25,11 @@ import { parseCAArticleRss } from "./parseCAArticleRss.js";
 
 const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-const RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext / usedImages
-const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000; // ca.seen — kept longer so a same-day pubDate bump on an already-tweeted article can't slip past dedup
+const RETENTION_MS = 6 * 60 * 60 * 1000;
 
 export async function caNewsPollingLoop() {
   console.log("caNewsPollingLoop..");
   if (!global.STATE) return false;
-
-  if (isCricketAddictorBlocked("CA")) {
-    console.log("🚫 CA polling paused (11:30 PM – 6:00 AM window)");
-    return false;
-  }
 
   const STATE = global.STATE;
 
@@ -50,7 +40,7 @@ export async function caNewsPollingLoop() {
 
   // ── Prune state ───────────────────────────────────────────────────────────
   let stateDirty = false;
-  stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
+  stateDirty ||= pruneSeen(STATE, RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
@@ -67,6 +57,7 @@ export async function caNewsPollingLoop() {
 
   if (!Array.isArray(items) || items.length === 0) return false;
 
+  // const sorted = [...items].filter(isCAArticle);
   const sorted = [...items]
     .filter(isCAArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
@@ -98,7 +89,6 @@ export async function caNewsPollingLoop() {
   if (!selected) return false;
 
   const cleanLink = normalizeCALink(selected.link);
-  const pubMs = getPubDate(selected);
 
   try {
     const parsed = parseCAArticleRss(selected);
@@ -134,6 +124,26 @@ export async function caNewsPollingLoop() {
         await saveState(STATE, "duplicate context skipped");
         return false;
       }
+
+      // const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      // const score = decision?.significanceScore ?? 10;
+
+      // if (!isExempt && score < 8) {
+      //   console.log(
+      //     `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+      //   );
+      //   STATE.ca.seen[cleanLink] = Date.now();
+      //   await saveState(STATE);
+      //   return true;
+      // }
+
+      // if (isExempt) {
+      //   console.log(
+      //     `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+      //   );
+      // } else {
+      //   console.log(`✅ Significance: ${score}/10 — proceeding`);
+      // }
     } catch (err) {
       console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
     }
@@ -147,6 +157,12 @@ export async function caNewsPollingLoop() {
         await generateClaudeTweetWithType(fullText, articleType);
 
       tweetText = tweetToPost;
+
+      // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
+      //   fullText,
+      //   articleType,
+      // );
+      // tweetText = tweetToPost;
 
       console.log("First Block tweet infor:::");
       console.log("First Block  tweetText::", tweetText);
@@ -177,6 +193,10 @@ export async function caNewsPollingLoop() {
           articleType,
         );
         tweetText = gptTweet;
+
+        // const { tweetText: claudeTweet, card } =
+        //   await generateClaudeTweet(fullText);
+        // tweetText = claudeTweet;
 
         console.log("Second Block tweet infor:::");
         console.log("Second Block  tweetText::", tweetText);
@@ -224,8 +244,8 @@ export async function caNewsPollingLoop() {
       source: "CA",
       text: tweetText,
       imageUrl: generatedPath || null,
+      // imageUrl: useImage ? imageUrl : null,
       seenKey: cleanLink,
-      publishedAt: pubMs || Date.now(),
     });
 
     console.log(`📥 Queued CA tweet: ${parsed.headline}`);
