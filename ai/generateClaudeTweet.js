@@ -879,6 +879,17 @@ FINAL CHECK before outputting:
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
   The reader should finish thinking "but wait, actually..." or "no, I think..."
   BANNED closing patterns (these only describe tension, they don't take a side):
+  - Does the closing line end in a question mark instead of a stated verdict?
+  A question is an escape hatch — it lets the writer avoid committing to a
+  position. STRIP all closing questions and replace with a direct claim.
+  WEAK: "Will the selectors regret this choice?"
+  STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
+  WEAK: "...but will it be enough against Sri Lanka's batting depth?"
+  STRONG: "It won't be enough if Sri Lanka's top order gets set early."
+  Exception: rivalry_bait tweets may end on a framing question ONLY if the
+  two sides are already stated with full conviction above it — the question
+  must invite the reader to pick a side already presented, not stand in for
+  a missing verdict.
   "reveals their true priorities", "raises questions about", "highlights the
   selectors'/selectors priorities", "shows the challenge ahead", "hints at a
   promising future". If your closer uses any of these constructions or their
