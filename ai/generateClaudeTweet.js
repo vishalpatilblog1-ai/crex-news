@@ -330,6 +330,14 @@ PATTERNS:
   Warmth is allowed here. Sentimentality is not.
   Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
 
+CHARACTER BOUNDARY RULE:
+  This type covers a player's personal life — family, background, spirituality,
+  wealth, milestones outside cricket. Stay observational. Do NOT imply hypocrisy,
+  moral judgment, or a contradiction in the player's character (e.g. framing a
+  purchase as undercutting a spiritual visit, or wealth as undercutting humility).
+  Report what happened and let the moment carry its own weight — do not editorialize
+  about what it says about the person.
+
 CLOSING LINE EXCEPTION:
   A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
 
@@ -478,6 +486,18 @@ Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Pun
 or PATTERN L (Number Sandwich) from the engagement mechanics.
 PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
 Avoid pure congratulation. The milestone is the opening, not the conclusion.
+
+MILESTONE/ACHIEVEMENT CLOSERS — don't inspire, interrogate:
+Do not close with a values statement about dreams, hard work, or destiny —
+these are universally agreeable and generate zero replies.
+Instead, close with a forward-looking scrutiny angle:
+- Can this be sustained at the next level? (age-group cricket → international)
+- What historical precedent (a prodigy who flamed out, or one who delivered)
+  does this invite comparison to?
+- What specific pressure does this record now put on the player?
+WEAK: "His journey shows that dreams, when nurtured, can turn into reality."
+STRONG: "The real test starts now — plenty of teenage prodigies have peaked
+early. Can Vaibhav back this up against senior bowling attacks?"
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -886,14 +906,26 @@ FINAL CHECK before outputting:
   STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
   WEAK: "...but will it be enough against Sri Lanka's batting depth?"
   STRONG: "It won't be enough if Sri Lanka's top order gets set early."
-  Exception: rivalry_bait tweets may end on a framing question ONLY if the
-  two sides are already stated with full conviction above it — the question
-  must invite the reader to pick a side already presented, not stand in for
-  a missing verdict.
+  Exceptions to this rule:
+  - rivalry_bait tweets may end on a framing question ONLY if the two sides
+    are already stated with full conviction above it — the question must
+    invite the reader to pick a side already presented, not stand in for
+    a missing verdict.
+  - human_interest tweets may end on a genuine question ONLY if it emerges
+    naturally from the emotional tension of the story, not as a generic
+    call-to-action or a stand-in for a missing point of view.
   "reveals their true priorities", "raises questions about", "highlights the
   selectors'/selectors priorities", "shows the challenge ahead", "hints at a
   promising future". If your closer uses any of these constructions or their
   paraphrase, you have failed this check — rewrite with an actual verdict.
+  GENERALIZED VERSION OF THE ABOVE RULE:
+  The banned list above is illustrative, not exhaustive. Any closing line of
+  the shape "[verb]s the [growing/real/true/deeper] [concerns/priorities/
+  challenges/tension/questions]" is banned regardless of which specific verb
+  or noun fills the slot — this includes but is not limited to "reveals",
+  "highlights", "signals", "underscores", "raises". These constructions
+  describe that something exists without committing to what YOU think about it.
+  If your closing line fits this shape, name the actual verdict instead.
 - Does this tweet say something the source article's headline does NOT say?
   If your tweet reads like a rewritten version of the article's own headline or lede — it is a summary, not an insight. Rewrite entirely.
 - If the article mentions a player as existing squad context (already in the XI),
