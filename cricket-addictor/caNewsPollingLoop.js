@@ -111,6 +111,15 @@ export async function caNewsPollingLoop() {
 
     const fullText = `${parsed.headline}\n${parsed.body}`;
 
+    if (isBlockedCAHeadline(fullText)) {
+      console.log(
+        `⏭️ Skipping blocked-pattern article (body match): ${parsed.headline}`,
+      );
+      STATE.ca.seen[cleanLink] = Date.now();
+      await saveState(STATE, "blocked content pattern found in body");
+      return false;
+    }
+
     // ── Step 1: Classify article type first ──────────────────────────────────
     let articleType = "player_form";
     try {

@@ -19,6 +19,7 @@ const BLOCKED_TITLE_PATTERNS = [
   /telecast/i,
   /streaming details/i,
   /when and where/i,
+  /dream11/i,
 ];
 
 export function isBlockedCAHeadline(title = "") {
