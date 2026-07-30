@@ -128,7 +128,7 @@ export async function caNewsPollingLoop() {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
 
-    // ── Step 2: Deduplication + significance gate ─────────────────────────────
+    // ── Step 2: Deduplication + significance/virality scoring ─────────────────
     let decision = null;
     try {
       decision = await judgeNewsContext({
@@ -136,6 +136,14 @@ export async function caNewsPollingLoop() {
         existingContexts:
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
+
+      console.log(
+        `📊 Scores — significance: ${
+          decision?.significanceScore ?? "n/a"
+        }, virality: ${decision?.viralityScore ?? "n/a"} — "${
+          parsed.headline
+        }"`,
+      );
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         console.log("🔴 CA skipped — already covered context");

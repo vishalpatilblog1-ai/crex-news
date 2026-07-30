@@ -1,11 +1,11 @@
 // news/ai/judgeNewsContext.js
 
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 dotenv.config();
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function judgeNewsContext({ articleText, existingContexts = [] }) {
@@ -14,14 +14,39 @@ export async function judgeNewsContext({ articleText, existingContexts = [] }) {
   }
 
   const systemPrompt = `
-  You are a cricket news editor.
+  You are a cricket news editor for a fast-moving X (Twitter) account.
 
   Your job:
   1. Read a new cricket news article.
   2. Summarize its core meaning in ONE or TWO sentences (this is the newContext).
   3. Compare this meaning with the list of contexts already covered today.
   4. Decide if this new article is essentially the SAME news already covered today.
-  5. Score the article's significance for an Indian cricket audience (1–10).
+  5. Score TWO separate things — do not blend them into one number:
+
+  SIGNIFICANCE SCORE (1-10) — how important is this to an Indian cricket audience:
+  9-10 : Major breaking news — key player injury, selection shock, series result, sacking
+  7-8  : Meaningful development — squad named, notable performance, coaching decision, controversy
+  5-6  : Standard coverage — routine press conference, minor match report, expected squad
+  3-4  : Filler — generic preview, repeated angle on an old story, minor domestic fixture
+  1-2  : Non-story — listicle, throwback, stats trivia with no live news peg
+
+  VIRALITY SCORE (1-10) — how likely is this specific article to generate replies,
+  reposts, and disagreement on social media, independent of how "important" the
+  underlying news is:
+  9-10 : Genuine surprise or controversy — an unexpected decision, a scandal, a
+         named-figure conflict, something that splits opinion into two camps
+  7-8  : Real tension or a strong number/record that invites argument — a
+         contentious selection, a milestone with an edge to it
+  5-6  : Solid but expected — a routine squad announcement, a predictable result
+  3-4  : Low reaction potential — retrospective features, career profiles,
+         speculative "what if" opinion pieces, routine fitness updates
+  1-2  : No reaction hook at all — pure informational content, listicles
+
+  IMPORTANT: significance and virality are NOT the same axis. A long profile piece
+  on a coach's career journey can be significant (a real coaching appointment) but
+  score LOW on virality (nothing to disagree with, no surprise, no stakes). A minor
+  controversy involving a beloved player can score LOW on significance but HIGH on
+  virality. Score each independently — do not let one influence the other.
 
   Deduplication rules:
   - SAME EVENT with same outcome or same core issue = already covered
@@ -34,15 +59,8 @@ export async function judgeNewsContext({ articleText, existingContexts = [] }) {
     coverage, even if the topic overlaps.
   - Only mark as already covered if BOTH the topic AND the primary speaker/angle are the same.
 
-  Significance scoring guide:
-  9–10 : Major breaking news — key player injury, selection shock, series result, sacking
-  7–8  : Meaningful development — squad named, notable performance, coaching decision, controversy
-  5–6  : Standard coverage — routine press conference, minor match report, expected squad
-  3–4  : Filler — generic preview, repeated angle on an old story, minor domestic fixture
-  1–2  : Non-story — listicle, throwback, stats trivia with no live news peg
-
-  You must return STRICT JSON only.
-  No explanations. No extra text.
+  You must return STRICT JSON only — no markdown code fences, no explanations,
+  no extra text before or after the JSON object.
   `;
 
   const userPrompt = `
@@ -64,28 +82,36 @@ Return JSON in this exact format:
   "isAlreadyCovered": true | false,
   "matchedIndex": <number or null>,
   "confidence": <number between 0.0 and 1.0>,
-  "significanceScore": <integer between 1 and 10>
+  "significanceScore": <integer between 1 and 10>,
+  "viralityScore": <integer between 1 and 10>
 }
 `;
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 400,
     temperature: 0,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
   });
 
-  const raw = response.choices?.[0]?.message?.content;
+  const textBlock = response.content.find((block) => block.type === "text");
+  const raw = textBlock?.text;
 
   if (!raw) {
     throw new Error("AI returned empty response");
   }
 
+  // Strip markdown code fences if the model wraps the JSON despite instructions
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
   let parsed;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(cleaned);
   } catch (err) {
     throw new Error("AI response is not valid JSON");
   }
@@ -117,11 +143,19 @@ Return JSON in this exact format:
       ? Math.round(parsed.significanceScore)
       : null;
 
+  const viralityScore =
+    typeof parsed.viralityScore === "number" &&
+    parsed.viralityScore >= 1 &&
+    parsed.viralityScore <= 10
+      ? Math.round(parsed.viralityScore)
+      : null;
+
   return {
     newContext: parsed.newContext.trim(),
     isAlreadyCovered: parsed.isAlreadyCovered,
     matchedIndex: parsed.matchedIndex,
     confidence: Number(parsed.confidence.toFixed(2)),
     significanceScore,
+    viralityScore,
   };
 }
