@@ -86,7 +86,7 @@ export async function caNewsPollingLoop() {
 
     if (STATE.ca.seen[cleanLink]) continue;
 
-    if (isBlockedCAHeadline(item.headline)) {
+    if (isBlockedCAHeadline(item.title)) {
       STATE.ca.seen[cleanLink] = Date.now();
       continue;
     }
