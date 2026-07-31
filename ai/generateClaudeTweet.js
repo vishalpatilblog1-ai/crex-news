@@ -85,12 +85,17 @@ ${articleText}
 `;
 
   const response = await client.messages.create({
-    // model: "claude-sonnet-4-20250514",
     model: "claude-haiku-4-5-20251001",
     max_tokens: 20,
     temperature: 0,
     messages: [{ role: "user", content: prompt }],
   });
+  const usage = response.usage;
+  const inputCost = (usage.input_tokens / 1_000_000) * 1;
+  const outputCost = (usage.output_tokens / 1_000_000) * 5;
+  console.log(
+    `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
+  );
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
@@ -989,11 +994,17 @@ No card needed for this article type. Output tweet text only.
 }
 `;
 
+  // const response = await client.messages.create({
+  //   model: "claude-sonnet-5",
+  //   max_tokens: 1500,
+  //   system: systemPrompt,
+  //   messages: [{ role: "user", content: userPrompt }],
+  // });
+
   const response = await client.messages.create({
-    // model: "claude-sonnet-4-20250514",
     model: "claude-sonnet-5",
     max_tokens: 1500,
-    // temperature: 0.85,
+    thinking: { type: "disabled" },
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
