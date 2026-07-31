@@ -998,7 +998,14 @@ No card needed for this article type. Output tweet text only.
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  // const rawText = response.content[0].text;
+  const usage = response.usage;
+  const inputCost = (usage.input_tokens / 1_000_000) * 2;
+  const outputCost = (usage.output_tokens / 1_000_000) * 10;
+  const totalCost = inputCost + outputCost;
+
+  console.log(
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  );
 
   const textBlock = response.content.find((block) => block.type === "text");
   const rawText = textBlock?.text;

@@ -95,6 +95,13 @@ Return JSON in this exact format:
     messages: [{ role: "user", content: userPrompt }],
   });
 
+  const usage = response.usage;
+  const inputCost = (usage.input_tokens / 1_000_000) * 1;
+  const outputCost = (usage.output_tokens / 1_000_000) * 5;
+  console.log(
+    `💰 judgeNewsContext (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
+  );
+
   const textBlock = response.content.find((block) => block.type === "text");
   const raw = textBlock?.text;
 

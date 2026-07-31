@@ -33,7 +33,6 @@ const RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext / usedImages
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000; // ca.seen — kept longer so a same-day pubDate bump on an already-tweeted article can't slip past dedup
 
 export async function caNewsPollingLoop() {
-  console.log("caNewsPollingLoop..");
   if (!global.STATE) return false;
 
   if (isCricketAddictorBlocked("CA")) {
@@ -165,9 +164,9 @@ export async function caNewsPollingLoop() {
 
       tweetText = tweetToPost;
 
-      console.log("First Block tweet infor:::");
-      console.log("First Block  tweetText::", tweetText);
-      console.log("First Block  card::", card);
+      // console.log("First Block tweet infor:::");
+      // console.log("First Block  tweetText::", tweetText);
+      // console.log("First Block  card::", card);
 
       if (card) {
         try {
@@ -195,9 +194,9 @@ export async function caNewsPollingLoop() {
         );
         tweetText = gptTweet;
 
-        console.log("Second Block tweet infor:::");
-        console.log("Second Block  tweetText::", tweetText);
-        console.log("Second Block  card::", card);
+        // console.log("Second Block tweet infor:::");
+        // console.log("Second Block  tweetText::", tweetText);
+        // console.log("Second Block  card::", card);
         if (card) {
           try {
             generatedPath = await generateCardImage(
