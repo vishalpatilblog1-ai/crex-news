@@ -1001,11 +1001,25 @@ No card needed for this article type. Output tweet text only.
   //   messages: [{ role: "user", content: userPrompt }],
   // });
 
+  // const response = await client.messages.create({
+  //   model: "claude-sonnet-5",
+  //   max_tokens: 1500,
+  //   thinking: { type: "disabled" },
+  //   system: systemPrompt,
+  //   messages: [{ role: "user", content: userPrompt }],
+  // });
+
   const response = await client.messages.create({
     model: "claude-sonnet-5",
     max_tokens: 1500,
     thinking: { type: "disabled" },
-    system: systemPrompt,
+    system: [
+      {
+        type: "text",
+        text: systemPrompt,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     messages: [{ role: "user", content: userPrompt }],
   });
 
