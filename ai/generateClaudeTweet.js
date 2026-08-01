@@ -965,7 +965,7 @@ RULES:
 
 ${
   needsCard
-    ? `
+    ? ` 
 ─────────────────────────────────────────
 CARD FIELDS (required — output after tweet)
 ─────────────────────────────────────────

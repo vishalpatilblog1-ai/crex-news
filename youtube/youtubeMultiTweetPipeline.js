@@ -41,7 +41,7 @@ import {
 } from "./youtubeTranscriptFetcher.js";
 
 // TODO: fix these import paths to match your actual project structure
-import { generateClaudeTweetWithType } from "../generateClaudeTweet.js";
+// import { generateClaudeTweetWithType } from "../generateClaudeTweet.js";
 import { loadState, saveState } from "../utils/stateStoreCloud.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
@@ -608,6 +608,7 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
 // CLI entry point for manual testing
 // ─────────────────────────────────────────────────────────────────────────
 import { fileURLToPath } from "url";
+import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
 if (isMainModule) {
