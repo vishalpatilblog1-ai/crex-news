@@ -58,7 +58,7 @@ export async function youtubeNewsPollingLoop() {
         // tick indefinitely. 30 min lookback + a 15-min poll interval gives
         // enough overlap to never miss a video between polls.
         await runMultiTweetPipeline(channelId, {
-          minutesBack: 30,
+          minutesBack: 240,
           //   minutesBack: 1440,
           maxAngles: 3,
         });
