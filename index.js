@@ -9,10 +9,10 @@ import { ieNewsPollingLoop } from "./indian-express/ieNewsPollingLoop.js";
 import { tryFlushTweetQueue } from "./twitter/tweetQueue.js";
 import { hinduNewsPollingLoop } from "./thehindu/hinduNewsPollingLoop.js";
 import { ctNewsPollingLoop } from "./crictracker/ctNewsPollingLoop.js";
-// import { ndtvNewspolling____ } from "./ndtv/ndtvNewspolling____.js";
+import { youtubeNewsPollingLoop } from "./youtube/ytNewsPollingLoop.js";
 import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
-// import { ndtvFootballNewspolling } from "./ndtv/ndtvNewspollingFootball.js";
+
 import { ndtvNewspolling } from "./ndtv/ndtvNewspolling.js";
 
 const log = createLogger("prod");
@@ -86,6 +86,11 @@ async function bootstrap() {
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("The cricker addictore news polling enabled");
     setInterval(caNewsPollingLoop, 1000 * 60 * 2);
+  }
+
+  if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
+    console.log("📺 YouTube transcript polling enabled");
+    setInterval(youtubeNewsPollingLoop, 1000 * 60 * 15); // every 15 min
   }
 }
 

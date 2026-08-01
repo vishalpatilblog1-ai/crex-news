@@ -55,7 +55,10 @@
 import fs from "fs/promises";
 import path from "path";
 
-const STATE_FILE = process.env.STATE_FILE_PATH || "/data/state.json";
+// const STATE_FILE = process.env.STATE_FILE_PATH || "/data/state.json";
+
+const STATE_FILE =
+  process.env.STATE_FILE_PATH || path.join(process.cwd(), "data", "state.json");
 
 export async function loadState() {
   try {

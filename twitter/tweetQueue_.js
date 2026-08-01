@@ -1,183 +1,183 @@
-// twitter/tweetQueue.js
+// // twitter/tweetQueue.js
 
-import { saveState } from "../utils/stateStoreCloud.js";
-import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
+// import { saveState } from "../utils/stateStoreCloud.js";
+// import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
-global.NEXT_TWEET_ALLOWED_AT ??= 0;
+// global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+// const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-function randomTweetDelay(source) {
-  const MIN = 2 * 60 * 1000;
-  const MAX = 4 * 60 * 1000;
+// function randomTweetDelay(source) {
+//   const MIN = 2 * 60 * 1000;
+//   const MAX = 4 * 60 * 1000;
 
-  return MIN + Math.random() * (MAX - MIN);
-}
+//   return MIN + Math.random() * (MAX - MIN);
+// }
+
+// // function isSleepWindow() {
+// //   const now = new Date();
+
+// //   const istTime = new Date(
+// //     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+// //   );
+
+// //   const hour = istTime.getHours();
+// //   console.log("🕒 IST hour:", hour);
+
+// //   return hour >= 1 && hour < 6;
+// // }
 
 // function isSleepWindow() {
 //   const now = new Date();
 
 //   const istTime = new Date(
-//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
 //   );
 
 //   const hour = istTime.getHours();
 //   console.log("🕒 IST hour:", hour);
 
-//   return hour >= 1 && hour < 6;
+//   const isNightSleep = hour >= 1 && hour < 6;
+
+//   const isAfternoonSleep = hour >= 13 && hour < 16; // 1 PM - 4 PM
+
+//   // return isNightSleep || isAfternoonSleep;
+//   return isAfternoonSleep; // temporary, let run tweet whole night
 // }
 
-function isSleepWindow() {
-  const now = new Date();
+// function isCricketAddictorBlocked(source) {
+//   if (source !== "CA") return false;
 
-  const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-  );
+//   const now = new Date();
 
-  const hour = istTime.getHours();
-  console.log("🕒 IST hour:", hour);
+//   const istTime = new Date(
+//     now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+//   );
 
-  const isNightSleep = hour >= 1 && hour < 6;
+//   const hour = istTime.getHours();
+//   const minutes = istTime.getMinutes();
 
-  const isAfternoonSleep = hour >= 13 && hour < 16; // 1 PM - 4 PM
+//   // Block from 23:30 to 06:00
+//   if (hour > 23 || hour < 6) return true;
+//   if (hour === 23 && minutes >= 30) return true;
 
-  // return isNightSleep || isAfternoonSleep;
-  return isAfternoonSleep; // temporary, let run tweet whole night
-}
+//   return false;
+// }
 
-function isCricketAddictorBlocked(source) {
-  if (source !== "CA") return false;
+// function canTweetNow(source) {
+//   if (isCricketAddictorBlocked(source)) {
+//     console.log("🚫 CA blocked (10 PM – 6 AM window)");
+//     return false;
+//   }
 
-  const now = new Date();
+//   // if (isSleepWindow()) {
+//   //   console.log("🌙 Sleep window active — queue paused");
+//   //   return false;
+//   // }
 
-  const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-  );
+//   const now = Date.now();
+//   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
 
-  const hour = istTime.getHours();
-  const minutes = istTime.getMinutes();
+//   if (now < nextAllowed) {
+//     console.log(
+//       `⏳ Tweet cooldown (${Math.ceil(
+//         (nextAllowed - now) / 1000,
+//       )}s left) — ${source} skipped`,
+//     );
+//     return false;
+//   }
 
-  // Block from 23:30 to 06:00
-  if (hour > 23 || hour < 6) return true;
-  if (hour === 23 && minutes >= 30) return true;
+//   return true;
+// }
 
-  return false;
-}
+// function markTweeted(trigger, source) {
+//   const delay = randomTweetDelay(source);
 
-function canTweetNow(source) {
-  if (isCricketAddictorBlocked(source)) {
-    console.log("🚫 CA blocked (10 PM – 6 AM window)");
-    return false;
-  }
+//   global.LAST_TWEET_AT = Date.now();
+//   global.NEXT_TWEET_ALLOWED_AT = Date.now() + delay;
 
-  // if (isSleepWindow()) {
-  //   console.log("🌙 Sleep window active — queue paused");
-  //   return false;
-  // }
+//   const seconds = Math.round(delay / 1000);
 
-  const now = Date.now();
-  const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
+//   console.log(
+//     `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`,
+//   );
+// }
 
-  if (now < nextAllowed) {
-    console.log(
-      `⏳ Tweet cooldown (${Math.ceil(
-        (nextAllowed - now) / 1000,
-      )}s left) — ${source} skipped`,
-    );
-    return false;
-  }
+// export function enqueueTweet({ id, source, text, imageUrl }) {
+//   const STATE = global.STATE;
+//   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
-  return true;
-}
+//   if (STATE.tweetQueue.some((t) => t.id === id)) return;
 
-function markTweeted(trigger, source) {
-  const delay = randomTweetDelay(source);
+//   STATE.tweetQueue.push({
+//     id,
+//     source,
+//     text,
+//     imageUrl,
+//     createdAt: Date.now(),
+//   });
 
-  global.LAST_TWEET_AT = Date.now();
-  global.NEXT_TWEET_ALLOWED_AT = Date.now() + delay;
+//   console.log(`📥 Queued tweet from ${source}: ${id}`);
+// }
 
-  const seconds = Math.round(delay / 1000);
+// export async function tryFlushTweetQueue() {
+//   const STATE = global.STATE;
 
-  console.log(
-    `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`,
-  );
-}
+//   if (!STATE?.tweetQueue?.length) return false;
 
-export function enqueueTweet({ id, source, text, imageUrl }) {
-  const STATE = global.STATE;
-  if (!STATE.tweetQueue) STATE.tweetQueue = [];
+//   const next = STATE.tweetQueue[0];
 
-  if (STATE.tweetQueue.some((t) => t.id === id)) return;
+//   if (!canTweetNow(next.source)) return false;
 
-  STATE.tweetQueue.push({
-    id,
-    source,
-    text,
-    imageUrl,
-    createdAt: Date.now(),
-  });
+//   STATE.tweetQueue.shift();
 
-  console.log(`📥 Queued tweet from ${source}: ${id}`);
-}
+//   try {
+//     if (CONSOLE_ONLY) {
+//       console.log("🧪 CONSOLE_ONLY — tweet skipped");
+//       console.log({
+//         source: next.source,
+//         text: next.text,
+//         imageUrl: next.imageUrl,
+//       });
 
-export async function tryFlushTweetQueue() {
-  const STATE = global.STATE;
+//       markTweeted("CONSOLE_ONLY", next.source);
+//       await saveState(STATE);
+//       return true;
+//     }
 
-  if (!STATE?.tweetQueue?.length) return false;
+//     let tweetResponse;
 
-  const next = STATE.tweetQueue[0];
+//     if (next.imageUrl) {
+//       tweetResponse = await tweetNewsWithImage(
+//         next.text,
+//         next.imageUrl,
+//         next.source,
+//       );
+//     } else {
+//       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
+//     }
 
-  if (!canTweetNow(next.source)) return false;
+//     markTweeted("QUEUE", next.source);
+//     await saveState(STATE);
 
-  STATE.tweetQueue.shift();
+//     console.log(`🚀 Flushed queued tweet: ${next.id}`);
+//     return true;
+//   } catch (err) {
+//     console.error("❌ Queue tweet failed, requeueing:", err);
 
-  try {
-    if (CONSOLE_ONLY) {
-      console.log("🧪 CONSOLE_ONLY — tweet skipped");
-      console.log({
-        source: next.source,
-        text: next.text,
-        imageUrl: next.imageUrl,
-      });
+//     STATE.tweetQueue.unshift(next);
+//     await saveState(STATE);
+//     return false;
+//   }
+// }
 
-      markTweeted("CONSOLE_ONLY", next.source);
-      await saveState(STATE);
-      return true;
-    }
+// export function applySourceSignature(text, source) {
+//   const signatureMap = {
+//     CT: ".",
+//     CB: ".",
+//     IE: "_",
+//   };
 
-    let tweetResponse;
-
-    if (next.imageUrl) {
-      tweetResponse = await tweetNewsWithImage(
-        next.text,
-        next.imageUrl,
-        next.source,
-      );
-    } else {
-      tweetResponse = await tweetNewsWithoutImage({ text: next.text });
-    }
-
-    markTweeted("QUEUE", next.source);
-    await saveState(STATE);
-
-    console.log(`🚀 Flushed queued tweet: ${next.id}`);
-    return true;
-  } catch (err) {
-    console.error("❌ Queue tweet failed, requeueing:", err);
-
-    STATE.tweetQueue.unshift(next);
-    await saveState(STATE);
-    return false;
-  }
-}
-
-export function applySourceSignature(text, source) {
-  const signatureMap = {
-    CT: ".",
-    CB: ".",
-    IE: "_",
-  };
-
-  const signature = signatureMap[source] || ".";
-  return text.replace(/[.!]+$/, "") + signature;
-}
+//   const signature = signatureMap[source] || ".";
+//   return text.replace(/[.!]+$/, "") + signature;
+// }
