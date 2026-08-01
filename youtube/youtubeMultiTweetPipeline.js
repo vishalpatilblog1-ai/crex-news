@@ -1,28 +1,47 @@
 // youtube/youtubeMultiTweetPipeline.js
 //
-// Takes ONE long YouTube video transcript, extracts up to 3 distinct
-// newsworthy angles, generates one original tweet per angle (using
-// your existing generateClaudeTweetWithType), checks each new tweet
-// isn't a near-duplicate of one already posted (this run OR past runs,
-// via persistent state), then enqueues each via your existing
+// Takes recent YouTube videos from a channel, extracts up to 3 distinct
+// newsworthy angles per video, generates one original tweet per angle
+// (using your existing generateClaudeTweetWithType), checks each new
+// tweet isn't a near-duplicate of one already posted (this run OR past
+// runs, via persistent state), then enqueues each via your existing
 // enqueueTweet/tweetQueue system -- actual posting timing/spacing to X
 // is handled by your existing queue worker, not this script.
+//
+// TRANSCRIPT RETRY QUEUE
+// -----------------------
+// A video found while YouTube's auto-captions aren't ready yet used to
+// just get silently dropped once it aged out of the `minutesBack`
+// discovery window (e.g. a video found at 10 min old, still not
+// transcribed by 25 min old, then invisible forever once it crosses the
+// 30-min window on the next poll). Videos with no transcript yet are now
+// tracked in global.STATE.pendingTranscriptVideos (persisted across
+// restarts) and retried on every poll cycle -- independent of the
+// discovery window -- until either a transcript becomes available or
+// TRANSCRIPT_RETRY_CEILING_MS (default 4h) passes, at which point it's
+// logged as abandoned and removed so the pending list doesn't grow
+// unbounded.
 //
 // USAGE
 // -----
 //   node youtube/youtubeMultiTweetPipeline.js UCtB4Jl_0Nqkme13o7hyEMwg
 //
-// This is a TEST-MODE script: it fetches the most recent video from
-// the given channel (any recency window, since you're actively testing,
-// not gated by your normal polling cadence), extracts angles, generates
-// tweets, and enqueues them for posting via your real tweet queue.
+// This is a TEST-MODE CLI entry point: it uses a wide 1440-min (24h)
+// discovery window so you can always find something to test with. The
+// recurring production poller (ytNewsPollingLoop.js) should call
+// runMultiTweetPipeline() with a much narrower minutesBack (e.g. 30) --
+// the retry queue is what protects against missing a video whose
+// transcript simply wasn't ready within that narrow window.
 
 import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
-import { getRecentTranscripts } from "./youtubeTranscriptFetcher.js";
+import {
+  getRecentVideos,
+  fetchTranscriptText,
+} from "./youtubeTranscriptFetcher.js";
 
 // TODO: fix these import paths to match your actual project structure
-// import { generateClaudeTweetWithType } from "../generateClaudeTweet.js";
+import { generateClaudeTweetWithType } from "../generateClaudeTweet.js";
 import { loadState, saveState } from "../utils/stateStoreCloud.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
@@ -33,6 +52,8 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const MAX_ANGLES_PER_VIDEO = 3;
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.55; // see isDuplicate() below
+const TRANSCRIPT_RETRY_CEILING_MS = 4 * 60 * 60 * 1000; // give up retrying a video's transcript after 4h
+const DAILY_CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000; // matches CA's own retention -- keep both sources aging out on the same clock
 
 // ─────────────────────────────────────────────────────────────────────────
 // STEP 1: Extract distinct newsworthy angles from a long transcript
@@ -149,10 +170,27 @@ function contextExists(STATE, summary) {
   );
 }
 
+// Prunes dailyContext.contexts entries older than DAILY_CONTEXT_RETENTION_MS.
+// caNewsPollingLoop.js has its own equivalent pruning, but it only runs
+// while CA's polling loop is actually enabled. This runs independently so
+// aging-out still happens correctly whenever CA is paused/disabled (e.g.
+// during YouTube-only testing windows) -- both sources share the same
+// retention clock either way, since they read/write the same pool.
+function pruneDailyContext(STATE) {
+  if (!STATE.dailyContext?.contexts?.length) return 0;
+  const cutoff = Date.now() - DAILY_CONTEXT_RETENTION_MS;
+  const before = STATE.dailyContext.contexts.length;
+  STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter((c) => {
+    const createdAtMs = new Date(c.createdAt).getTime();
+    return !Number.isFinite(createdAtMs) || createdAtMs >= cutoff; // keep malformed entries rather than risk losing real ones on a bad parse
+  });
+  return before - STATE.dailyContext.contexts.length;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
-// STEP 3: Posting -- TODO: wire this to your actual X posting function
+// STEP 3: Posting -- wired to your real tweet queue
 // ─────────────────────────────────────────────────────────────────────────
-async function postTweet(tweetText, { videoId, angleIndex, publishedAt }) {
+async function postTweet(tweetText, { videoId, angleIndex }) {
   // enqueueTweet reads/writes global.STATE directly (not via loadState/saveState),
   // so it must already be initialized before this runs. runMultiTweetPipeline()
   // sets global.STATE once at the top -- see there.
@@ -165,7 +203,15 @@ async function postTweet(tweetText, { videoId, angleIndex, publishedAt }) {
     text: tweetText,
     imageUrl: null,
     seenKey,
-    publishedAt: publishedAt ? new Date(publishedAt).getTime() : Date.now(),
+    // NOTE: intentionally Date.now() (enqueue time), NOT the video's real
+    // YouTube upload time. tweetQueue's 60-min staleness check uses this
+    // field to decide "is this tweet too old to post" -- for CricketAddictor
+    // that correctly means "is the article too old," but for YouTube the
+    // video may already be 20-40+ min old (or, with the retry queue, even
+    // hours old) by the time transcript fetch + generation finish. Using
+    // enqueue time instead measures "how long has this sat in the queue,"
+    // which is what the check is actually meant to protect against.
+    publishedAt: Date.now(),
   });
 
   console.log(
@@ -175,60 +221,24 @@ async function postTweet(tweetText, { videoId, angleIndex, publishedAt }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// MAIN PIPELINE
+// Process ONE video that has a ready transcript: extract angles, generate,
+// dedup-check, post. This is the same logic that used to live inline in
+// runMultiTweetPipeline -- factored out so it can be called for both
+// freshly-discovered videos AND videos resolved from the retry queue.
 // ─────────────────────────────────────────────────────────────────────────
-export async function runMultiTweetPipeline(channelId, options = {}) {
-  const {
-    minutesBack = 1440, // 24h default for test mode, wide enough to always find something
-    maxAngles = MAX_ANGLES_PER_VIDEO,
-    articleType = "opinion_piece", // matches classification we reasoned through for insider/analyst videos
-  } = options;
-
-  console.log(`\n📺 Fetching recent video from channel ${channelId}...`);
-  const videos = await getRecentTranscripts({
-    channelId,
-    minutesBack,
-    maxVideos: 1,
-  });
-
-  if (videos.length === 0) {
-    console.log(`No videos found in the last ${minutesBack} minutes.`);
-    return;
-  }
-
-  const video = videos[0];
-  console.log(`\n✅ Found video: "${video.title}" (${video.videoId})`);
-
-  if (!video.transcriptText) {
-    console.log(
-      "⚠️ Transcript not available yet for this video. Try again shortly.",
-    );
-    return;
-  }
-
+async function processVideo(video, { maxAngles, articleType }) {
+  console.log(`\n✅ Processing video: "${video.title}" (${video.videoId})`);
   console.log(`Transcript length: ${video.transcriptText.length} chars`);
 
-  // ── Load persistent state for cross-run dedup ──────────────────────────
-  // enqueueTweet() (from tweetQueue.js) reads/writes global.STATE directly,
-  // not via loadState/saveState -- so we must set global.STATE before any
-  // postTweet() call happens, or enqueueTweet crashes reading .tweetQueue
-  // off undefined. Your main index.js presumably does this same
-  // `global.STATE = await loadState()` step at bootstrap; this script needs
-  // to do it too since it runs standalone, outside that bootstrap.
-  const state = await loadState();
-  global.STATE = state;
-  global.STATE.dailyContext ??= { contexts: [] }; // shared cross-source dedup pool with CricketAddictor
-  global.STATE.videoAngleCache ??= {}; // caches extracted angles per video so re-polling doesn't re-extract with different phrasing/order each time
-  global.STATE.videoAngleSkipped ??= {}; // { videoId: [indices] } permanently skipped (length-failed or duplicate) -- never retried
-  // Track progress PER ANGLE, not just per video, so a crash/interrupt mid-video
-  // resumes from the next un-posted angle instead of skipping the whole video.
-  // Shape: { "<videoId>": [0, 1] }  <- angle indices already posted for that video
-  const videoAngleProgress = state.videoAngleProgress || {};
+  // Track progress PER ANGLE, not just per video, so a crash/interrupt
+  // mid-video resumes from the next un-posted angle instead of skipping
+  // the whole video. Shape: { "<videoId>": [0, 1] } <- posted angle indices
+  const videoAngleProgress = global.STATE.videoAngleProgress || {};
   const postedAngleIndices = new Set(videoAngleProgress[video.videoId] || []);
   const skippedAngleIndices = new Set(
     global.STATE.videoAngleSkipped[video.videoId] || [],
   );
-  const recentPostedTweets = state.recentPostedTweets || []; // array of tweet text strings, most recent N kept
+  const recentPostedTweets = global.STATE.recentPostedTweets || [];
 
   if (postedAngleIndices.size > 0) {
     console.log(
@@ -252,7 +262,7 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
 
   if (angles.length === 0) {
     console.log("⚠️ No angles extracted. Nothing to tweet.");
-    return;
+    return 0;
   }
 
   // ── Early exit: if every cached angle is already resolved (posted OR
@@ -264,13 +274,13 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
     console.log(
       `✅ Video ${video.videoId} fully resolved (all ${angles.length} angles posted or skipped). Nothing to do.`,
     );
-    return;
+    return 0;
   }
 
   console.log(`Found ${angles.length} angle(s):`);
   angles.forEach((a, i) => console.log(`  ${i + 1}. ${a.topic}`));
 
-  // ── Generate + dedup-check + post, one angle at a time, spaced out ─────
+  // ── Generate + dedup-check + post, one angle at a time ──────────────────
   const postedThisRun = [];
 
   async function markAngleSkipped(index, reason) {
@@ -300,9 +310,6 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
     console.log(`\n--- Angle ${i + 1}/${angles.length}: ${angle.topic} ---`);
 
     // ── Cross-source context check (shared with CricketAddictor) ─────────
-    // Same judgeNewsContext call CA uses, against the SAME dailyContext pool.
-    // If CricketAddictor (or another YouTube channel) already covered this
-    // exact story today with high confidence, skip generating for it here.
     let contextDecision = null;
     try {
       contextDecision = await judgeNewsContext({
@@ -336,7 +343,9 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
     let result = await generateClaudeTweetWithType(angle.summary, articleType);
 
     if (!result.tweetText) {
-      console.log("⚠️ Generation failed for this angle, skipping.");
+      console.log(
+        "⚠️ Generation failed for this angle, skipping (will retry next poll -- not marked permanent).",
+      );
       continue;
     }
 
@@ -369,7 +378,6 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
       `Generated tweet (${result.tweetText.length} chars):\n${result.tweetText}`,
     );
 
-    // Check against BOTH this run's tweets so far AND past run history
     const allExistingTweets = [...postedThisRun, ...recentPostedTweets];
     if (isDuplicate(result.tweetText, allExistingTweets)) {
       console.log("🚫 Skipping this tweet -- too similar to an existing one.");
@@ -378,19 +386,9 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
     }
 
     // ── Post it ──────────────────────────────────────────────────────────
-    // NOTE: publishedAt here is intentionally Date.now() (enqueue time), NOT
-    // video.publishedAt (the video's real YouTube upload time). tweetQueue's
-    // 60-min staleness check uses this field to decide "is this tweet too
-    // old to post" -- for CA that correctly means "is the article too old,"
-    // but for YouTube the video may already be 20-40+ min old by the time
-    // transcript fetch + angle extraction + generation finish, leaving little
-    // buffer before the 60-min cutoff. Using enqueue time instead measures
-    // "how long has this sat in the queue," which is what the check is
-    // actually meant to protect against.
     await postTweet(result.tweetText, {
       videoId: video.videoId,
       angleIndex: i,
-      publishedAt: Date.now(),
     });
     postedThisRun.push(result.tweetText);
 
@@ -409,36 +407,207 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
     }
 
     // ── Save state after EVERY successful post, not just at the end ────
-    // (so a crash mid-run doesn't lose dedup history for tweets already posted)
     // Save global.STATE as a whole -- enqueueTweet already mutated
-    // global.STATE.tweetQueue directly, so saving the old local `state`
-    // object here would silently drop that queue update.
+    // global.STATE.tweetQueue directly, so saving a stale local copy here
+    // would silently drop that queue update.
     postedAngleIndices.add(i);
-    const updatedRecentTweets = [...recentPostedTweets, ...postedThisRun].slice(
-      -50,
-    ); // keep last 50
     global.STATE.videoAngleProgress = {
       ...(global.STATE.videoAngleProgress || {}),
       [video.videoId]: [...postedAngleIndices],
     };
-    global.STATE.recentPostedTweets = updatedRecentTweets;
+    global.STATE.recentPostedTweets = [
+      ...recentPostedTweets,
+      ...postedThisRun,
+    ].slice(-50); // keep last 50
     await saveState(global.STATE, `youtube-multi-tweet-angle-${i + 1}-posted`);
-
-    // No sleep/gap here anymore -- enqueueTweet just adds to your existing
-    // posting queue, and the separate queue worker controls actual posting
-    // timing/spacing to X. This script's job ends at "enqueued successfully."
   }
 
   console.log(
     `\n✅ Pipeline complete. Posted ${postedThisRun.length}/${angles.length} tweets for this video.`,
   );
+  return postedThisRun.length;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MAIN ENTRY POINT
+// ─────────────────────────────────────────────────────────────────────────
+export async function runMultiTweetPipeline(channelId, options = {}) {
+  const {
+    minutesBack = 1440, // 24h default for CLI test mode; the recurring poller should pass ~30
+    maxAngles = MAX_ANGLES_PER_VIDEO,
+    articleType = "opinion_piece", // matches classification we reasoned through for insider/analyst videos
+  } = options;
+
+  // ── Load persistent state ───────────────────────────────────────────────
+  // enqueueTweet() (from tweetQueue.js) reads/writes global.STATE directly,
+  // not via loadState/saveState -- so we must set global.STATE before any
+  // postTweet() call happens.
+  const state = await loadState();
+  global.STATE = state;
+  global.STATE.dailyContext ??= { contexts: [] }; // shared cross-source dedup pool with CricketAddictor
+  global.STATE.videoAngleCache ??= {}; // caches extracted angles per video so re-polling doesn't re-extract with different phrasing/order
+  global.STATE.videoAngleSkipped ??= {}; // { videoId: [indices] } permanently skipped (length-failed or duplicate) -- never retried
+  global.STATE.videoAngleProgress ??= {}; // { videoId: [indices] } posted angle indices
+  global.STATE.recentPostedTweets ??= [];
+  // { videoId: { channelId, title, publishedAt, firstSeenAt, lastAttemptAt, attempts } }
+  // Videos found with no transcript yet, retried every poll independent of
+  // the minutesBack discovery window, until ready or TRANSCRIPT_RETRY_CEILING_MS passes.
+  global.STATE.pendingTranscriptVideos ??= {};
+
+  const prunedCount = pruneDailyContext(global.STATE);
+  if (prunedCount > 0) {
+    console.log(
+      `🧹 Pruned ${prunedCount} stale dailyContext entr${prunedCount === 1 ? "y" : "ies"} (older than ${DAILY_CONTEXT_RETENTION_MS / 1000 / 60 / 60}h)`,
+    );
+    await saveState(global.STATE, "youtube-daily-context-pruned");
+  }
+
+  // ── Step 1: discover fresh videos in the normal lookback window ────────
+  console.log(
+    `\n📺 Fetching recent videos from channel ${channelId} (last ${minutesBack} min)...`,
+  );
+  let freshVideos = [];
+  try {
+    freshVideos = await getRecentVideos({
+      channelId,
+      minutesBack,
+      maxVideos: 5,
+    });
+  } catch (err) {
+    console.error(
+      `❌ Failed to fetch recent videos for channel ${channelId}:`,
+      err?.message || err,
+    );
+  }
+
+  // ── Step 2: gather videos still pending transcript retry for this channel ──
+  const now = Date.now();
+  const pendingForChannel = Object.entries(global.STATE.pendingTranscriptVideos)
+    .filter(([, p]) => p.channelId === channelId)
+    .map(([videoId, p]) => ({ videoId, ...p }));
+
+  // Give up on anything past the retry ceiling, log it clearly so a missed
+  // scoop is visible in logs rather than silently vanishing.
+  for (const pending of pendingForChannel) {
+    const age = now - pending.firstSeenAt;
+    if (age > TRANSCRIPT_RETRY_CEILING_MS) {
+      console.log(
+        `🗑️ Giving up on transcript for "${pending.title}" (${pending.videoId}) — no captions after ${(age / 1000 / 60).toFixed(0)} min (ceiling: ${TRANSCRIPT_RETRY_CEILING_MS / 1000 / 60}min). Abandoning.`,
+      );
+      delete global.STATE.pendingTranscriptVideos[pending.videoId];
+    }
+  }
+  await saveState(global.STATE, "youtube-pending-transcript-pruned");
+
+  // Re-read after pruning
+  const stillPendingForChannel = Object.entries(
+    global.STATE.pendingTranscriptVideos,
+  )
+    .filter(([, p]) => p.channelId === channelId)
+    .map(([videoId, p]) => ({ videoId, ...p }));
+
+  // ── Step 3: merge fresh + pending candidates, deduped by videoId ───────
+  const candidatesById = new Map();
+  for (const v of freshVideos) {
+    candidatesById.set(v.videoId, {
+      videoId: v.videoId,
+      title: v.title,
+      publishedAt: v.publishedAt,
+    });
+  }
+  for (const p of stillPendingForChannel) {
+    if (!candidatesById.has(p.videoId)) {
+      candidatesById.set(p.videoId, {
+        videoId: p.videoId,
+        title: p.title,
+        publishedAt: p.publishedAt,
+      });
+    }
+  }
+
+  if (candidatesById.size === 0) {
+    console.log(
+      `No videos found in the last ${minutesBack} minutes, and nothing pending retry.`,
+    );
+    return;
+  }
+
+  // ── Step 4: for each candidate, try transcript; process if ready, else
+  // add/update the pending retry entry ────────────────────────────────────
+  let totalPosted = 0;
+
+  for (const candidate of candidatesById.values()) {
+    // Already fully resolved from a past run? Skip transcript fetch entirely.
+    const alreadyPosted = new Set(
+      global.STATE.videoAngleProgress[candidate.videoId] || [],
+    );
+    const alreadySkipped = new Set(
+      global.STATE.videoAngleSkipped[candidate.videoId] || [],
+    );
+    const cachedAngles = global.STATE.videoAngleCache[candidate.videoId];
+    if (
+      cachedAngles &&
+      cachedAngles.every(
+        (_, i) => alreadyPosted.has(i) || alreadySkipped.has(i),
+      )
+    ) {
+      console.log(
+        `✅ Video ${candidate.videoId} already fully resolved. Skipping.`,
+      );
+      delete global.STATE.pendingTranscriptVideos[candidate.videoId]; // clean up if it was pending
+      continue;
+    }
+
+    const transcriptText = await fetchTranscriptText(candidate.videoId);
+
+    if (!transcriptText) {
+      const existing = global.STATE.pendingTranscriptVideos[candidate.videoId];
+      global.STATE.pendingTranscriptVideos[candidate.videoId] = {
+        channelId,
+        title: candidate.title,
+        publishedAt: candidate.publishedAt,
+        firstSeenAt: existing?.firstSeenAt ?? now,
+        lastAttemptAt: now,
+        attempts: (existing?.attempts ?? 0) + 1,
+      };
+      await saveState(
+        global.STATE,
+        `youtube-transcript-not-ready-${candidate.videoId}`,
+      );
+      console.log(
+        `⏳ Transcript not ready yet for "${candidate.title}" (${candidate.videoId}) — attempt ${global.STATE.pendingTranscriptVideos[candidate.videoId].attempts}, will retry next poll.`,
+      );
+      continue;
+    }
+
+    // Transcript is ready -- resolve out of the pending queue and process.
+    delete global.STATE.pendingTranscriptVideos[candidate.videoId];
+    await saveState(
+      global.STATE,
+      `youtube-transcript-ready-${candidate.videoId}`,
+    );
+
+    const video = {
+      videoId: candidate.videoId,
+      title: candidate.title,
+      publishedAt: candidate.publishedAt,
+      transcriptText,
+    };
+    const posted = await processVideo(video, { maxAngles, articleType });
+    totalPosted += posted;
+  }
+
+  if (totalPosted === 0 && candidatesById.size > 0) {
+    console.log(
+      `\n(No new tweets posted this cycle for channel ${channelId} -- see per-video logs above.)`,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // CLI entry point for manual testing
 // ─────────────────────────────────────────────────────────────────────────
 import { fileURLToPath } from "url";
-import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
 if (isMainModule) {
