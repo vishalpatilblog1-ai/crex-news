@@ -74,6 +74,14 @@ Identify up to ${maxAngles} DISTINCT newsworthy angles/topics discussed in this
 transcript that could each independently support a separate tweet. Each angle
 must be substantively different from the others -- not the same story rephrased.
 
+Don't default only to news/tactical/selection angles. If the transcript contains
+a genuine human-interest or personality moment -- a personal anecdote, an insider
+story about a relationship between two named cricket figures, a gift/gesture, a
+routine or habit, a behind-the-scenes detail -- treat that as an equally valid
+angle, not a lesser one. A strong specific quote (named speaker, concrete detail)
+is often a better angle than a generic analysis point, even if it's not the
+"biggest" news in the video.
+
 PUBLIC FIGURE CHECK: only build a standalone angle around a named person if the
 TRANSCRIPT ITSELF establishes them as a public figure in a cricket context
 (a player, coach, selector, official, journalist, or commentator -- their role
@@ -91,6 +99,12 @@ summary will be used as the input article for a tweet-generation step, so
 include enough concrete detail (names, specific claims, direct quotes if any)
 for that step to work with -- but do not add any interpretation or analysis
 of your own, just extract and summarize factually.
+
+Do NOT over-compress named specifics or strong direct quotes at this stage --
+other player names mentioned in the same breath, exact reasons given, and any
+strong first-person quote should be preserved close to verbatim in the
+summary. It's easier for the next step to trim detail than to recover detail
+you dropped here.
 
 If the transcript only really contains ONE distinct angle worth tweeting,
 return just one. Do not manufacture angles that aren't genuinely there.
@@ -205,7 +219,7 @@ function pruneDailyContext(STATE) {
 // ─────────────────────────────────────────────────────────────────────────
 // STEP 3: Posting -- wired to your real tweet queue
 // ─────────────────────────────────────────────────────────────────────────
-async function postTweet(tweetText, { videoId, angleIndex }) {
+async function postTweet(tweetText, { videoId, angleIndex, imageUrl = null }) {
   // enqueueTweet reads/writes global.STATE directly (not via loadState/saveState),
   // so it must already be initialized before this runs. runMultiTweetPipeline()
   // sets global.STATE once at the top -- see there.
@@ -216,7 +230,7 @@ async function postTweet(tweetText, { videoId, angleIndex }) {
     id: tweetId,
     source: "YT",
     text: tweetText,
-    imageUrl: null,
+    imageUrl,
     seenKey,
     // NOTE: intentionally Date.now() (enqueue time), NOT the video's real
     // YouTube upload time. tweetQueue's 60-min staleness check uses this
@@ -423,7 +437,27 @@ async function processVideo(video, { maxAngles, articleType }) {
       );
     }
 
-    let result = await generateClaudeTweetWithType(angle.summary, articleType);
+    // ── Classify THIS angle individually (was: whole video hardcoded to
+    // opinion_piece). Each angle's summary is its own distinct claim/story,
+    // so it can genuinely land in a different type -- a quote-driven angle
+    // should get press_conference's attribution handling, a squad angle
+    // should get selection_news, etc. Falls back to the caller's default
+    // (articleType, still "opinion_piece") if classification errors out.
+    let angleArticleType = articleType;
+    try {
+      angleArticleType = await classifyArticle(angle.summary);
+      console.log(`🏷️ Angle classified as: ${angleArticleType}`);
+    } catch (err) {
+      console.warn(
+        `⚠️ classifyArticle failed for angle, falling back to "${articleType}":`,
+        err?.message || err,
+      );
+    }
+
+    let result = await generateClaudeTweetWithType(
+      angle.summary,
+      angleArticleType,
+    );
 
     if (!result.tweetText) {
       console.log(
@@ -432,29 +466,28 @@ async function processVideo(video, { maxAngles, articleType }) {
       continue;
     }
 
-    // X's real hard limit is 280 chars (non-Premium). opinion_piece isn't in
-    // the prompt's explicit Target length list, so Sonnet has no ceiling for
-    // it and can overrun -- retry once with an explicit trim instruction
-    // rather than posting something that would fail on the real API.
+    // 280 is where X folds a tweet behind "Show more" -- it is NOT a hard
+    // post limit on an X Premium account (which GullyPoint runs on for the
+    // monetization program). Retrying/trimming every time a tweet crossed
+    // 280 was burning an extra Sonnet call on every longer tweet AND was
+    // compressing away exactly the kind of strong, specific first-person
+    // quote that performs best (see the competitor-account quote-spotlight
+    // analysis). So: post as-is up to MAX_TWEET_CHARS, only skip past that
+    // real ceiling, and never retry purely for length.
+    const MAX_TWEET_CHARS = Number(process.env.MAX_TWEET_CHARS) || 4000;
+
+    if (result.tweetText.length > MAX_TWEET_CHARS) {
+      console.log(
+        `⚠️ Tweet is ${result.tweetText.length} chars -- exceeds MAX_TWEET_CHARS (${MAX_TWEET_CHARS}). Skipping this angle.`,
+      );
+      await markAngleSkipped(i, `over ${MAX_TWEET_CHARS} chars`);
+      continue;
+    }
+
     if (result.tweetText.length > 280) {
       console.log(
-        `⚠️ Tweet is ${result.tweetText.length} chars (over 280 limit). Retrying with a trim instruction...`,
+        `📏 Tweet is ${result.tweetText.length} chars -- over the 280 "Show more" fold point. Posting as-is (no retry).`,
       );
-      const trimmedInput = `${angle.summary}\n\nSTRICT CONSTRAINT: the tweet you generate MUST be under 280 characters total. Compress to the single sharpest point -- cut supporting detail before cutting the verdict.`;
-      const retryResult = await generateClaudeTweetWithType(
-        trimmedInput,
-        articleType,
-      );
-      if (retryResult.tweetText && retryResult.tweetText.length <= 280) {
-        result = retryResult;
-        console.log(`✅ Retry succeeded: ${result.tweetText.length} chars`);
-      } else {
-        console.log(
-          `⚠️ Retry still over limit (${retryResult.tweetText?.length ?? "N/A"} chars). Skipping this angle rather than posting an invalid tweet.`,
-        );
-        await markAngleSkipped(i, "over 280 chars after retry");
-        continue;
-      }
     }
 
     console.log(
@@ -468,10 +501,27 @@ async function processVideo(video, { maxAngles, articleType }) {
       continue;
     }
 
+    // ── Generate card image if this angle's type supports one ──────────────
+    let generatedImagePath = null;
+    if (result.card) {
+      try {
+        generatedImagePath = await generateCardImage(
+          CREX_BASE_IMAGE_TEMPLATE,
+          result.card,
+        );
+        console.log("🃏 YouTube card generated:", generatedImagePath);
+      } catch (err) {
+        console.error("❌ Card image generation failed:", err);
+      }
+    } else {
+      console.log("📝 Text-only tweet (no card for this article type)");
+    }
+
     // ── Post it ──────────────────────────────────────────────────────────
     await postTweet(result.tweetText, {
       videoId: video.videoId,
       angleIndex: i,
+      imageUrl: generatedImagePath || null,
     });
     postedThisRun.push(result.tweetText);
 
@@ -518,7 +568,7 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
   const {
     minutesBack = 1440, // 24h default for CLI test mode; the recurring poller should pass ~30
     maxAngles = MAX_ANGLES_PER_VIDEO,
-    articleType = "opinion_piece", // matches classification we reasoned through for insider/analyst videos
+    articleType = "opinion_piece", // FALLBACK ONLY -- each angle is now classified individually via classifyArticle(); this is just what's used if that classification call errors out
   } = options;
 
   // ── Load persistent state ───────────────────────────────────────────────
@@ -741,7 +791,12 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
 // CLI entry point for manual testing
 // ─────────────────────────────────────────────────────────────────────────
 import { fileURLToPath } from "url";
-import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
+import {
+  classifyArticle,
+  generateClaudeTweetWithType,
+} from "../ai/generateClaudeTweet.js";
+import { generateCardImage } from "../canvas/imageRenderer.js";
+import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 
 if (isMainModule) {

@@ -316,6 +316,13 @@ Beat 2 (Meaning): One universal sentence — the emotional truth this moment rep
   This line must make sense and hit hard even if the reader has never watched cricket.
   It should feel quotable. It should make someone want to share it, not just like it.
 
+OPENING FRAME OPTION (use when it beats a direct scene-open):
+Instead of opening straight into the scene, you may open with a curiosity frame —
+"[Name] reveals why...", "What [Name] told [someone] about..." — when the story
+has a genuine "why" or "what happened next" the reader would want answered.
+Don't default to this on every human_interest tweet — use it only when it
+creates a sharper pull than opening directly on the scene.
+
 SPECIFICITY RULE:
   If the article contains any exact number, distance, time, or place — use it verbatim.
   Exact figures build credibility and make the story feel reported, not invented.
@@ -435,6 +442,15 @@ MODE 1 — QUOTE AS HOOK
 Use when: the quote itself is sharp, surprising, or unusually candid.
 Lead with the quote (under 12 words), then frame what it reveals.
 Attribute in the first or second sentence. Never absorb the quote into the narrator's voice.
+
+OPENING FRAME OPTION (use when it beats a direct quote-open):
+Instead of leading with the quote itself, you may open with a curiosity frame —
+"[Name] explains why...", "[Name] reveals what happened when...", "[Name] on
+why..." — then deliver the specific quote/claim right after. This works
+especially well when the quote needs context to land, or when the fact that
+the person is addressing this topic at all is itself the hook. Don't default
+to this on every press_conference tweet — use whichever opener (direct quote
+vs. curiosity frame) creates the sharper first line for THIS specific quote.
 
 MODE 2 — ACT OVER QUOTE
 Use when: the significance of WHO is speaking, or THAT they chose to speak at all, is more newsworthy than what they said.
@@ -725,6 +741,28 @@ Strong openers (earn attention first):
 - "44 years old. Still the story."               → contrast creates the gap
 
 ═══════════════════════════════════════════
+SOURCE FIDELITY RULE
+═══════════════════════════════════════════
+When the source material contains specific named details — other players
+mentioned by name, precise numbers, a stated reason, a direct quote — preserve
+them rather than compressing them into a vague generality. "Tom Banton,
+Cameron Green and Tim David have done that" is stronger and more credible
+than "some batters have done that." Specificity is what makes a tweet read as
+reported fact rather than a paraphrase. Only drop a specific detail if it
+genuinely doesn't serve the angle — not just to save characters.
+
+═══════════════════════════════════════════
+FRICTION SOURCE RULE
+═══════════════════════════════════════════
+Before manufacturing a hot take, check whether the source material already
+contains real tension — a direct quote that is itself controversial, a stated
+disagreement, a specific criticism, a surprising admission. If it does, surface
+THAT as the friction instead of inventing a separate angle. A strong genuine
+quote is usually a better hook than an analyst's constructed take on a bland
+one. Manufactured friction is for when the source is genuinely neutral —
+it is not the default move.
+
+═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 - If a named individual makes a strong claim — name them in tweet
@@ -957,11 +995,16 @@ RULES:
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
 - Target length:
-  news types (player_form, injury_news, press_conference, tactical_analysis, match_report): 180–280 characters
+  news types (player_form, injury_news, tactical_analysis, match_report): 180–280 characters
   selection_news and human_interest: up to 320 characters — debates and emotional stories need space
   rivalry_bait: 160–240 characters, clean 2-line split, no more
   breaking_news: as short as needed — clarity over length
-  A tweet that fits on one screen without "show more" gets more impressions.
+  press_conference and opinion_piece: 180–280 characters normally, but MAY run up to 600
+    characters when the source contains a strong, specific first-person quote worth
+    preserving close to verbatim. Do not compress a genuinely strong quote just to fit
+    one screen — the quote fidelity matters more than the fold here. A tweet that fits
+    on one screen without "show more" gets more impressions, but a flattened quote gets
+    fewer replies than the real thing would have. When in doubt, keep the quote intact.
 
 ${
   needsCard
@@ -1077,8 +1120,8 @@ No card needed for this article type. Output tweet text only.
   }
 
   if (tweetText.length > 280) {
-    console.warn(
-      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`,
+    console.log(
+      `📏 Tweet is ${tweetText.length} chars — over the 280 "Show more" fold point (not a hard limit).`,
     );
   }
   console.log("tweet generated by claude prompt::", tweetText);
