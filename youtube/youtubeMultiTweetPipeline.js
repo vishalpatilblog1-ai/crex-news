@@ -38,6 +38,9 @@ import dotenv from "dotenv";
 import {
   getRecentVideos,
   fetchTranscriptText,
+  getVideoDurationMinutes,
+  getVideoMetadata,
+  looksLikeLivestreamTitle,
 } from "./youtubeTranscriptFetcher.js";
 
 // TODO: fix these import paths to match your actual project structure
@@ -50,7 +53,9 @@ dotenv.config();
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const MAX_ANGLES_PER_VIDEO = 3;
+const MAX_ANGLES_PER_VIDEO = 2; // default/fallback cap when duration lookup fails
+const LONG_VIDEO_MINUTES_THRESHOLD = 15; // videos >= this get the higher angle cap
+const MAX_ANGLES_LONG_VIDEO = 3;
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.55; // see isDuplicate() below
 const TRANSCRIPT_RETRY_CEILING_MS = 4 * 60 * 60 * 1000; // give up retrying a video's transcript after 4h
 const DAILY_CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000; // matches CA's own retention -- keep both sources aging out on the same clock
@@ -68,6 +73,16 @@ This is a transcript of a cricket YouTube video (may contain Hindi/Hinglish).
 Identify up to ${maxAngles} DISTINCT newsworthy angles/topics discussed in this
 transcript that could each independently support a separate tweet. Each angle
 must be substantively different from the others -- not the same story rephrased.
+
+PUBLIC FIGURE CHECK: only build a standalone angle around a named person if the
+TRANSCRIPT ITSELF establishes them as a public figure in a cricket context
+(a player, coach, selector, official, journalist, or commentator -- their role
+must be stated in the transcript, not assumed from general knowledge). If a
+name is mentioned only in a private/personal context (e.g. introduced as "a
+father," "a fan," "a parent," someone's family member, or any other non-public
+role, with no public cricket role stated), do NOT build a standalone angle
+around them. Either fold that detail into a related angle about an actual
+public figure, or drop it entirely if it doesn't meaningfully support one.
 
 For each angle, extract ONLY the portion of the transcript relevant to that
 angle (translate to English, condense to the key claims -- who said what,
@@ -226,9 +241,59 @@ async function postTweet(tweetText, { videoId, angleIndex }) {
 // runMultiTweetPipeline -- factored out so it can be called for both
 // freshly-discovered videos AND videos resolved from the retry queue.
 // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// STEP 0: Cricket-relevance filter
+// ─────────────────────────────────────────────────────────────────────────
+// Some channels (e.g. multi-sport outlets like Sports Tak) post cricket AND
+// non-cricket content (Commonwealth Games boxing/judo/athletics, etc.). This
+// is a cheap Haiku check on the title + a transcript snippet, run BEFORE
+// angle extraction, so non-cricket videos are filtered out without wasting
+// Sonnet calls generating tweets for them.
+async function isCricketContent(title, transcriptText) {
+  const snippet = transcriptText.slice(0, 1500); // title + opening is enough to tell the sport
+  const prompt = `
+Title: "${title}"
+Transcript opening (may be Hindi/Hinglish): "${snippet}"
+
+Is this video PRIMARILY about cricket? Answer with ONLY one word: YES or NO.
+If the video covers multiple sports and cricket is not the main focus, answer NO.
+`;
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 10,
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const textBlock = response.content.find((block) => block.type === "text");
+    const answer = textBlock?.text?.trim().toUpperCase() || "";
+    return answer.startsWith("YES");
+  } catch (err) {
+    console.warn(
+      "⚠️ Cricket-relevance check failed, defaulting to allow (proceeding as cricket):",
+      err?.message || err,
+    );
+    return true; // fail open -- don't silently drop a video just because this check errored
+  }
+}
+
 async function processVideo(video, { maxAngles, articleType }) {
   console.log(`\n✅ Processing video: "${video.title}" (${video.videoId})`);
   console.log(`Transcript length: ${video.transcriptText.length} chars`);
+
+  const isCricket = await isCricketContent(video.title, video.transcriptText);
+  if (!isCricket) {
+    console.log(
+      `🏏🚫 Not cricket content, skipping permanently: "${video.title}"`,
+    );
+    global.STATE.videoAngleCache[video.videoId] = []; // empty cache = "checked, nothing to do" -- matches the allResolved short-circuit on future polls
+    await saveState(
+      global.STATE,
+      `youtube-non-cricket-skipped-${video.videoId}`,
+    );
+    return 0;
+  }
 
   // Track progress PER ANGLE, not just per video, so a crash/interrupt
   // mid-video resumes from the next un-posted angle instead of skipping
@@ -254,8 +319,26 @@ async function processVideo(video, { maxAngles, articleType }) {
       `📋 Using cached angles for ${video.videoId} (extracted once, reused across polls)`,
     );
   } else {
-    console.log(`\n🔍 Extracting up to ${maxAngles} distinct angles...`);
-    angles = await extractAngles(video.transcriptText, maxAngles);
+    // Long videos genuinely tend to hold more distinct newsworthy angles
+    // (e.g. a 16-min insider video covering a trade rumor, a captaincy
+    // situation, AND a fitness camp -- all real, all separate). Short
+    // "flash update" videos (1-3 min) rarely have more than one or two.
+    // Use YouTube's real duration rather than transcript length, since a
+    // long silence-heavy video or a short but dense one can throw off a
+    // character-count proxy.
+    const durationMinutes = await getVideoDurationMinutes(video.videoId);
+    const dynamicMaxAngles =
+      durationMinutes !== null &&
+      durationMinutes >= LONG_VIDEO_MINUTES_THRESHOLD
+        ? MAX_ANGLES_LONG_VIDEO
+        : maxAngles; // fall back to the caller's default (2) if duration lookup fails or video is short
+
+    console.log(
+      `⏱️ Video duration: ${durationMinutes !== null ? durationMinutes.toFixed(1) + " min" : "unknown"} — using max ${dynamicMaxAngles} angle(s)`,
+    );
+
+    console.log(`\n🔍 Extracting up to ${dynamicMaxAngles} distinct angles...`);
+    angles = await extractAngles(video.transcriptText, dynamicMaxAngles);
     global.STATE.videoAngleCache[video.videoId] = angles;
     await saveState(global.STATE, `youtube-angles-extracted-${video.videoId}`);
   }
@@ -490,6 +573,18 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
   // scoop is visible in logs rather than silently vanishing.
   for (const pending of pendingForChannel) {
     const age = now - pending.firstSeenAt;
+
+    // Retroactive cleanup: a livestream VOD queued before this filter existed
+    // shouldn't have to wait out the full ceiling -- clear it immediately.
+    if (looksLikeLivestreamTitle(pending.title)) {
+      console.log(
+        `🔴📺 Clearing previously-queued livestream VOD from pending retry: "${pending.title}" (${pending.videoId})`,
+      );
+      delete global.STATE.pendingTranscriptVideos[pending.videoId];
+      global.STATE.videoAngleCache[pending.videoId] = []; // mark resolved so it's never revisited
+      continue;
+    }
+
     if (age > TRANSCRIPT_RETRY_CEILING_MS) {
       console.log(
         `🗑️ Giving up on transcript for "${pending.title}" (${pending.videoId}) — no captions after ${(age / 1000 / 60).toFixed(0)} min (ceiling: ${TRANSCRIPT_RETRY_CEILING_MS / 1000 / 60}min). Abandoning.`,
@@ -558,6 +653,44 @@ export async function runMultiTweetPipeline(channelId, options = {}) {
       continue;
     }
 
+    // ── Livestream filter ─────────────────────────────────────────────────
+    // Livestream VODs (e.g. "LIVE | Welsh Fire vs ...") often never get
+    // auto-captions the way normal uploads do, or take FAR longer. Without
+    // this check, these were entering the transcript-retry queue and
+    // burning through the full 4h ceiling every single time before finally
+    // giving up -- wasted poll cycles for videos that were never going to
+    // yield a transcript. Filtered here, before ever attempting a
+    // transcript fetch or entering the pending queue.
+    if (looksLikeLivestreamTitle(candidate.title)) {
+      console.log(
+        `🔴📺 Skipping likely livestream VOD (title pattern): "${candidate.title}" (${candidate.videoId})`,
+      );
+      delete global.STATE.pendingTranscriptVideos[candidate.videoId]; // clean up if a past run already queued it
+      global.STATE.videoAngleCache[candidate.videoId] = []; // mark resolved so it's never revisited
+      await saveState(
+        global.STATE,
+        `youtube-livestream-skipped-${candidate.videoId}`,
+      );
+      continue;
+    }
+
+    // Belt-and-suspenders: also check the real live-broadcast status via
+    // API for videos that don't match the title pattern but ARE currently
+    // live or scheduled (upcoming) -- these definitely have no transcript yet.
+    const { liveBroadcastContent } = await getVideoMetadata(candidate.videoId);
+    if (
+      liveBroadcastContent === "live" ||
+      liveBroadcastContent === "upcoming"
+    ) {
+      console.log(
+        `🔴📺 Skipping (currently ${liveBroadcastContent}, no transcript possible yet): "${candidate.title}" (${candidate.videoId})`,
+      );
+      // NOT marked permanently resolved -- an "upcoming" stream will genuinely
+      // have real content once it airs and ends, so leave it to be
+      // re-evaluated on a future poll rather than caching it as empty forever.
+      continue;
+    }
+
     const transcriptText = await fetchTranscriptText(candidate.videoId);
 
     if (!transcriptText) {
@@ -621,7 +754,7 @@ if (isMainModule) {
 
   runMultiTweetPipeline(channelId, {
     minutesBack: 1440,
-    maxAngles: 3,
+    maxAngles: 2,
   }).catch((err) => {
     console.error("❌ Pipeline failed:", err);
     process.exit(1);

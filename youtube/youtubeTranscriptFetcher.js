@@ -1,15 +1,59 @@
 // youtube/youtubeTranscriptFetcher.js
+//
+// GullyPoint / crex-news pipeline module: monitors a YouTube channel
+// for new uploads and fetches transcripts of recent videos, ready to
+// feed into the eligibility-check + value-add tweet generation prompt.
+//
+// SETUP
+// -----
+// npm install youtube-transcript axios
+//
+// You need a YouTube Data API v3 key (free tier, no OAuth needed for
+// public channel/video listing):
+//   1. Go to https://console.cloud.google.com/
+//   2. Create/select a project -> Enable "YouTube Data API v3"
+//   3. Create credentials -> API key -> restrict to YouTube Data API v3
+//   4. Set it as an env var: YOUTUBE_API_KEY=your_key_here (in .env
+//      locally and in Railway env vars for this service)
+//
+// Free quota is 10,000 units/day. Each channel-check (playlistItems.list)
+// costs 1 unit -- polling one channel every 5 min all day costs ~288
+// units, effectively free. We deliberately avoid search.list (100
+// units/call) by using the channel's hidden "uploads" playlist instead.
+// Transcript fetching itself uses NO API quota -- the youtube-transcript
+// package scrapes public caption data directly, no key needed for that part.
+//
+// USAGE
+// -----
+//   import { getRecentTranscripts } from './youtube/youtubeTranscriptFetcher.js';
+//
+//   const results = await getRecentTranscripts({
+//     channelId: 'UCxxxxxxxxxxxxxxxxxxxxxx',
+//     minutesBack: 240,   // e.g. look back 4 hours
+//     maxVideos: 5,
+//   });
+//
+//   for (const video of results) {
+//     console.log(video.title, video.videoId, video.publishedAt);
+//     console.log(video.transcriptText?.slice(0, 500));
+//   }
+//
+// Or run this file directly for a quick manual test:
+//   node youtube/youtubeTranscriptFetcher.js UCxxxxxxxxxxxxxxxxxxxxxx 240 5
 
 import axios from "axios";
 import { YoutubeTranscript } from "youtube-transcript";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
-import fs from "fs/promises";
-dotenv.config();
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 
+/**
+ * Every YouTube channel has a hidden "uploads" playlist listing all
+ * its videos newest-first. We fetch that playlist ID once, then page
+ * through playlistItems (cheap, 1 unit) instead of search.list
+ * (100 units/call).
+ */
 async function getChannelUploadsPlaylistId(channelId) {
   const { data } = await axios.get(`${YOUTUBE_API_BASE}/channels`, {
     params: {
@@ -26,6 +70,77 @@ async function getChannelUploadsPlaylistId(channelId) {
   }
 
   return items[0].contentDetails.relatedPlaylists.uploads;
+}
+
+/**
+ * Returns recent video metadata (videoId, title, publishedAt) from the
+ * channel, filtered to those published within `minutesBack` minutes,
+ * newest first, capped at `maxVideos`.
+ */
+/**
+ * Quick, free (no API call) heuristic to catch livestream VODs by title
+ * pattern. Channels like Sky Sports Cricket / talkSPORT consistently title
+ * these "LIVE | ..." or "LIVE: ...". Livestream VODs often never get
+ * auto-captions the way normal uploads do (or take far longer), so these
+ * were burning through the full transcript-retry ceiling for nothing --
+ * this catches them BEFORE they ever enter the retry queue.
+ */
+export function looksLikeLivestreamTitle(title = "") {
+  return /^\s*live\s*[|:]/i.test(title);
+}
+
+/**
+ * Fetches a video's real duration (minutes) AND live-broadcast status in
+ * ONE API call (1 unit) via videos.list. liveBroadcastContent is "live",
+ * "upcoming", or "none" -- "live"/"upcoming" means it's currently
+ * live/scheduled and definitely has no transcript yet. Returns null
+ * fields if the lookup fails for any reason; callers should fall back to
+ * a sane default rather than crash.
+ */
+export async function getVideoMetadata(videoId) {
+  try {
+    const { data } = await axios.get(`${YOUTUBE_API_BASE}/videos`, {
+      params: {
+        part: "snippet,contentDetails",
+        id: videoId,
+        key: YOUTUBE_API_KEY,
+      },
+      timeout: 15000,
+    });
+
+    const item = data.items?.[0];
+    if (!item) return { durationMinutes: null, liveBroadcastContent: null };
+
+    const iso = item.contentDetails?.duration; // e.g. "PT15M33S"
+    let durationMinutes = null;
+    if (iso) {
+      const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (match) {
+        const hours = parseInt(match[1] || "0", 10);
+        const minutes = parseInt(match[2] || "0", 10);
+        const seconds = parseInt(match[3] || "0", 10);
+        durationMinutes = hours * 60 + minutes + seconds / 60;
+      }
+    }
+
+    return {
+      durationMinutes,
+      liveBroadcastContent: item.snippet?.liveBroadcastContent ?? null, // "live" | "upcoming" | "none"
+    };
+  } catch (err) {
+    console.warn(`⚠️ Failed to fetch metadata for ${videoId}:`, err.message);
+    return { durationMinutes: null, liveBroadcastContent: null };
+  }
+}
+
+/**
+ * Kept for backward compatibility with any existing callers -- prefer
+ * getVideoMetadata() for new code since it gets duration AND live-status
+ * in a single API call instead of two.
+ */
+export async function getVideoDurationMinutes(videoId) {
+  const { durationMinutes } = await getVideoMetadata(videoId);
+  return durationMinutes;
 }
 
 export async function getRecentVideos({
@@ -95,6 +210,15 @@ export async function fetchTranscriptText(videoId, lang = "en") {
   }
 }
 
+/**
+ * Main entry point. Combines getRecentVideos + fetchTranscriptText.
+ * Returns an array of video objects, each with metadata plus
+ * transcriptText (string) or transcriptText: null if unavailable.
+ *
+ * Videos with no transcript are still included (transcriptText: null)
+ * so the caller/pipeline can log or skip them explicitly, rather than
+ * silently vanishing.
+ */
 export async function getRecentTranscripts({
   channelId,
   minutesBack = 240,
@@ -136,15 +260,6 @@ if (isMainModule) {
       minutesBack,
       maxVideos,
     });
-
-    await fs.writeFile(
-      "test-transcript.txt",
-      videos[0].transcriptText,
-      "utf-8",
-    );
-    console.log(
-      `Saved ${videos[0].transcriptText.length} chars to test-transcript.txt`,
-    );
 
     if (videos.length === 0) {
       console.log(`No videos found in the last ${minutesBack} minutes.`);
