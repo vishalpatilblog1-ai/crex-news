@@ -771,6 +771,19 @@ ATTRIBUTION RULE (STRICT)
 - If WHO spoke (or that they chose to speak) is more significant than WHAT they said — lead with the act, not the quote
 
 ═══════════════════════════════════════════
+NAME ACCURACY RULE
+═══════════════════════════════════════════
+Auto-generated transcripts frequently mangle names phonetically. When a named
+journalist, commentator, or analyst appears in the source material and you
+recognize them as a known cricket media figure, use their correct standard
+public spelling from your own knowledge — not whatever garbled version
+appears in the transcript. If you are NOT confident which real person is
+being referred to (genuine ambiguity, or the name doesn't clearly match
+anyone you recognize), do not guess a spelling — refer to them by role or
+publication instead (e.g. "a Cricinfo journalist," "the commentator") rather
+than output a name you're unsure is correct.
+
+═══════════════════════════════════════════
 LANGUAGE RULES
 ═══════════════════════════════════════════
 Banned phrases (never use):
