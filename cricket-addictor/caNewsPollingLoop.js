@@ -223,6 +223,7 @@ export async function caNewsPollingLoop() {
     });
 
     tweetText = applySourceSignature(tweetText, "CA");
+    tweetText = tweetText.trim().replace(/\.?$/, ".");
 
     const tweetId = `CA:${cleanLink}`;
 

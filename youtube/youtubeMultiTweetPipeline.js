@@ -523,6 +523,7 @@ async function processVideo(video, { maxAngles, articleType }) {
       angleIndex: i,
       imageUrl: generatedImagePath || null,
     });
+    result.tweetText = result.tweetText.trim() + " !";
     postedThisRun.push(result.tweetText);
 
     // Feed this story into the SHARED dailyContext pool so CricketAddictor
