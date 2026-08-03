@@ -13,6 +13,14 @@ export async function judgeNewsContext({ articleText, existingContexts = [] }) {
     throw new Error("Article text too short for context judgment");
   }
 
+  // Cap to the most recent N -- older-in-the-day contexts are the least
+  // likely to be a duplicate of something just published, and this stops
+  // the prompt (and cost) from growing across the whole day as more gets
+  // tweeted. Take the LAST 20, since contexts are pushed in chronological
+  // order and recency is what matters for catching a real duplicate.
+  const MAX_EXISTING_CONTEXTS = 20;
+  const cappedContexts = existingContexts.slice(-MAX_EXISTING_CONTEXTS);
+
   const systemPrompt = `
   You are a cricket news editor for a fast-moving X (Twitter) account.
 
@@ -71,9 +79,9 @@ ${articleText}
 
 TODAY'S ALREADY COVERED CONTEXTS:
 ${
-  existingContexts.length === 0
+  cappedContexts.length === 0
     ? "- None"
-    : existingContexts.map((c, i) => `${i}. ${c}`).join("\n")
+    : cappedContexts.map((c, i) => `${i}. ${c}`).join("\n")
 }
 
 Return JSON in this exact format:
@@ -91,7 +99,13 @@ Return JSON in this exact format:
     model: "claude-haiku-4-5-20251001",
     max_tokens: 400,
     temperature: 0,
-    system: systemPrompt,
+    system: [
+      {
+        type: "text",
+        text: systemPrompt,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     messages: [{ role: "user", content: userPrompt }],
   });
 

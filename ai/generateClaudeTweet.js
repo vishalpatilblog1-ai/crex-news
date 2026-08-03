@@ -18,8 +18,7 @@ export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   // "milestone_record",
 ]);
 
-export async function classifyArticle(articleText) {
-  const prompt = `
+const CLASSIFY_ARTICLE_SYSTEM_PROMPT = `
 Classify this cricket article into ONE of these types:
 
 - match_report        (result, scorecard, match summary)
@@ -79,16 +78,21 @@ any team and tournament anywhere in the world.
 Classify based on content structure only — not format or gender.
 
 Return ONLY the type name. No explanation. No punctuation.
-
-ARTICLE:
-${articleText}
 `;
 
+export async function classifyArticle(articleText) {
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 20,
     temperature: 0,
-    messages: [{ role: "user", content: prompt }],
+    system: [
+      {
+        type: "text",
+        text: CLASSIFY_ARTICLE_SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: `ARTICLE:\n${articleText}` }],
   });
   const usage = response.usage;
   const inputCost = (usage.input_tokens / 1_000_000) * 1;
@@ -897,9 +901,13 @@ ABSOLUTE NOs
 
 ${ENGAGEMENT_FRAMEWORKS}
 
-${articleTypeInstruction}
 `;
 }
+// NOTE: buildSystemPrompt() above intentionally no longer appends
+// articleTypeInstruction. It's passed as its own separate cache_control
+// block in the API call below, so that switching article types between
+// consecutive calls only misses cache on that small block -- not on this
+// entire (much larger) universal-rules block.
 
 const CARD_IMAGE_TYPES = new Set([
   "match_report",
@@ -914,18 +922,13 @@ const CARD_IMAGE_TYPES = new Set([
   // "tactical_analysis",
 ]);
 
-async function _generateTweet(articleText, articleType) {
-  const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
-  const systemPrompt = buildSystemPrompt(articleTypeInstruction);
-
-  const needsCard = CARD_IMAGE_TYPES.has(articleType);
-
-  const userPrompt = `
-[NEWS CONTEXT]
-${articleText}
-
-DRAFT A SINGLE ORIGINAL TWEET.
-
+// Everything below is 100% static per needsCard value (only two possible
+// variants) -- previously this whole block lived inline in userPrompt and
+// was billed fresh on every single call. Pulling it out into its own
+// cache_control block means it's now cached same as the rest of the system
+// prompt, instead of being the one uncached chunk dragging cost up.
+function buildStaticInstructionsBlock(needsCard) {
+  return `
 OUTPUT RULES:
 - Output ONLY the tweet text — no explanation, no preamble, no label, no article type mention
 - The tweet must feel natural and human — not like it was assembled from a template
@@ -1049,21 +1052,26 @@ No card needed for this article type. Output tweet text only.
 `
 }
 `;
+}
 
-  // const response = await client.messages.create({
-  //   model: "claude-sonnet-5",
-  //   max_tokens: 1500,
-  //   system: systemPrompt,
-  //   messages: [{ role: "user", content: userPrompt }],
-  // });
+async function _generateTweet(articleText, articleType) {
+  const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
+  const systemPrompt = buildSystemPrompt(articleTypeInstruction);
 
-  // const response = await client.messages.create({
-  //   model: "claude-sonnet-5",
-  //   max_tokens: 1500,
-  //   thinking: { type: "disabled" },
-  //   system: systemPrompt,
-  //   messages: [{ role: "user", content: userPrompt }],
-  // });
+  const needsCard = CARD_IMAGE_TYPES.has(articleType);
+
+  // Only the article text + trigger line are genuinely different call to
+  // call -- everything else (output rules, checklist, card format) now
+  // lives in cached system blocks below instead of being rebuilt into this
+  // message and billed fresh every time.
+  const userPrompt = `
+[NEWS CONTEXT]
+${articleText}
+
+DRAFT A SINGLE ORIGINAL TWEET.
+`;
+
+  const staticInstructionsBlock = buildStaticInstructionsBlock(needsCard);
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
@@ -1071,8 +1079,27 @@ No card needed for this article type. Output tweet text only.
     thinking: { type: "disabled" },
     system: [
       {
+        // Universal rules -- identical on every call regardless of article
+        // type, so this stays cached even when the type below changes.
         type: "text",
         text: systemPrompt,
+        cache_control: { type: "ephemeral" },
+      },
+      {
+        // Type-specific instruction -- only ~12 possible values, so this
+        // still caches well across consecutive same-type calls without
+        // invalidating the (much larger) universal block above when the
+        // type changes.
+        type: "text",
+        text: articleTypeInstruction,
+        cache_control: { type: "ephemeral" },
+      },
+      {
+        // Output rules / final-check audit / card-field spec -- only two
+        // possible variants (needsCard true/false), previously lived
+        // uncached inside userPrompt on every single call.
+        type: "text",
+        text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
       },
     ],

@@ -54,13 +54,6 @@ OUTPUT ONLY the tweet text. No explanation, no label, no preamble.
 
   try {
     let response;
-    // response = await client.messages.create({
-    //   model: "claude-haiku-4-5-20251001",
-    //   max_tokens: 280,
-    //   temperature: 0.85,
-    //   system: SYSTEM_PROMPT,
-    //   messages: [{ role: "user", content: userPrompt }],
-    // });
 
     const rawText = response.content[0].text || "";
 
@@ -76,7 +69,7 @@ OUTPUT ONLY the tweet text. No explanation, no label, no preamble.
 
     if (caption.length > 280) {
       console.warn(
-        `⚠️ generateCaption: caption too long (${caption.length} chars)`
+        `⚠️ generateCaption: caption too long (${caption.length} chars)`,
       );
     }
 
