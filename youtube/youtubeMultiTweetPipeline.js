@@ -46,7 +46,7 @@ import {
 // TODO: fix these import paths to match your actual project structure
 // import { generateClaudeTweetWithType } from "../generateClaudeTweet.js";
 import { loadState, saveState } from "../utils/stateStoreCloud.js";
-import { enqueueTweet } from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
 dotenv.config();
@@ -523,7 +523,8 @@ async function processVideo(video, { maxAngles, articleType }) {
       angleIndex: i,
       imageUrl: generatedImagePath || null,
     });
-    result.tweetText = result.tweetText.trim() + " !";
+
+    tweetText = applySourceSignature(result.tweetText, "YT");
     postedThisRun.push(result.tweetText);
 
     // Feed this story into the SHARED dailyContext pool so CricketAddictor

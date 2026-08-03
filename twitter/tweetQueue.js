@@ -8,6 +8,12 @@ global.NEXT_TWEET_ALLOWED_AT ??= 0;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 
+// Don't post two tweets about the same person within this window -- lets a
+// strong 2nd/3rd angle on the same subject (e.g. two Anil Chaudhary angles
+// from one interview) still go out, just spaced apart instead of back-to-back
+// in a follower's scroll. Skip-ahead, not suppression -- nothing is dropped.
+const SAME_SUBJECT_COOLDOWN_MS = 3 * 60 * 60 * 1000; // 3h
+
 function randomTweetDelay(source) {
   const MIN = 2 * 60 * 1000;
   const MAX = 4 * 60 * 1000;
@@ -70,6 +76,35 @@ function markTweeted(trigger, source) {
   );
 }
 
+// Best-effort extraction of the primary named person a tweet is about, used
+// only for same-subject spacing below. Looks for a "Firstname Lastname"
+// style pattern (works for "Anil Chaudhary", "Eoin Morgan", "Virat Kohli",
+// etc). Heuristic, not exhaustive -- missing a name just means no spacing
+// gets applied for that tweet, which is a safe failure mode (same as today).
+function extractSubjectKey(text) {
+  if (!text) return null;
+  const match = text.match(/\b([A-Z][a-zA-Z'-]+ [A-Z][a-zA-Z'-]+)\b/);
+  return match ? match[1] : null;
+}
+
+function isSubjectOnCooldown(STATE, subjectKey) {
+  if (!subjectKey) return false;
+  const lastAt = STATE.lastPostedBySubject?.[subjectKey];
+  if (!lastAt) return false;
+  return Date.now() - lastAt < SAME_SUBJECT_COOLDOWN_MS;
+}
+
+// Finds the earliest queued tweet that's allowed to post right now, skipping
+// PAST (never dropping) any tweet whose subject already posted recently.
+// Everything stays in the queue in its original order -- this just decides
+// which one goes out next.
+function pickNextEligibleIndex(STATE) {
+  for (let i = 0; i < STATE.tweetQueue.length; i++) {
+    if (!isSubjectOnCooldown(STATE, STATE.tweetQueue[i].subjectKey)) return i;
+  }
+  return -1; // everything currently queued shares a recently-posted subject
+}
+
 export function enqueueTweet({
   id,
   source,
@@ -77,6 +112,7 @@ export function enqueueTweet({
   imageUrl,
   seenKey,
   publishedAt,
+  subjectKey, // optional -- pass explicitly (e.g. card.player) when the caller already knows it; falls back to a best-effort guess from the text
 }) {
   const STATE = global.STATE;
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
@@ -89,6 +125,7 @@ export function enqueueTweet({
     text,
     imageUrl,
     seenKey,
+    subjectKey: subjectKey ?? extractSubjectKey(text),
     publishedAt: publishedAt ?? Date.now(), // real article pubDate, used for the 60-min freshness check at flush time
     createdAt: Date.now(),
   });
@@ -127,11 +164,20 @@ export async function tryFlushTweetQueue() {
 
   if (!STATE.tweetQueue.length) return false;
 
-  const next = STATE.tweetQueue[0];
+  const index = pickNextEligibleIndex(STATE);
+
+  if (index === -1) {
+    console.log(
+      "⏳ Every queued tweet shares a subject posted within the last 3h — waiting for cooldown.",
+    );
+    return false;
+  }
+
+  const next = STATE.tweetQueue[index];
 
   if (!canTweetNow(next.source)) return false;
 
-  STATE.tweetQueue.shift();
+  STATE.tweetQueue.splice(index, 1);
 
   try {
     if (CONSOLE_ONLY) {
@@ -159,6 +205,11 @@ export async function tryFlushTweetQueue() {
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
     }
 
+    if (next.subjectKey) {
+      STATE.lastPostedBySubject ??= {};
+      STATE.lastPostedBySubject[next.subjectKey] = Date.now();
+    }
+
     markTweeted("QUEUE", next.source);
     await saveState(STATE);
 
@@ -167,7 +218,7 @@ export async function tryFlushTweetQueue() {
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);
 
-    STATE.tweetQueue.unshift(next);
+    STATE.tweetQueue.splice(index, 0, next); // put it back at its original spot, not just the front
     await saveState(STATE);
     return false;
   }
@@ -178,6 +229,8 @@ export function applySourceSignature(text, source) {
     CT: ".",
     CB: ".",
     IE: "_",
+    CA: ".",
+    YT: " !",
   };
 
   const signature = signatureMap[source] || ".";
