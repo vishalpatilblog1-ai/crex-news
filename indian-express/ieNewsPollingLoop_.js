@@ -1,271 +1,271 @@
-// ieNewsPollingLoop.js
+// // ieNewsPollingLoop.js
 
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
-import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
-import { postTweet_ie_web } from "../twitter/twitter.js";
-import { saveState } from "../utils/stateStoreCloud.js";
+// import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+// import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+// import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
+// import { tweetWithNativeImage } from "../twitter/tweetWithImage.js";
+// import { postTweet_ie_web } from "../twitter/twitter.js";
+// import { saveState } from "../utils/stateStoreCloud.js";
 
-import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
-import { judgeNewsContext } from "./ai/judgeNewsContext.js";
-import { isIEBrandedImage } from "./detectIEBranding.js";
+// import { generateIEFallbackTweet } from "./ai/generateIEFallbackTweet.js";
+// import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+// import { isIEBrandedImage } from "./detectIEBranding.js";
 
-import { fetchIEArticle } from "./fetchIEArticle.js";
-import { getIEImageUrl } from "./getIEImageUrl.js";
-import { isIEArticle, normalizeIELink } from "./ieFilters.js";
-import { fetchIECricketRSS } from "./ieRssFetcher.js";
-import { parseIEArticle } from "./parseIEArticle.js";
+// import { fetchIEArticle } from "./fetchIEArticle.js";
+// import { getIEImageUrl } from "./getIEImageUrl.js";
+// import { isIEArticle, normalizeIELink } from "./ieFilters.js";
+// import { fetchIECricketRSS } from "./ieRssFetcher.js";
+// import { parseIEArticle } from "./parseIEArticle.js";
 
-export async function ieNewsPollingLoop() {
-  if (!global.STATE) {
-    console.log("⚠️ global.STATE not ready. Skipping IE polling.");
-    return;
-  }
+// export async function ieNewsPollingLoop() {
+//   if (!global.STATE) {
+//     console.log("⚠️ global.STATE not ready. Skipping IE polling.");
+//     return;
+//   }
 
-  const STATE = global.STATE;
+//   const STATE = global.STATE;
 
-  STATE.ie ??= {};
-  STATE.ie.seen ??= {};
+//   STATE.ie ??= {};
+//   STATE.ie.seen ??= {};
 
-  const today = getTodayUTC();
-  if (!STATE.dailyContext || STATE.dailyContext.date !== today) {
-    STATE.dailyContext = {
-      date: today,
-      contexts: [],
-    };
-  }
+//   const today = getTodayUTC();
+//   if (!STATE.dailyContext || STATE.dailyContext.date !== today) {
+//     STATE.dailyContext = {
+//       date: today,
+//       contexts: [],
+//     };
+//   }
 
-  const MAX_AGE_MIN = 120;
-  const SEEN_RETENTION_HOURS = 6;
-  const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+//   const MAX_AGE_MIN = 120;
+//   const SEEN_RETENTION_HOURS = 6;
+//   const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-  const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
+//   const SEEN_RETENTION_MS = SEEN_RETENTION_HOURS * 60 * 60 * 1000;
 
-  try {
-    const now = Date.now();
-    let pruned = 0;
+//   try {
+//     const now = Date.now();
+//     let pruned = 0;
 
-    for (const [link, ts] of Object.entries(STATE.ie.seen)) {
-      if (now - ts > SEEN_RETENTION_MS) {
-        delete STATE.ie.seen[link];
-        pruned++;
-      }
-    }
+//     for (const [link, ts] of Object.entries(STATE.ie.seen)) {
+//       if (now - ts > SEEN_RETENTION_MS) {
+//         delete STATE.ie.seen[link];
+//         pruned++;
+//       }
+//     }
 
-    if (pruned) {
-      console.log(`🧹 Pruned ${pruned} old IE seen entries`);
-    }
+//     if (pruned) {
+//       console.log(`🧹 Pruned ${pruned} old IE seen entries`);
+//     }
 
-    const items = await fetchIECricketRSS();
-    if (!Array.isArray(items) || items.length === 0) {
-      console.log("ℹ️ No IE RSS items");
-      return;
-    }
+//     const items = await fetchIECricketRSS();
+//     if (!Array.isArray(items) || items.length === 0) {
+//       console.log("ℹ️ No IE RSS items");
+//       return;
+//     }
 
-    const sorted = items
-      .filter(isIEArticle)
-      .sort((a, b) => getPubDate(b) - getPubDate(a));
+//     const sorted = items
+//       .filter(isIEArticle)
+//       .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-    let selected = null;
+//     let selected = null;
 
-    for (const item of sorted) {
-      const pubMs = getPubDate(item);
-      if (!pubMs) continue;
+//     for (const item of sorted) {
+//       const pubMs = getPubDate(item);
+//       if (!pubMs) continue;
 
-      const ageMin = (Date.now() - pubMs) / 60000;
-      if (ageMin > MAX_AGE_MIN) continue;
+//       const ageMin = (Date.now() - pubMs) / 60000;
+//       if (ageMin > MAX_AGE_MIN) continue;
 
-      const cleanLink = normalizeIELink(item.link);
-      if (STATE.ie.seen[cleanLink]) continue;
+//       const cleanLink = normalizeIELink(item.link);
+//       if (STATE.ie.seen[cleanLink]) continue;
 
-      selected = item;
-      break;
-    }
+//       selected = item;
+//       break;
+//     }
 
-    if (!selected) {
-      console.log("🟡 No eligible IE articles (age + dedupe)");
-      return;
-    }
+//     if (!selected) {
+//       console.log("🟡 No eligible IE articles (age + dedupe)");
+//       return;
+//     }
 
-    console.log(
-      "🆕 IE news detected:",
-      selected.title,
-      "| pubDate:",
-      selected.pubDate,
-      "| consoleOnly:",
-      CONSOLE_ONLY
-    );
+//     console.log(
+//       "🆕 IE news detected:",
+//       selected.title,
+//       "| pubDate:",
+//       selected.pubDate,
+//       "| consoleOnly:",
+//       CONSOLE_ONLY
+//     );
 
-    const html = await fetchIEArticle(selected.link);
-    const parsed = parseIEArticle(html);
+//     const html = await fetchIEArticle(selected.link);
+//     const parsed = parseIEArticle(html);
 
-    if (!parsed?.body || parsed.body.length < 80) {
-      console.warn("⚠️ IE article body missing / too short");
-      return;
-    }
+//     if (!parsed?.body || parsed.body.length < 80) {
+//       console.warn("⚠️ IE article body missing / too short");
+//       return;
+//     }
 
-    let contextDecision = null;
+//     let contextDecision = null;
 
-    try {
-      contextDecision = await judgeNewsContext({
-        articleText: parsed.body,
-        existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
-      });
+//     try {
+//       contextDecision = await judgeNewsContext({
+//         articleText: parsed.body,
+//         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
+//       });
 
-      if (
-        contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.8
-      ) {
-        // console.log(
-        //   "🔁 IE context already covered — skipping",
-        //   STATE.dailyContext.contexts.map((c) => c.summary)
-        // );
-        // console.log("↳ Context:", contextDecision.newContext);
+//       if (
+//         contextDecision?.isAlreadyCovered === true &&
+//         contextDecision?.confidence >= 0.8
+//       ) {
+//         // console.log(
+//         //   "🔁 IE context already covered — skipping",
+//         //   STATE.dailyContext.contexts.map((c) => c.summary)
+//         // );
+//         // console.log("↳ Context:", contextDecision.newContext);
 
-        const cleanLink = normalizeIELink(selected.link);
-        STATE.ie.seen[cleanLink] = Date.now();
-        STATE.ie.lastLink = cleanLink;
-        STATE.ie.lastTitle = selected.title;
-        STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+//         const cleanLink = normalizeIELink(selected.link);
+//         STATE.ie.seen[cleanLink] = Date.now();
+//         STATE.ie.lastLink = cleanLink;
+//         STATE.ie.lastTitle = selected.title;
+//         STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-        await saveState(STATE);
-        return;
-      }
-    } catch (err) {
-      console.warn(
-        "⚠️ IE context judge failed, proceeding without dedup:",
-        err.message
-      );
-    }
+//         await saveState(STATE);
+//         return;
+//       }
+//     } catch (err) {
+//       console.warn(
+//         "⚠️ IE context judge failed, proceeding without dedup:",
+//         err.message
+//       );
+//     }
 
-    let tweetBody;
+//     let tweetBody;
 
-    try {
-      // tweetBody = await generateCommonStyleTweet(
-      //   parsed.headline + parsed.body,
-      //   "Indian Express"
-      // );
+//     try {
+//       // tweetBody = await generateCommonStyleTweet(
+//       //   parsed.headline + parsed.body,
+//       //   "Indian Express"
+//       // );
 
-      // tweetBody = await generateGeminiTweet(
-      //   parsed.headline + "\n" + parsed.body
-      // );
+//       // tweetBody = await generateGeminiTweet(
+//       //   parsed.headline + "\n" + parsed.body
+//       // );
 
-      try {
-        tweetBody = await generateGeminiTweet(
-          `${parsed.headline}\n${parsed.body}`
-        );
-      } catch (err) {
-        console.warn("⚠️ Gemini failed:", err?.message || err);
-      }
+//       try {
+//         tweetBody = await generateGeminiTweet(
+//           `${parsed.headline}\n${parsed.body}`
+//         );
+//       } catch (err) {
+//         console.warn("⚠️ Gemini failed:", err?.message || err);
+//       }
 
-      if (!tweetBody) {
-        try {
-          tweetBody = await generateGPTTweet(
-            `${parsed.headline}\n${parsed.body}`
-          );
-        } catch (err) {
-          console.warn("❌ GPT failed:", err?.message || err);
-        }
-      }
+//       if (!tweetBody) {
+//         try {
+//           tweetBody = await generateGPTTweet(
+//             `${parsed.headline}\n${parsed.body}`
+//           );
+//         } catch (err) {
+//           console.warn("❌ GPT failed:", err?.message || err);
+//         }
+//       }
 
-      if (!tweetBody || tweetBody.length < 30) {
-        throw new Error("AI output invalid");
-      }
-    } catch (err) {
-      console.warn("⚠️ IE AI failed, using fallback:", err.message);
-      tweetBody = generateIEFallbackTweet(selected);
-    }
+//       if (!tweetBody || tweetBody.length < 30) {
+//         throw new Error("AI output invalid");
+//       }
+//     } catch (err) {
+//       console.warn("⚠️ IE AI failed, using fallback:", err.message);
+//       tweetBody = generateIEFallbackTweet(selected);
+//     }
 
-    let tweetText = tweetBody;
-    let imageUrl = getIEImageUrl(selected);
-    let addSource = false;
+//     let tweetText = tweetBody;
+//     let imageUrl = getIEImageUrl(selected);
+//     let addSource = false;
 
-    // without images - IE
-    // if (imageUrl) {
-    //   const lowerUrl = imageUrl.toLowerCase();
+//     // without images - IE
+//     // if (imageUrl) {
+//     //   const lowerUrl = imageUrl.toLowerCase();
 
-    //   if (lowerUrl.includes("images.indianexpress.com")) {
-    //     console.log("🚫 Skipping IE branded image:", imageUrl);
-    //     imageUrl = null; // Prevent upload
-    //     addSource = true;
-    //   }
-    // }
+//     //   if (lowerUrl.includes("images.indianexpress.com")) {
+//     //     console.log("🚫 Skipping IE branded image:", imageUrl);
+//     //     imageUrl = null; // Prevent upload
+//     //     addSource = true;
+//     //   }
+//     // }
 
-    if (imageUrl) {
-      const lowerUrl = imageUrl.toLowerCase();
+//     if (imageUrl) {
+//       const lowerUrl = imageUrl.toLowerCase();
 
-      if (
-        lowerUrl.includes("images.indianexpress.com") &&
-        !lowerUrl.includes("wp-content")
-      ) {
-        addSource = true;
-      }
-    }
+//       if (
+//         lowerUrl.includes("images.indianexpress.com") &&
+//         !lowerUrl.includes("wp-content")
+//       ) {
+//         addSource = true;
+//       }
+//     }
 
-    if (addSource) {
-      tweetText += "\n\n[Source – Indian Express]";
-    }
+//     if (addSource) {
+//       tweetText += "\n\n[Source – Indian Express]";
+//     }
 
-    console.log("imageUrl IE::", imageUrl);
-    console.log("addSource IE::", addSource);
-    const cleanUrl = normalizeIELink(selected.link);
-    const tweetId = `IE:${cleanUrl}`;
+//     console.log("imageUrl IE::", imageUrl);
+//     console.log("addSource IE::", addSource);
+//     const cleanUrl = normalizeIELink(selected.link);
+//     const tweetId = `IE:${cleanUrl}`;
 
-    enqueueTweet({
-      id: tweetId,
-      source: "IE",
-      text: tweetText,
-      imageUrl: imageUrl || null,
-      seenKey: cleanUrl,
-    });
+//     enqueueTweet({
+//       id: tweetId,
+//       source: "IE",
+//       text: tweetText,
+//       imageUrl: imageUrl || null,
+//       seenKey: cleanUrl,
+//     });
 
-    console.log(`📥 Queued IE tweet: ${selected.title}`);
+//     console.log(`📥 Queued IE tweet: ${selected.title}`);
 
-    // if (CONSOLE_ONLY) {
-    //   console.log("🔵 CONSOLE MODE — Tweet skipped");
-    //   console.log(tweetText);
-    // } else {
-    //   try {
-    //     if (imageUrl) {
-    //       await tweetWithNativeImage({ text: tweetText, imageUrl });
-    //     } else {
-    //       await postTweet_ie_web({ text: tweetText });
-    //     }
-    //   } catch (err) {
-    //     console.warn(
-    //       "⚠️ IE native image failed, fallback to text-only:",
-    //       err.message
-    //     );
-    //     await postTweet_ie_web({ text: tweetText });
-    //   }
-    // }
+//     // if (CONSOLE_ONLY) {
+//     //   console.log("🔵 CONSOLE MODE — Tweet skipped");
+//     //   console.log(tweetText);
+//     // } else {
+//     //   try {
+//     //     if (imageUrl) {
+//     //       await tweetWithNativeImage({ text: tweetText, imageUrl });
+//     //     } else {
+//     //       await postTweet_ie_web({ text: tweetText });
+//     //     }
+//     //   } catch (err) {
+//     //     console.warn(
+//     //       "⚠️ IE native image failed, fallback to text-only:",
+//     //       err.message
+//     //     );
+//     //     await postTweet_ie_web({ text: tweetText });
+//     //   }
+//     // }
 
-    STATE.ie.seen[cleanUrl] = Date.now();
-    STATE.ie.lastLink = cleanUrl;
-    STATE.ie.lastTitle = selected.title;
-    STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+//     STATE.ie.seen[cleanUrl] = Date.now();
+//     STATE.ie.lastLink = cleanUrl;
+//     STATE.ie.lastTitle = selected.title;
+//     STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-    if (contextDecision?.newContext) {
-      STATE.dailyContext.contexts.push({
-        summary: contextDecision.newContext,
-        source: "IE",
-        link: cleanUrl,
-        createdAt: new Date().toISOString(),
-      });
-    }
+//     if (contextDecision?.newContext) {
+//       STATE.dailyContext.contexts.push({
+//         summary: contextDecision.newContext,
+//         source: "IE",
+//         link: cleanUrl,
+//         createdAt: new Date().toISOString(),
+//       });
+//     }
 
-    await saveState(STATE);
-    console.log("🟢 IE state + dailyContext saved");
-  } catch (err) {
-    console.error("❌ ERROR in IE polling:", err);
-  }
-}
+//     await saveState(STATE);
+//     console.log("🟢 IE state + dailyContext saved");
+//   } catch (err) {
+//     console.error("❌ ERROR in IE polling:", err);
+//   }
+// }
 
-function getPubDate(item) {
-  return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
-}
+// function getPubDate(item) {
+//   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
+// }
 
-function getTodayUTC() {
-  return new Date().toISOString().slice(0, 10);
-}
+// function getTodayUTC() {
+//   return new Date().toISOString().slice(0, 10);
+// }
