@@ -86,7 +86,7 @@ ${articleText}
 
   try {
     const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.6-luna",
       temperature: 0,
       max_tokens: 20,
       messages: [
@@ -778,7 +778,7 @@ ${articleTypeInstruction}
 
 // ─── CORE TWEET GENERATOR ─────────────────────────────────────────────────────
 
-async function _generateTweet(articleText, articleType) {
+async function _generateTweet(articleText, articleType, isRetry = false) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemInstruction = buildSystemInstruction(articleTypeInstruction);
 
@@ -789,7 +789,7 @@ async function _generateTweet(articleText, articleType) {
 ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
-
+${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to fit 200-280 characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff.\n" : ""}
 OUTPUT RULES:
 - Output ONLY the tweet text — no explanation, no preamble, no label, no article type mention
 - The tweet must feel natural and human — not like it was assembled from a template
@@ -827,10 +827,9 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–260 characters for most types.
-  human_interest and selection_news can go up to 320 characters.
-  rivalry_bait: 2 lines, clean split — aim for 160–240 characters total. No more.
-  A tweet that fits on one screen without "show more" gets more impressions.
+- Target length: STRICT 200–280 characters for every article type, no exceptions.
+  If content would run longer, trim to its sharpest clause rather than exceeding 280.
+  Never go under 200 or over 280.
 
 LINE BREAK RULE (strict):
   Each distinct thought, beat, or contrast must be on its own line.
@@ -877,7 +876,7 @@ No card needed for this article type. Output tweet text only.
 
   try {
     const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.6-terra",
       temperature: 0.85,
       max_tokens: 400,
       messages: [
@@ -927,9 +926,22 @@ No card needed for this article type. Output tweet text only.
       return { tweetText: null, card: null };
     }
 
-    if (tweetText.length > 280) {
+    if (tweetText.length > 280 && !isRetry) {
+      console.log(
+        `📏 Tweet is ${tweetText.length} chars — over 280. Retrying once to get a complete tweet within range instead of truncating it.`,
+      );
+      return _generateTweet(articleText, articleType, true);
+    }
+
+    if (tweetText.length > 280 && isRetry) {
       console.warn(
-        `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`,
+        `⚠️ Retry still over 280 chars (${tweetText.length}) — posting as-is rather than truncating the verdict off.`,
+      );
+    }
+
+    if (tweetText.length < 200) {
+      console.warn(
+        `⚠️ Tweet is only ${tweetText.length} chars — under the 200 target. Not padding artificially; posting as-is.`,
       );
     }
 

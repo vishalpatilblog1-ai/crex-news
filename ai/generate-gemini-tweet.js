@@ -82,7 +82,7 @@ ${articleText}
 `;
 
   const res = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3.5-flash-lite",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: { temperature: 0, maxOutputTokens: 20 },
   });
@@ -642,27 +642,7 @@ ${articleTypeInstruction}
 // Returns { tweetText, card } — same shape as generateClaudeTweet
 // card is null for human_interest / opinion_piece (text-only types)
 
-export async function generateGeminiTweet(articleText) {
-  console.log("generateGeminiTweet::");
-  let articleType = "player_form";
-
-  try {
-    const classified = await classifyArticle(articleText);
-    if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
-      articleType = classified;
-      console.log("articleType::", articleType);
-    } else {
-      console.warn(`⚠️ Unknown article type "${classified}", using default`);
-    }
-  } catch (err) {
-    console.warn(
-      "⚠️ classifyArticle failed, using default:",
-      err?.message || err
-    );
-  }
-
-  console.log(`🏷️ Article classified as: ${articleType}`);
-
+async function _generateTweet(articleText, articleType, isRetry = false) {
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemInstruction = buildSystemInstruction(articleTypeInstruction);
@@ -672,7 +652,7 @@ export async function generateGeminiTweet(articleText) {
 ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
-
+${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to fit 200-280 characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff.\n" : ""}
 OUTPUT RULES:
 - Output ONLY the tweet text — no explanation, no preamble, no label, no article type mention
 - The tweet must feel natural and human — not like it was assembled from a template
@@ -702,9 +682,9 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: 140–260 characters for most types.
-  human_interest and selection_news can go up to 320 characters — emotional stories and debates need space.
-  A tweet that fits on one screen without "show more" gets more impressions.
+- Target length: STRICT 200–280 characters for every article type, no exceptions.
+  If content would run longer, trim to its sharpest clause rather than exceeding 280.
+  Never go under 200 or over 280.
 
 ${
   needsCard
@@ -734,7 +714,7 @@ No card needed for this article type. Output tweet text only.
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3.6-flash",
       contents: [{ role: "user", parts: [{ text: userPrompt }] }],
       config: {
         systemInstruction,
@@ -783,15 +763,57 @@ No card needed for this article type. Output tweet text only.
       return { tweetText: null, card: null };
     }
 
-    if (tweetText.length > 280) {
+    if (tweetText.length > 280 && !isRetry) {
+      console.log(
+        `📏 Tweet is ${tweetText.length} chars — over 280. Retrying once to get a complete tweet within range instead of truncating it.`,
+      );
+      return _generateTweet(articleText, articleType, true);
+    }
+
+    if (tweetText.length > 280 && isRetry) {
       console.warn(
-        `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`
+        `⚠️ Retry still over 280 chars (${tweetText.length}) — posting as-is rather than truncating the verdict off.`,
+      );
+    }
+
+    if (tweetText.length < 200) {
+      console.warn(
+        `⚠️ Tweet is only ${tweetText.length} chars — under the 200 target. Not padding artificially; posting as-is.`,
       );
     }
 
     console.log(`🃏 Gemini card fields:`, card ?? "none (text-only type)");
 
     return { tweetText, card };
+  } catch (err) {
+    console.error("❌ Gemini Tweet Generation Error:", err);
+    return { tweetText: null, card: null };
+  }
+}
+
+export async function generateGeminiTweet(articleText) {
+  console.log("generateGeminiTweet::");
+  let articleType = "player_form";
+
+  try {
+    const classified = await classifyArticle(articleText);
+    if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
+      articleType = classified;
+      console.log("articleType::", articleType);
+    } else {
+      console.warn(`⚠️ Unknown article type "${classified}", using default`);
+    }
+  } catch (err) {
+    console.warn(
+      "⚠️ classifyArticle failed, using default:",
+      err?.message || err,
+    );
+  }
+
+  console.log(`🏷️ Article classified as: ${articleType}`);
+
+  try {
+    return await _generateTweet(articleText, articleType);
   } catch (err) {
     console.error("❌ Gemini Tweet Generation Error:", err);
     return { tweetText: null, card: null };
