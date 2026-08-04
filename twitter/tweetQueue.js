@@ -14,6 +14,40 @@ const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 // in a follower's scroll. Skip-ahead, not suppression -- nothing is dropped.
 const SAME_SUBJECT_COOLDOWN_MS = 3 * 60 * 60 * 1000; // 3h
 
+// HARD SAFETY VALVE: spacing must never become a full stoppage. If nothing
+// in the queue has been eligible for this long, the oldest tweet posts
+// anyway, cooldown or not. This is what was missing before -- without it,
+// a false-positive "subject" match (see extractSubjectKey below) could
+// block the entire queue indefinitely, which is exactly what happened.
+const MAX_WAIT_BEFORE_OVERRIDE_MS = 20 * 60 * 1000; // 20 min
+
+// Generic cricket terms that are NOT a specific person -- extractSubjectKey
+// would otherwise match these as if they were a "Firstname Lastname" name,
+// since they're two capitalized words too. This was the root cause of the
+// full-queue lockup: nearly every tweet mentions one of these, so they all
+// ended up sharing a "subject" and blocking each other.
+const GENERIC_TERM_BLOCKLIST = new Set([
+  "World Cup",
+  "Test Series",
+  "Test Match",
+  "T20 World",
+  "T20I Series",
+  "ODI Series",
+  "ODI World",
+  "Sri Lanka",
+  "South Africa",
+  "New Zealand",
+  "West Indies",
+  "Team India",
+  "IPL 2026",
+  "IPL 2027",
+  "Asian Games",
+  "Cricket Australia",
+  "Chief Selector",
+  "Head Coach",
+  "Board Of",
+]);
+
 function randomTweetDelay(source) {
   const MIN = 2 * 60 * 1000;
   const MAX = 4 * 60 * 1000;
@@ -80,11 +114,21 @@ function markTweeted(trigger, source) {
 // only for same-subject spacing below. Looks for a "Firstname Lastname"
 // style pattern (works for "Anil Chaudhary", "Eoin Morgan", "Virat Kohli",
 // etc). Heuristic, not exhaustive -- missing a name just means no spacing
-// gets applied for that tweet, which is a safe failure mode (same as today).
+// gets applied for that tweet, which is a safe failure mode.
+//
+// Explicitly filters out generic two-word cricket terms (see
+// GENERIC_TERM_BLOCKLIST) that match the same "Capitalized Word +
+// Capitalized Word" shape as a name but aren't a person -- e.g. "World Cup",
+// "Sri Lanka". Without this filter, most tweets end up sharing a fake
+// "subject" and blocking each other, which is what caused the full queue
+// lockup.
 function extractSubjectKey(text) {
   if (!text) return null;
-  const match = text.match(/\b([A-Z][a-zA-Z'-]+ [A-Z][a-zA-Z'-]+)\b/);
-  return match ? match[1] : null;
+  const matches = text.matchAll(/\b([A-Z][a-zA-Z'-]+ [A-Z][a-zA-Z'-]+)\b/g);
+  for (const m of matches) {
+    if (!GENERIC_TERM_BLOCKLIST.has(m[1])) return m[1];
+  }
+  return null;
 }
 
 function isSubjectOnCooldown(STATE, subjectKey) {
@@ -164,13 +208,26 @@ export async function tryFlushTweetQueue() {
 
   if (!STATE.tweetQueue.length) return false;
 
-  const index = pickNextEligibleIndex(STATE);
+  let index = pickNextEligibleIndex(STATE);
 
   if (index === -1) {
-    console.log(
-      "⏳ Every queued tweet shares a subject posted within the last 3h — waiting for cooldown.",
-    );
-    return false;
+    // Safety valve: never let cooldown spacing fully deadlock the queue.
+    // If the oldest queued tweet has been waiting past the override
+    // threshold, post it regardless of subject cooldown.
+    const head = STATE.tweetQueue[0];
+    const waitedMs = Date.now() - (head.createdAt ?? Date.now());
+
+    if (waitedMs >= MAX_WAIT_BEFORE_OVERRIDE_MS) {
+      console.log(
+        `⚠️ Oldest queued tweet has waited ${Math.round(waitedMs / 60000)}m on subject cooldown — overriding and posting it anyway.`,
+      );
+      index = 0;
+    } else {
+      console.log(
+        "⏳ Every queued tweet shares a subject posted within the last 3h — waiting for cooldown.",
+      );
+      return false;
+    }
   }
 
   const next = STATE.tweetQueue[index];
