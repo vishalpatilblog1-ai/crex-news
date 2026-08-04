@@ -1,5 +1,6 @@
 // cricket-addictor/caNewsPollingLoop.js
 
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   generateGPTTweet,
   generateGPTTweetWithType,
@@ -182,7 +183,12 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+        // const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+        //   fullText,
+        //   articleType,
+        // );
+
+        const { tweetText: gptTweet, card } = await generateGeminiTweet(
           fullText,
           articleType,
         );
