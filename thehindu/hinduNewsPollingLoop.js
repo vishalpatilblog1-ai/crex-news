@@ -16,7 +16,7 @@ import {
 } from "../ai/generateClaudeTweet.js";
 import { normalizeHinduImageUrl } from "../indian-express/ai/imageDetector.js";
 import { enqueueTweet } from "../twitter/tweetQueue.js";
-import { judgeNewsContext } from "./ai/judgeNewsContext.js";
+import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
 const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -131,7 +131,7 @@ export async function hinduNewsPollingLoop() {
 
       if (!isExempt && score < 7) {
         console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`
+          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
         );
         const cleanLink = normalizeHinduLink(selected.link);
         STATE.hindu.seen[cleanLink] = Date.now();
@@ -144,7 +144,7 @@ export async function hinduNewsPollingLoop() {
 
       if (isExempt) {
         console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
         );
       } else {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
@@ -203,7 +203,7 @@ export async function hinduNewsPollingLoop() {
     STATE.hindu.seen[cleanUrl] = Date.now();
     STATE.hindu.lastPubMs = Math.max(
       STATE.hindu.lastPubMs || 0,
-      getPubDate(selected)
+      getPubDate(selected),
     );
     STATE.hindu.lastLink = cleanUrl;
     STATE.hindu.lastTitle = selected.title;
