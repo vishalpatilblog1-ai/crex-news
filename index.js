@@ -14,6 +14,7 @@ import { caNewsPollingLoop } from "./cricket-addictor/caNewsPollingLoop.js";
 import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
 
 import { ndtvNewspolling } from "./ndtv/ndtvNewspolling.js";
+import { skNewsPollingLoop } from "./sportskeeda-cricket/skNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
@@ -86,6 +87,11 @@ async function bootstrap() {
   if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
     console.log("📺 YouTube transcript polling enabled");
     setInterval(youtubeNewsPollingLoop, 1000 * 60 * 0.3); // every 15 min
+  }
+
+  if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
+    console.log("The sportskeeda news polling enabled");
+    setInterval(skNewsPollingLoop, 1000 * 60 * 2); // every 15 min
   }
 }
 
