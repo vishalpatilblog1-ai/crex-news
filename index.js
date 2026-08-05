@@ -60,13 +60,8 @@ async function bootstrap() {
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
     console.log("📰 Ndtv news polling enabled");
-    setInterval(ndtvNewspolling, 1000 * 60 * 4);
+    setInterval(ndtvNewspolling, 1000 * 60 * 2);
   }
-
-  // if (process.env.ENABLE_NDTV_FOOTBALL_NEWS_POLLING === "true") {
-  //   console.log("📰 Ndtv football news polling enabled");
-  //   setInterval(ndtvFootballNewspolling, 1000 * 60 * 0.2);
-  // }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("The Hindu news polling enabled");
