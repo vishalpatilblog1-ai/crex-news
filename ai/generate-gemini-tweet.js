@@ -95,6 +95,12 @@ ${articleText}
     model: "gemini-3.5-flash-lite",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: { temperature: 0, maxOutputTokens: 20 },
+    // config: {
+    //   systemInstruction,
+    //   temperature: 0.5,
+    //   maxOutputTokens: 600,
+    //   thinkingConfig: { thinkingLevel: "low" },
+    // },
   });
 
   return res?.text?.trim()?.toLowerCase() || "player_form";
@@ -901,7 +907,12 @@ ${articleTypeInstruction}
 // Returns { tweetText, card } — same shape as generateClaudeTweet
 // card is null for human_interest / opinion_piece (text-only types)
 
-async function _generateTweet(articleText, articleType, isRetry = false) {
+async function _generateTweet(
+  articleText,
+  articleType,
+  isRetry = false,
+  retryReason = null,
+) {
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemInstruction = buildSystemInstruction(articleTypeInstruction);
@@ -911,7 +922,13 @@ async function _generateTweet(articleText, articleType, isRetry = false) {
 ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
-${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to fit 200-280 characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff.\n" : ""}
+${
+  retryReason === "length"
+    ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to fit 200-280 characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff.\n"
+    : retryReason === "incomplete"
+      ? "\nSTRICT: your previous response was cut off before it finished. Write a complete, self-contained tweet that reaches a full closing verdict within the length limit.\n"
+      : ""
+}
 OUTPUT RULES:
 - Output ONLY the tweet text — no explanation, no preamble, no label, no article type mention
 - The tweet must feel natural and human — not like it was assembled from a template
@@ -1035,7 +1052,8 @@ No card needed for this article type. Output tweet text only.
       config: {
         systemInstruction,
         temperature: 0.5,
-        maxOutputTokens: 600, // bumped to accommodate card JSON
+        maxOutputTokens: 1500, // was 600 -- Gemini 3.x combines thinking + visible output into ONE pool, and "LOW" thinking level is NOT a guaranteed zero. This prompt has a dense multi-hundred-line rule/checklist system+user prompt, so even "LOW" reasoning over that many simultaneous constraints can burn real tokens before the tweet text starts. 1500 matches the budget already used for Claude.
+        thinkingConfig: { thinkingLevel: "LOW" },
       },
     });
 
@@ -1043,6 +1061,41 @@ No card needed for this article type. Output tweet text only.
 
     if (!rawText) {
       console.warn("⚠️ Gemini returned empty response");
+      return { tweetText: null, card: null };
+    }
+
+    // ── Diagnostic: expose the actual token split ────────────────────────────
+    // Ground truth for whether thinking tokens are eating the budget. Keep
+    // this logging until MAX_TOKENS stops recurring, then it can be removed.
+    const usage = response?.usageMetadata;
+    if (usage) {
+      console.log(
+        `📊 Token usage — prompt: ${usage.promptTokenCount ?? "?"}, thinking: ${usage.thoughtsTokenCount ?? 0}, output: ${usage.candidatesTokenCount ?? "?"}, total: ${usage.totalTokenCount ?? "?"}`,
+      );
+    }
+
+    // ── Check whether generation actually completed cleanly ─────────────────
+    // "STOP" is the only value that means the model reached a natural end.
+    // Anything else (MAX_TOKENS, SAFETY, RECITATION, LANGUAGE, BLOCKLIST,
+    // PROHIBITED_CONTENT, SPII, MALFORMED, ...) means the text we got back
+    // is a fragment, not a finished tweet -- even if it happens to look like
+    // a complete sentence. Posting it as-is risks shipping broken/truncated
+    // copy with no visible sign anything went wrong.
+    const finishReason = response?.candidates?.[0]?.finishReason;
+
+    if (finishReason && finishReason !== "STOP") {
+      console.warn(
+        `⚠️ Gemini generation did not finish cleanly (finishReason: ${finishReason}) — treating response as incomplete.`,
+      );
+
+      if (!isRetry) {
+        console.log(`🔁 Retrying once due to finishReason: ${finishReason}.`);
+        return _generateTweet(articleText, articleType, true, "incomplete");
+      }
+
+      console.warn(
+        `⚠️ Retry also returned finishReason: ${finishReason} — discarding this tweet rather than posting an incomplete response. If this keeps recurring with MAX_TOKENS, raise maxOutputTokens further; if it's SAFETY/PROHIBITED_CONTENT/BLOCKLIST, the article's framing is tripping Gemini's classifier and may need a softer angle or should fall back to another model.`,
+      );
       return { tweetText: null, card: null };
     }
 
@@ -1092,7 +1145,7 @@ No card needed for this article type. Output tweet text only.
       console.log(
         `📏 Tweet is ${tweetText.length} chars — over 280. Retrying once to get a complete tweet within range instead of truncating it.`,
       );
-      return _generateTweet(articleText, articleType, true);
+      return _generateTweet(articleText, articleType, true, "length");
     }
 
     if (tweetText.length > 280 && isRetry) {
@@ -1106,8 +1159,11 @@ No card needed for this article type. Output tweet text only.
         `⚠️ Tweet is only ${tweetText.length} chars — under the 200 target. Not padding artificially; posting as-is.`,
       );
     }
-    console.log("tweet generated by gemini prompt::", tweetText);
-    console.log(`🃏 Gemini card fields:`, card ?? "none (text-only type)");
+
+    console.log("Tweet generated by gemini prompt::");
+    console.log("================================= \n");
+    console.log(tweetText);
+    console.log("\n=================================");
 
     return { tweetText, card };
   } catch (err) {
