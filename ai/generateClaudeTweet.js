@@ -1075,6 +1075,7 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
   const response = await client.messages.create({
     model: "claude-sonnet-5",
     max_tokens: 1500,
+    temperature: 0.7,
     thinking: { type: "disabled" },
     system: [
       {
@@ -1135,11 +1136,20 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
 
     if (markerIndex !== -1) {
       tweetText = rawText.slice(0, markerIndex).trim();
-      const jsonStr = rawText.slice(markerIndex + cardMarker.length).trim();
-      try {
-        card = JSON.parse(jsonStr);
-      } catch (e) {
-        console.warn("⚠️ Failed to parse card JSON:", jsonStr);
+      const afterMarker = rawText.slice(markerIndex + cardMarker.length);
+      const jsonMatch = afterMarker.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          card = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          console.warn("⚠️ Failed to parse card JSON:", jsonMatch[0]);
+          card = null;
+        }
+      } else {
+        console.warn(
+          "⚠️ No JSON object found after CARD_JSON marker:",
+          afterMarker,
+        );
         card = null;
       }
     } else {
@@ -1236,6 +1246,11 @@ export async function generateClaudeTweetWithType(articleText, articleType) {
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
-    return { tweetText: null, articleType: resolvedType, card: null };
+    return {
+      tweetText: null,
+      articleType: resolvedType,
+      card: null,
+      source: "claude",
+    };
   }
 }

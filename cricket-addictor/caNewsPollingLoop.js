@@ -158,8 +158,14 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType);
+      // const { tweetText: tweetToPost, card } =
+      //   await generateClaudeTweetWithType(fullText, articleType);
+
+      const {
+        tweetText: gptTweet,
+        card,
+        source,
+      } = await generateGeminiTweet(fullText, articleType);
 
       tweetText = tweetToPost;
 
@@ -183,15 +189,17 @@ export async function caNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        // const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
-        //   fullText,
-        //   articleType,
-        // );
-
-        const { tweetText: gptTweet, card } = await generateGeminiTweet(
+        const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
           fullText,
           articleType,
         );
+
+        // const {
+        //   tweetText: gptTweet,
+        //   card,
+        //   source,
+        // } = await generateGeminiTweet(fullText, articleType);
+
         tweetText = gptTweet;
 
         if (card) {
@@ -201,7 +209,7 @@ export async function caNewsPollingLoop() {
               card,
             );
 
-            console.log("GPT generatedPath:::", generatedPath);
+            // console.log("GPT generatedPath:::", generatedPath);
           } catch (err) {
             console.error("❌ Image generation failed:", err);
           }

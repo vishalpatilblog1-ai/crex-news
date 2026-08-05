@@ -815,6 +815,48 @@ FINAL CHECK before outputting:
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
 - For rivalry_bait: are both sides EQUALLY defensible? Does the tweet declare a winner anywhere — even subtly? (It must not.)
 - For milestone_record: does the tweet name a comparison, take a side, or surface unresolved tension — or does it just restate the achievement? If it only restates — REWRITE before output, don't send it.
+- Does the closing line give the reader something to disagree with or pick a side on?
+  If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
+  The reader should finish thinking "but wait, actually..." or "no, I think..."
+  BANNED closing patterns (these only describe tension, they don't take a side):
+  - Does the closing line end in a question mark instead of a stated verdict?
+  A question is an escape hatch — it lets the writer avoid committing to a
+  position. STRIP all closing questions and replace with a direct claim.
+  WEAK: "Will the selectors regret this choice?"
+  STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
+  WEAK: "...but will it be enough against Sri Lanka's batting depth?"
+  STRONG: "It won't be enough if Sri Lanka's top order gets set early."
+  Exceptions to this rule:
+  - rivalry_bait tweets may end on a framing question ONLY if the two sides
+    are already stated with full conviction above it — the question must
+    invite the reader to pick a side already presented, not stand in for
+    a missing verdict.
+  - human_interest tweets may end on a genuine question ONLY if it emerges
+    naturally from the emotional tension of the story, not as a generic
+    call-to-action or a stand-in for a missing point of view.
+  "reveals their true priorities", "raises questions about", "highlights the
+  selectors'/selectors priorities", "shows the challenge ahead", "hints at a
+  promising future". If your closer uses any of these constructions or their
+  paraphrase, you have failed this check — rewrite with an actual verdict.
+  GENERALIZED VERSION OF THE ABOVE RULE:
+  The banned list above is illustrative, not exhaustive. Any closing line of
+  the shape "[verb]s the [growing/real/true/deeper] [concerns/priorities/
+  challenges/tension/questions]" is banned regardless of which specific verb
+  or noun fills the slot — this includes but is not limited to "reveals",
+  "highlights", "signals", "underscores", "raises". These constructions
+  describe that something exists without committing to what YOU think about it.
+  If your closing line fits this shape, name the actual verdict instead.
+- Does this tweet say something the source article's headline does NOT say?
+  If your tweet reads like a rewritten version of the article's own headline or lede — it is a summary, not an insight. Rewrite entirely.
+- If the article mentions a player as existing squad context (already in the XI),
+  do NOT treat them as a replacement candidate. Only players brought in from outside
+  the current playing XI qualify as replacements.
+- Could a reader skip the article after reading your tweet and feel fully informed?
+  If yes — you summarized. Insight tweets make the reader WANT to read more, not less.
+- Does the tweet contain any specific number (runs, balls, target, strike rate, overs)
+  not explicitly stated in the article? If yes — DELETE that number.
+  Do not infer or reconstruct stats from context. Only use figures the article
+  directly states in plain text.
 
 SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Does the closing line name a specific decision, match, moment, or person?
@@ -822,7 +864,7 @@ SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 - Phrases like "That changes how we read everything" or "This reframes the entire narrative" are banned. "That changes how we read the Sri Lanka captaincy call" is the standard to meet.
 
 RULES:
-- No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
+- No Emoji at all — EXCEPTION: breaking_news type uses ⚡️ as specified in its format
 - Plain text only
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
@@ -867,6 +909,11 @@ Rules for card fields:
 
 Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
 Do not add any explanation around the JSON.
+
+CARD SYNERGY CHECK:
+- Does the tweet text complement the card without repeating it?
+  The card shows the WHAT. The tweet must show the SO WHAT.
+  If the tweet and card headline say the same thing in different words — rewrite the tweet.
 `
     : `
 No card needed for this article type. Output tweet text only.
@@ -877,8 +924,8 @@ No card needed for this article type. Output tweet text only.
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-5.6-terra",
-      temperature: 0.85,
-      max_tokens: 400,
+      temperature: 0.6,
+      max_tokens: 600,
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: userPrompt },
@@ -902,11 +949,20 @@ No card needed for this article type. Output tweet text only.
 
       if (markerIndex !== -1) {
         tweetText = rawText.slice(0, markerIndex).trim();
-        const jsonStr = rawText.slice(markerIndex + cardMarker.length).trim();
-        try {
-          card = JSON.parse(jsonStr);
-        } catch (e) {
-          console.warn("⚠️ Failed to parse card JSON:", jsonStr);
+        const afterMarker = rawText.slice(markerIndex + cardMarker.length);
+        const jsonMatch = afterMarker.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            card = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.warn("⚠️ Failed to parse card JSON:", jsonMatch[0]);
+            card = null;
+          }
+        } else {
+          console.warn(
+            "⚠️ No JSON object found after CARD_JSON marker:",
+            afterMarker,
+          );
           card = null;
         }
       } else {
