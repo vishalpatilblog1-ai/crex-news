@@ -1075,7 +1075,6 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
   const response = await client.messages.create({
     model: "claude-sonnet-5",
     max_tokens: 1500,
-    temperature: 0.7,
     thinking: { type: "disabled" },
     system: [
       {
