@@ -18,7 +18,8 @@ export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   // "milestone_record",
 ]);
 
-const CLASSIFY_ARTICLE_SYSTEM_PROMPT = `
+export async function classifyArticle(articleText) {
+  const prompt = `
 Classify this cricket article into ONE of these types:
 
 - match_report        (result, scorecard, match summary)
@@ -78,21 +79,16 @@ any team and tournament anywhere in the world.
 Classify based on content structure only — not format or gender.
 
 Return ONLY the type name. No explanation. No punctuation.
+
+ARTICLE:
+${articleText}
 `;
 
-export async function classifyArticle(articleText) {
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 20,
     temperature: 0,
-    system: [
-      {
-        type: "text",
-        text: CLASSIFY_ARTICLE_SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: `ARTICLE:\n${articleText}` }],
+    messages: [{ role: "user", content: prompt }],
   });
   const usage = response.usage;
   const inputCost = (usage.input_tokens / 1_000_000) * 1;
@@ -320,13 +316,6 @@ Beat 2 (Meaning): One universal sentence — the emotional truth this moment rep
   This line must make sense and hit hard even if the reader has never watched cricket.
   It should feel quotable. It should make someone want to share it, not just like it.
 
-OPENING FRAME OPTION (use when it beats a direct scene-open):
-Instead of opening straight into the scene, you may open with a curiosity frame —
-"[Name] reveals why...", "What [Name] told [someone] about..." — when the story
-has a genuine "why" or "what happened next" the reader would want answered.
-Don't default to this on every human_interest tweet — use it only when it
-creates a sharper pull than opening directly on the scene.
-
 SPECIFICITY RULE:
   If the article contains any exact number, distance, time, or place — use it verbatim.
   Exact figures build credibility and make the story feel reported, not invented.
@@ -446,15 +435,6 @@ MODE 1 — QUOTE AS HOOK
 Use when: the quote itself is sharp, surprising, or unusually candid.
 Lead with the quote (under 12 words), then frame what it reveals.
 Attribute in the first or second sentence. Never absorb the quote into the narrator's voice.
-
-OPENING FRAME OPTION (use when it beats a direct quote-open):
-Instead of leading with the quote itself, you may open with a curiosity frame —
-"[Name] explains why...", "[Name] reveals what happened when...", "[Name] on
-why..." — then deliver the specific quote/claim right after. This works
-especially well when the quote needs context to land, or when the fact that
-the person is addressing this topic at all is itself the hook. Don't default
-to this on every press_conference tweet — use whichever opener (direct quote
-vs. curiosity frame) creates the sharper first line for THIS specific quote.
 
 MODE 2 — ACT OVER QUOTE
 Use when: the significance of WHO is speaking, or THAT they chose to speak at all, is more newsworthy than what they said.
@@ -745,47 +725,12 @@ Strong openers (earn attention first):
 - "44 years old. Still the story."               → contrast creates the gap
 
 ═══════════════════════════════════════════
-SOURCE FIDELITY RULE
-═══════════════════════════════════════════
-When the source material contains specific named details — other players
-mentioned by name, precise numbers, a stated reason, a direct quote — preserve
-them rather than compressing them into a vague generality. "Tom Banton,
-Cameron Green and Tim David have done that" is stronger and more credible
-than "some batters have done that." Specificity is what makes a tweet read as
-reported fact rather than a paraphrase. Only drop a specific detail if it
-genuinely doesn't serve the angle — not just to save characters.
-
-═══════════════════════════════════════════
-FRICTION SOURCE RULE
-═══════════════════════════════════════════
-Before manufacturing a hot take, check whether the source material already
-contains real tension — a direct quote that is itself controversial, a stated
-disagreement, a specific criticism, a surprising admission. If it does, surface
-THAT as the friction instead of inventing a separate angle. A strong genuine
-quote is usually a better hook than an analyst's constructed take on a bland
-one. Manufactured friction is for when the source is genuinely neutral —
-it is not the default move.
-
-═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 - If a named individual makes a strong claim — name them in tweet
 - NEVER absorb named opinions into the narrator's voice
 - Legacy comparisons must keep the original speaker's name
 - If WHO spoke (or that they chose to speak) is more significant than WHAT they said — lead with the act, not the quote
-
-═══════════════════════════════════════════
-NAME ACCURACY RULE
-═══════════════════════════════════════════
-Auto-generated transcripts frequently mangle names phonetically. When a named
-journalist, commentator, or analyst appears in the source material and you
-recognize them as a known cricket media figure, use their correct standard
-public spelling from your own knowledge — not whatever garbled version
-appears in the transcript. If you are NOT confident which real person is
-being referred to (genuine ambiguity, or the name doesn't clearly match
-anyone you recognize), do not guess a spelling — refer to them by role or
-publication instead (e.g. "a Cricinfo journalist," "the commentator") rather
-than output a name you're unsure is correct.
 
 ═══════════════════════════════════════════
 LANGUAGE RULES
@@ -901,13 +846,9 @@ ABSOLUTE NOs
 
 ${ENGAGEMENT_FRAMEWORKS}
 
+${articleTypeInstruction}
 `;
 }
-// NOTE: buildSystemPrompt() above intentionally no longer appends
-// articleTypeInstruction. It's passed as its own separate cache_control
-// block in the API call below, so that switching article types between
-// consecutive calls only misses cache on that small block -- not on this
-// entire (much larger) universal-rules block.
 
 const CARD_IMAGE_TYPES = new Set([
   "match_report",
@@ -922,13 +863,18 @@ const CARD_IMAGE_TYPES = new Set([
   // "tactical_analysis",
 ]);
 
-// Everything below is 100% static per needsCard value (only two possible
-// variants) -- previously this whole block lived inline in userPrompt and
-// was billed fresh on every single call. Pulling it out into its own
-// cache_control block means it's now cached same as the rest of the system
-// prompt, instead of being the one uncached chunk dragging cost up.
-function buildStaticInstructionsBlock(needsCard) {
-  return `
+async function _generateTweet(articleText, articleType) {
+  const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
+  const systemPrompt = buildSystemPrompt(articleTypeInstruction);
+
+  const needsCard = CARD_IMAGE_TYPES.has(articleType);
+
+  const userPrompt = `
+[NEWS CONTEXT]
+${articleText}
+
+DRAFT A SINGLE ORIGINAL TWEET.
+
 OUTPUT RULES:
 - Output ONLY the tweet text — no explanation, no preamble, no label, no article type mention
 - The tweet must feel natural and human — not like it was assembled from a template
@@ -1010,15 +956,16 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: STRICT 200–280 characters for every article type, no exceptions.
-  This applies uniformly — press_conference and opinion_piece no longer get extra
-  room for long quotes (that's ARRT's job now, not the automated pipeline's).
-  If a quote is too long to fit while staying under 280, trim it to its sharpest
-  clause rather than running long. Never go under 200 or over 280.
+- Target length:
+  news types (player_form, injury_news, press_conference, tactical_analysis, match_report): 180–280 characters
+  selection_news and human_interest: up to 320 characters — debates and emotional stories need space
+  rivalry_bait: 160–240 characters, clean 2-line split, no more
+  breaking_news: as short as needed — clarity over length
+  A tweet that fits on one screen without "show more" gets more impressions.
 
 ${
   needsCard
-    ? ` 
+    ? `
 ─────────────────────────────────────────
 CARD FIELDS (required — output after tweet)
 ─────────────────────────────────────────
@@ -1046,53 +993,30 @@ No card needed for this article type. Output tweet text only.
 `
 }
 `;
-}
 
-async function _generateTweet(articleText, articleType, isRetry = false) {
-  const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
-  const systemPrompt = buildSystemPrompt(articleTypeInstruction);
+  // const response = await client.messages.create({
+  //   model: "claude-sonnet-5",
+  //   max_tokens: 1500,
+  //   system: systemPrompt,
+  //   messages: [{ role: "user", content: userPrompt }],
+  // });
 
-  const needsCard = CARD_IMAGE_TYPES.has(articleType);
-
-  // Only the article text + trigger line are genuinely different call to
-  // call -- everything else (output rules, checklist, card format) now
-  // lives in cached system blocks below instead of being rebuilt into this
-  // message and billed fresh every time.
-  //
-  // isRetry adds one extra line only on the (rare) second attempt, when the
-  // first draft came back over 280 -- this keeps the cached blocks above
-  // identical between the two calls, so the retry still hits cache.
-  const userPrompt = `
-[NEWS CONTEXT]
-${articleText}
-
-DRAFT A SINGLE ORIGINAL TWEET.
-${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to fit 200-280 characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff." : ""}
-`;
-
-  const staticInstructionsBlock = buildStaticInstructionsBlock(needsCard);
+  // const response = await client.messages.create({
+  //   model: "claude-sonnet-5",
+  //   max_tokens: 1500,
+  //   thinking: { type: "disabled" },
+  //   system: systemPrompt,
+  //   messages: [{ role: "user", content: userPrompt }],
+  // });
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
     max_tokens: 1500,
     thinking: { type: "disabled" },
-    // thinking: { type: "adaptive" },
-    // output_config: { effort: "medium" },
-
     system: [
       {
         type: "text",
         text: systemPrompt,
-        cache_control: { type: "ephemeral" },
-      },
-      {
-        type: "text",
-        text: articleTypeInstruction,
-        cache_control: { type: "ephemeral" },
-      },
-      {
-        type: "text",
-        text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
       },
     ],
@@ -1105,7 +1029,7 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
   const totalCost = inputCost + outputCost;
 
   console.log(
-    `💰 Sonnet call${isRetry ? " (retry)" : ""} — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   );
 
   const textBlock = response.content.find((block) => block.type === "text");
@@ -1129,20 +1053,11 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
 
     if (markerIndex !== -1) {
       tweetText = rawText.slice(0, markerIndex).trim();
-      const afterMarker = rawText.slice(markerIndex + cardMarker.length);
-      const jsonMatch = afterMarker.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          card = JSON.parse(jsonMatch[0]);
-        } catch (e) {
-          console.warn("⚠️ Failed to parse card JSON:", jsonMatch[0]);
-          card = null;
-        }
-      } else {
-        console.warn(
-          "⚠️ No JSON object found after CARD_JSON marker:",
-          afterMarker,
-        );
+      const jsonStr = rawText.slice(markerIndex + cardMarker.length).trim();
+      try {
+        card = JSON.parse(jsonStr);
+      } catch (e) {
+        console.warn("⚠️ Failed to parse card JSON:", jsonStr);
         card = null;
       }
     } else {
@@ -1161,32 +1076,13 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
     return { tweetText: null, card: null };
   }
 
-  // if (tweetText.length > 280 && !isRetry) {
-  //   console.log(
-  //     `📏 Tweet is ${tweetText.length} chars — over 280. Retrying once to get a complete tweet within range instead of truncating it.`,
-  //   );
-  //   return _generateTweet(articleText, articleType, true);
-  // }
-
-  // if (tweetText.length > 280 && isRetry) {
-  //   console.warn(
-  //     `⚠️ Retry still over 280 chars (${tweetText.length}) — posting as-is rather than truncating the verdict off.`,
-  //   );
-  // }
-
-  if (tweetText.length < 200) {
+  if (tweetText.length > 280) {
     console.warn(
-      `⚠️ Tweet is only ${tweetText.length} chars — under the 200 target. Not padding artificially; posting as-is.`,
+      `⚠️ Tweet may exceed X character limit: ${tweetText.length} chars`,
     );
   }
-
-  // console.log("tweet generated by claude prompt::", tweetText);
-  // console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
-
-  console.log("Tweet generated by claude prompt::");
-  console.log("================================= \n");
-  console.log(tweetText);
-  console.log("\n=================================");
+  console.log("tweet generated by claude prompt::", tweetText);
+  console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
 
   return { tweetText, card };
 }
@@ -1236,11 +1132,6 @@ export async function generateClaudeTweetWithType(articleText, articleType) {
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
-    return {
-      tweetText: null,
-      articleType: resolvedType,
-      card: null,
-      source: "claude",
-    };
+    return { tweetText: null, articleType: resolvedType, card: null };
   }
 }

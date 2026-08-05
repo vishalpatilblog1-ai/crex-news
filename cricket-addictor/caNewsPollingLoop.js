@@ -5,14 +5,19 @@ import {
   generateGPTTweet,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
+// import {
+//   classifyArticle,
+//   generateClaudeTweet,
+//   // generateClaudeTweetWithType,
+//   SIGNIFICANCE_EXEMPT_TYPES,
+// } from "../ai/generateClaudeTweet.js";
+import { generateCardImage } from "../canvas/imageRenderer.js";
+import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import {
   classifyArticle,
   generateClaudeTweet,
   generateClaudeTweetWithType,
-  SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet.js";
-import { generateCardImage } from "../canvas/imageRenderer.js";
-import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+} from "../old-claude-prompt-jul29.js";
 import {
   applySourceSignature,
   enqueueTweet,

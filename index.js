@@ -85,7 +85,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
     console.log("📺 YouTube transcript polling enabled");
-    setInterval(youtubeNewsPollingLoop, 1000 * 60 * 15); // every 15 min
+    setInterval(youtubeNewsPollingLoop, 1000 * 60 * 0.3); // every 15 min
   }
 }
 

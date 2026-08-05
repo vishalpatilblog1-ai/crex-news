@@ -72,3 +72,7 @@ https://www.youtube.com/channel/UCZbNi5DqBvaOZygMl8HfjDQ
  curl "https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=<CHANNEL_NAME>&key=<YOUTUBE_API_KEY>"
 
  curl "https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=WisdenCricket&key=AIzaSyDnNHXmhG_XOhPprFkRCndCz56vWdxhgvQ"
+
+
+
+ YOUTUBE_CHANNEL_IDS="UCtB4Jl_0Nqkme13o7hyEMwg,UCz7X7euE4cQUz-ZX8dYX1IA,UCmxGJTBHRnh96Cz8Z0aQnPQ,UCQYRGzYaVa7aWd8TsbjdJ6Q,UCgxAV5Px6mAlbjh0-AU9xIA,UCUrgSQ5qiwW6KRm7QflaIYA,UCANvymD1mu7ycm8y_klEsPA,UCVXCo0W9pk2dDkEBNLhTt7A,UCGGIn31-DzGeNrajztSLO-Q,UCxq8rM2kwkTSCaoKpQ-g3sw,UCDvVyzHmiJKoZkx8Tdy346w,UCaKXVwEGd5AKuGsnf2x_baw,UCkd4takjjF1EGD1TKIK2QiA,UC9vsecLHNgTj-yoNumw63lQ,UCSRQXk5yErn4e14vN76upOw,UCms-xnI50pEtJC06xdw4J6A,UCEiCmSMqNJ-qqeW9fEUcA4g,UCPu3kR3EfUaKwOzwzgHPUOg,UCHgJ7xSNKpYIywdDOQOgTwg,UCZbNi5DqBvaOZygMl8HfjDQ"
