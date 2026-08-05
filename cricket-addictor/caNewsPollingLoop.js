@@ -158,14 +158,14 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      // const { tweetText: tweetToPost, card } =
-      //   await generateClaudeTweetWithType(fullText, articleType);
+      const { tweetText: tweetToPost, card } =
+        await generateClaudeTweetWithType(fullText, articleType);
 
-      const {
-        tweetText: gptTweet,
-        card,
-        source,
-      } = await generateGeminiTweet(fullText, articleType);
+      // const {
+      //   tweetText: gptTweet,
+      //   card,
+      //   source,
+      // } = await generateGeminiTweet(fullText, articleType);
 
       tweetText = tweetToPost;
 

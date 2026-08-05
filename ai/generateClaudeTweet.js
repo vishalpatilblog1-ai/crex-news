@@ -1076,27 +1076,21 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
     model: "claude-sonnet-5",
     max_tokens: 1500,
     thinking: { type: "disabled" },
+    // thinking: { type: "adaptive" },
+    // output_config: { effort: "medium" },
+
     system: [
       {
-        // Universal rules -- identical on every call regardless of article
-        // type, so this stays cached even when the type below changes.
         type: "text",
         text: systemPrompt,
         cache_control: { type: "ephemeral" },
       },
       {
-        // Type-specific instruction -- only ~12 possible values, so this
-        // still caches well across consecutive same-type calls without
-        // invalidating the (much larger) universal block above when the
-        // type changes.
         type: "text",
         text: articleTypeInstruction,
         cache_control: { type: "ephemeral" },
       },
       {
-        // Output rules / final-check audit / card-field spec -- only two
-        // possible variants (needsCard true/false), previously lived
-        // uncached inside userPrompt on every single call.
         type: "text",
         text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
