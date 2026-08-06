@@ -8,16 +8,34 @@ const SK_CRICKET_URLS = [
   "https://www.sportskeeda.com/cricket/news",
 ];
 
-const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 20000);
+// const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 20000);
+
+// const DATE_CONCURRENCY = Number(process.env.SK_DATE_CONCURRENCY || 5);
+
+// const DEBUG = process.env.SK_DEBUG === "true";
+
+// const USER_AGENTS = [
+//   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+//   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+// ];
+
+const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 30000);
 
 const DATE_CONCURRENCY = Number(process.env.SK_DATE_CONCURRENCY || 5);
 
 const DEBUG = process.env.SK_DEBUG === "true";
 
-const USER_AGENTS = [
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
-];
+// Railway's outbound IP range gets blocked directly by SportsKeeda's WAF
+// (confirmed: identical request + headers works fine from a local/residential
+// IP, fails only from Railway) -- so requests are routed through ScraperAPI
+// instead, which fetches on our behalf from IPs that aren't flagged as
+// datacenter/bot traffic. The old direct-fetch header spoofing (User-Agent,
+// Sec-Ch-Ua, Sec-Fetch-*) is no longer needed here -- ScraperAPI handles
+// browser-identity headers on their end. Get a key at scraperapi.com; it has
+// a free tier that should cover light polling volume before any paid plan
+// is needed.
+const SCRAPERAPI_KEY = process.env.SCRAPERAPI_KEY;
+const SCRAPERAPI_ENDPOINT = "https://api.scraperapi.com";
 
 const GENERIC_HEADLINES = new Set([
   "view all",
@@ -1103,6 +1121,131 @@ async function fetchPage(url) {
     status: response.status,
   };
 }
+
+async function fetchPage(url) {
+  if (!SCRAPERAPI_KEY) {
+    throw new Error(
+      "SCRAPERAPI_KEY is not set -- SK requests must be routed through ScraperAPI since Railway's IP range is blocked directly by SportsKeeda's WAF. Set the SCRAPERAPI_KEY env var.",
+    );
+  }
+
+  const response = await axios.get(SCRAPERAPI_ENDPOINT, {
+    timeout: REQUEST_TIMEOUT_MS,
+    responseType: "text",
+    decompress: true,
+
+    params: {
+      api_key: SCRAPERAPI_KEY,
+      url,
+    },
+
+    validateStatus: (status) => status >= 200 && status < 400,
+  });
+
+  const html =
+    typeof response.data === "string"
+      ? response.data
+      : String(response.data || "");
+
+  // ScraperAPI proxies the fetch server-side -- it doesn't expose SK's own
+  // redirect chain the way a direct request would, so there's no reliable
+  // "final URL after redirects" to read here. Falling back to the
+  // originally requested URL; this only affects the DEBUG-only finalUrl
+  // logging below, not the actual scraped content.
+  const finalUrl = url;
+
+  return {
+    html,
+    finalUrl,
+    status: response.status,
+  };
+}
+
+// async function fetchPage(url) {
+//   const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
+//   // Small random delay before each request -- cheap to add, doesn't hurt,
+//   // and helps if there's also a behavioral/rate-limiting layer stacked on
+//   // top of the fingerprint check below. Not expected to be the primary fix
+//   // for a 405 specifically (that's more commonly a header/fingerprint
+//   // check than a timing one), but costs nothing to include.
+//   const jitterMs = 500 + Math.random() * 2000;
+//   await new Promise((resolve) => setTimeout(resolve, jitterMs));
+
+//   const response = await axios.get(url, {
+//     timeout: REQUEST_TIMEOUT_MS,
+//     maxRedirects: 5,
+//     responseType: "text",
+//     decompress: true,
+
+//     // res = await fetch(CA_RSS, {
+//     //     signal: controller.signal,
+//     //     headers: {
+//     //       "User-Agent": pickUA(),
+//     //       Accept:
+//     //         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+//     //       "Accept-Language": "en-US,en;q=0.9",
+//     //       "Accept-Encoding": "gzip, deflate, br",
+//     //       Referer: "https://www.google.com/search?q=cricket+news",
+//     //       Connection: "keep-alive",
+//     //       "Cache-Control": "no-cache",
+//     //       "Sec-Fetch-Dest": "document",
+//     //       "Sec-Fetch-Mode": "navigate",
+//     //       "Sec-Fetch-Site": "cross-site",
+//     //       "Upgrade-Insecure-Requests": "1",
+//     //     },
+//     //   });
+
+//     headers: {
+//       "User-Agent": pickUA(),
+//       Accept:
+//         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+//       "Accept-Language": "en-US,en;q=0.9",
+//       "Accept-Encoding": "gzip, deflate, br",
+//       Referer: "https://www.google.com/search?q=cricket+news",
+//       Connection: "keep-alive",
+//       "Cache-Control": "no-cache",
+//       "Sec-Fetch-Dest": "document",
+//       "Sec-Fetch-Mode": "navigate",
+//       "Sec-Fetch-Site": "cross-site",
+//       "Upgrade-Insecure-Requests": "1",
+//     },
+
+//     // headers: {
+//     //   "User-Agent": userAgent,
+//     //   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+//     //   "Accept-Language": "en-US,en;q=0.9",
+//     //   "Accept-Encoding": "gzip, deflate, br",
+//     //   Referer: "https://www.google.com/",
+//     //   "Cache-Control": "no-cache",
+//     //   Pragma: "no-cache",
+//     //   "Sec-Ch-Ua":
+//     //     '"Not_A Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
+//     //   "Sec-Ch-Ua-Mobile": "?0",
+//     //   "Sec-Ch-Ua-Platform": '"macOS"',
+//     //   "Sec-Fetch-Dest": "document",
+//     //   "Sec-Fetch-Mode": "navigate",
+//     //   "Sec-Fetch-Site": "none",
+//     //   "Sec-Fetch-User": "?1",
+//     //   "Upgrade-Insecure-Requests": "1",
+//     // },
+
+//     validateStatus: (status) => status >= 200 && status < 400,
+//   });
+
+//   const html =
+//     typeof response.data === "string"
+//       ? response.data
+//       : String(response.data || "");
+
+//   const finalUrl = response.request?.res?.responseUrl || url;
+
+//   return {
+//     html,
+//     finalUrl,
+//     status: response.status,
+//   };
+// }
 
 async function fetchArticlePublishedAt(articleUrl) {
   try {
