@@ -4,17 +4,9 @@ import * as cheerio from "cheerio";
 
 import { normalizeSKLink } from "./skFilters.js";
 
-const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 30000);
-
-// SK's article pages are blocked when fetched directly from Railway's
-// datacenter IP range (confirmed: identical request works fine locally,
-// fails only from Railway). Requests are routed through Scrappey instead,
-// which fetches on our behalf from IPs that aren't flagged. "request.get"
-// is Scrappey's plain/direct mode (0.1 credit) -- NOT their browser-render
-// mode (1 credit, 10x cost) -- SK's pages are plain server-rendered HTML,
-// no JS execution needed, so the cheap mode is the right one.
-const SCRAPPEY_API_KEY = process.env.SCRAPPEY_API_KEY;
-const SCRAPPEY_ENDPOINT = "https://publisher.scrappey.com/api/v1";
+const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 15000);
+const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 export async function parseSKArticle(itemOrUrl) {
   const link =
@@ -25,38 +17,18 @@ export async function parseSKArticle(itemOrUrl) {
   if (!link) return null;
 
   const cleanLink = normalizeSKLink(link);
-
-  if (!SCRAPPEY_API_KEY) {
-    throw new Error(
-      "SCRAPPEY_API_KEY is not set -- SK article fetches must be routed through Scrappey since Railway's IP range is blocked directly by SportsKeeda's WAF.",
-    );
-  }
-
-  const { data } = await axios.post(
-    SCRAPPEY_ENDPOINT,
-    {
-      cmd: "request.get",
-      url: cleanLink,
+  const { data: html } = await axios.get(cleanLink, {
+    timeout: REQUEST_TIMEOUT_MS,
+    maxRedirects: 5,
+    responseType: "text",
+    headers: {
+      "User-Agent": USER_AGENT,
+      Accept: "text/html,application/xhtml+xml",
+      "Accept-Language": "en-US,en;q=0.9",
+      Referer: "https://www.sportskeeda.com/cricket",
     },
-    {
-      params: {
-        key: SCRAPPEY_API_KEY,
-      },
-      timeout: REQUEST_TIMEOUT_MS,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    },
-  );
-
-  const statusCode = data?.solution?.statusCode;
-  const html = data?.solution?.response;
-
-  if (!html || (statusCode && (statusCode < 200 || statusCode >= 400))) {
-    throw new Error(
-      `Scrappey fetch failed for ${cleanLink} (status: ${statusCode ?? "unknown"}, data: ${data?.data ?? "unknown"})`,
-    );
-  }
+    validateStatus: (status) => status >= 200 && status < 400,
+  });
 
   const $ = cheerio.load(html);
 
