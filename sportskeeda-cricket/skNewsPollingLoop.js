@@ -1,13 +1,10 @@
 // sportskeeda-cricket/skNewsPollingLoop.js
 
+import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
-// import {
-//   classifyArticle,
-//   generateClaudeTweetWithType,
-// } from "../ai/generateClaudeTweet.js";
+  generateClaudeTweetWithType,
+} from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
@@ -25,11 +22,6 @@ import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseSKArticle } from "./parseSKArticle.js";
 import { normalizeSKLink } from "./skFilters.js";
 import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
-
-// const MAX_AGE_MIN = Number(process.env.SK_MAX_AGE_MIN || 180);
-// const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-// const RETENTION_MS = 6 * 60 * 60 * 1000;
-// const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
@@ -53,6 +45,8 @@ export async function skNewsPollingLoop() {
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
+  console.log("-------4-------");
+
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
@@ -67,16 +61,10 @@ export async function skNewsPollingLoop() {
     });
   } catch (err) {
     console.warn("❌ SK cricket page fetch failed:", err?.message || err);
-    throw err;
+    return false;
   }
 
   if (!Array.isArray(items) || items.length === 0) return false;
-
-  // console.log("items::::", items);
-
-  // const sorted = [...items]
-  //   .filter(isSportskeedaCricketArticle)
-  //   .sort((a, b) => getPubDate(b) - getPubDate(a));
 
   const sorted = [...items]
     .filter((item) => {
@@ -185,13 +173,14 @@ export async function skNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      // const { tweetText: tweetToPost, card } =
-      //   await generateClaudeTweetWithType(fullText, articleType);
+      const { tweetText: tweetToPost, card } =
+        await generateClaudeTweetWithType(fullText, articleType);
 
-      const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
-        fullText,
-        articleType,
-      );
+      // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
+      //   fullText,
+      //   articleType,
+      // );
+
       console.log("tweetToPost:::", tweetToPost);
 
       // const {

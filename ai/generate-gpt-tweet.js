@@ -13,7 +13,6 @@ const openai = new OpenAI({
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   "human_interest",
   "breaking_news",
-  "rivalry_bait",
 ]);
 
 // ─── ARTICLE CLASSIFIER ──────────────────────────────────────────────────────
@@ -33,7 +32,6 @@ Classify this cricket article into ONE of these types:
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
 - breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
-- rivalry_bait        (explicit comparison between two players, teams, eras, or fanbases that naturally divides opinion)
 
 Classification Rules (apply in order):
 0. Choose breaking_news ONLY if ALL of these are true:
@@ -51,12 +49,12 @@ Classification Rules (apply in order):
 
    These go to injury_news, selection_news, or the appropriate type instead.
 
-0b. Choose rivalry_bait if the article's PRIMARY purpose is to compare two named players,
-   two teams, or two eras — and the comparison naturally splits opinion between two camps.
-   Examples: "Kohli vs Rohit as captains", "CSK vs MI dynasty debate",
-   "Dhoni era vs current team", "Gill vs Pant for the No. 4 slot".
-   DO NOT use rivalry_bait for articles that merely mention two players in passing.
-   The comparison must be the central news peg.
+0b. An article whose PRIMARY purpose is to compare two named players, two teams, or two eras
+   (e.g. "Kohli vs Rohit as captains", "CSK vs MI dynasty debate", "Gill vs Pant for the No. 4
+   slot") is NOT its own type. Route it to whichever of the standard types fits the underlying
+   news peg: a comparison driven by a selection/lineup decision → selection_news; a comparison
+   built on stats/performance trend → player_form; a comparison that's fundamentally a column or
+   personal take → opinion_piece.
 
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
@@ -87,8 +85,8 @@ ${articleText}
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-5.6-luna",
-      // temperature: 0,
-      // max_tokens: 20,
+      temperature: 0,
+      max_tokens: 20,
       messages: [
         { role: "system", content: "You are a precise classification engine." },
         { role: "user", content: prompt },
@@ -134,7 +132,7 @@ End with a question or tension — not a conclusion — that pulls the reader in
 
 PATTERN F — THE EARNED COMPLIMENT
 Praise that has analytical weight, not fan-page warmth.
-"Three fifties. Three different game states. Samson didn't just score runs — he solved problems."
+"Three fifties. Three different game states. Samson read the situation before he read the bowler."
 
 PATTERN G — THE ACT-OVER-QUOTE
 When the significance of WHO is speaking (or that they spoke at all) outweighs WHAT they said — lead with the act.
@@ -196,28 +194,10 @@ Rules:
 - The insight between them must connect the two, not just list them
 - Works best for milestone_record and player_form types
 
-PATTERN M — THE DIVIDING LINE
-Split the tweet into two camps with no declared winner. Each side gets one clean, specific line.
-The reader self-selects their camp and goes to the replies to defend it.
-Examples (structure only — NEVER repeat these lines):
-"Dhoni fans: the era built the template.
-Rohit fans: the era scaled it."
-"CSK fans: culture wins trophies.
-MI fans: systems win trophies."
-"Selectors say Gill is the future.
-The stats say Pant never left."
-Rules:
-- Both sides must be EQUALLY defensible — never subtly favour one camp
-- Each line must be concrete — name a player, stat, or specific claim, not vibes
-- No declared winner — the tweet ends at the split. No third line that resolves the tension.
-- No emoji, no "who wins?" call-to-action — the structure IS the provocation
-- Works best for rivalry_bait, but can be used in selection_news, player_form, and milestone_record
-  when a genuine two-camp debate exists in the article
-
 PATTERN DIVERSITY RULE (important):
 Do not default to the same pattern repeatedly.
 Rotate across patterns based on what the article genuinely supports.
-If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, or M this time.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
@@ -242,6 +222,10 @@ Lead with insight. The scoreline is context, not the point.
 Avoid: ball-by-ball recap, "team played well", generic momentum language.
 FRICTION REQUIREMENT: If the tweet only confirms what the scoreline already told the reader —
 no turning point, no reveal — REWRITE. A result recap with a nice sentence is still a recap.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   tactical_analysis: `
@@ -285,6 +269,10 @@ right — REWRITE. Naming who's out isn't enough; say what it costs or proves.
 
 CLOSING LINE EXCEPTION:
 A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   player_form: `
@@ -305,6 +293,10 @@ Use stats only when they reveal a trend. One strong evaluative phrase allowed.
 Avoid single-match overreaction. Avoid pure celebration without substance.
 FRICTION REQUIREMENT: If the tweet states the numbers without answering "blip or trend" —
 REWRITE. Stats without a verdict on what they mean is a scorecard, not a take.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   human_interest: `
@@ -321,6 +313,13 @@ Beat 1 (Scene): What happened, who was involved, and ONE hyper-specific detail
 Beat 2 (Meaning): One universal sentence — the emotional truth this moment represents.
   This line must make sense and hit hard even if the reader has never watched cricket.
   It should feel quotable. It should make someone want to share it, not just like it.
+
+OPENING FRAME OPTION (use when it beats a direct scene-open):
+Instead of opening straight into the scene, you may open with a curiosity frame —
+"[Name] reveals why...", "What [Name] told [someone] about..." — when the story
+has a genuine "why" or "what happened next" the reader would want answered.
+Don't default to this on every human_interest tweet — use it only when it
+creates a sharper pull than opening directly on the scene.
 
 SPECIFICITY RULE:
   If the article contains any exact number, distance, time, or place — use it verbatim.
@@ -340,6 +339,14 @@ PATTERNS:
   Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast).
   Warmth is allowed here. Sentimentality is not.
   Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+
+CHARACTER BOUNDARY RULE:
+  This type covers a player's personal life — family, background, spirituality,
+  wealth, milestones outside cricket. Stay observational. Do NOT imply hypocrisy,
+  moral judgment, or a contradiction in the player's character (e.g. framing a
+  purchase as undercutting a spiritual visit, or wealth as undercutting humility).
+  Report what happened and let the moment carry its own weight — do not editorialize
+  about what it says about the person.
 
 CLOSING LINE EXCEPTION:
   A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
@@ -379,6 +386,8 @@ Focus on:
 Use PATTERN E (Open Verdict) from the engagement mechanics.
 Frame around what is being tested, not who is playing.
 Avoid: "high-stakes clash", "must-win game", "both teams will be eager".
+Don't preview the match — preview the question the match will answer.
+The SO WHAT is what's genuinely at stake beyond the result.
 FRICTION REQUIREMENT: If the tweet previews both teams without staking a position on what the
 match will actually answer — REWRITE. A preview with no prediction is a fixture list.
 `,
@@ -398,8 +407,27 @@ Focus on:
 
 Use PATTERN B (Specific Contradiction) or PATTERN E (Open Verdict) from the engagement mechanics.
 Lead with impact. Avoid sympathy framing entirely.
+The consequence must reveal something about team structure —
+not just "X is out, Y comes in." That's the WHAT.
+The SO WHAT is what this exposes about the squad's depth or planning.
 FRICTION REQUIREMENT: If the tweet states who's out without naming what the team structurally
 loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so Y" is a take.
+
+REPLACEMENT CANDIDATE RULE:
+If the article lists multiple replacement candidates (2 or more named players),
+do NOT focus on just one. The tweet must either:
+  a) Name all candidates as a punchy inline list — never bullets
+     Example: "Sakariya, Simarjeet, Madhwal — three different solutions to the same problem."
+  b) Frame the replacement question as the tension — what the choice reveals about team priorities
+     Example: "Like-for-like or upgrade? CSK's replacement call says more about their season plan than the injury does."
+DO NOT pick one candidate and ignore the rest unless the article itself clearly
+identifies one as the frontrunner with specific reasoning.
+DO NOT treat squad players mentioned as context (existing XI options) as replacement candidates.
+Only players explicitly recommended as replacements qualify.
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 
 `,
 
@@ -416,6 +444,15 @@ MODE 1 — QUOTE AS HOOK
 Use when: the quote itself is sharp, surprising, or unusually candid.
 Lead with the quote (under 12 words), then frame what it reveals.
 Attribute in the first or second sentence. Never absorb the quote into the narrator's voice.
+
+OPENING FRAME OPTION (use when it beats a direct quote-open):
+Instead of leading with the quote itself, you may open with a curiosity frame —
+"[Name] explains why...", "[Name] reveals what happened when...", "[Name] on
+why..." — then deliver the specific quote/claim right after. This works
+especially well when the quote needs context to land, or when the fact that
+the person is addressing this topic at all is itself the hook. Don't default
+to this on every press_conference tweet — use whichever opener (direct quote
+vs. curiosity frame) creates the sharper first line for THIS specific quote.
 
 MODE 2 — ACT OVER QUOTE
 Use when: the significance of WHO is speaking, or THAT they chose to speak at all, is more newsworthy than what they said.
@@ -438,6 +475,11 @@ MULTI-SPEAKER RULE:
 If the article quotes more than one named individual, do not try to include both equally.
 Pick the speaker whose claim is most analytically significant or most likely to generate debate.
 The second speaker can appear only if their quote directly reinforces or contradicts the first.
+
+SO WHAT RULE:
+The quote is raw material. Your job is to say what it reveals
+that the speaker didn't intend to reveal.
+A tweet that could have been written before reading the article has failed this rule.
 `,
 
   milestone_record: `
@@ -474,6 +516,22 @@ A milestone tweet must do at least ONE of the following, or it fails and must be
 - Surface a tension the article doesn't resolve (who built it vs who inherited it, who's still waiting, etc.)
 Do NOT default to "here's what happened, the impact is undeniable" — that's a press release,
 not a take. If the article gives you a sharp fact, turn it into a comparison instead of just stating it.
+
+MILESTONE/ACHIEVEMENT CLOSERS — don't inspire, interrogate:
+Do not close with a values statement about dreams, hard work, or destiny —
+these are universally agreeable and generate zero replies.
+Instead, close with a forward-looking scrutiny angle:
+- Can this be sustained at the next level? (age-group cricket → international)
+- What historical precedent (a prodigy who flamed out, or one who delivered)
+  does this invite comparison to?
+- What specific pressure does this record now put on the player?
+WEAK: "His journey shows that dreams, when nurtured, can turn into reality."
+STRONG: "The real test starts now — plenty of teenage prodigies have peaked
+early. Can Vaibhav back this up against senior bowling attacks?"
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 
   breaking_news: `
@@ -484,10 +542,12 @@ Speed and clarity over analysis. This is the first take, not the final word.
 ENGAGEMENT TARGET: Retweets + replies (information sharing)
 
 FORMAT (mandatory):
-🚨 [SHORT HEADLINE IN CAPS — max 6 words] 🚨
+⚡️ [SHORT HEADLINE IN CAPS — max 6 words] -
 
 Then 1-2 lines of the key fact — who, what, and the immediate consequence.
-No editorializing. No opinion. Just the sharpest version of the news.
+Lead with the consequence, not the act. If the news reveals something non-obvious
+about the team, tournament, or system — state that instead of repeating the headline.
+No rage, no opinion. But if there's a SO WHAT — say it in one clean line.
 
 Use this type for:
 - Player ruled out / availability confirmed
@@ -497,62 +557,10 @@ Use this type for:
 
 The headline must be factual — never sensationalized.
 The body must answer: what does this mean RIGHT NOW for the team or tournament?
-`,
 
-  rivalry_bait: `
-ARTICLE TYPE: Rivalry Bait
-
-This is the fan war tweet. Your job is to draw the line — and let both sides charge at it.
-
-ENGAGEMENT TARGET: Replies + retweets (two-camp debate)
-The tweet must split the audience into exactly two defensible camps with zero resolution.
-Do NOT declare a winner. Do NOT lean toward one side. The tension IS the product.
-
-FOUR TRIGGERS — identify which one this article belongs to:
-
-TRIGGER 1 — PLAYER VS PLAYER
-Two named players being compared directly (stats, role, legacy, selection).
-The tweet must give each player one concrete, specific claim — not vibes.
-Example structure: "[Player A] did X. [Player B] did Y. Pick your side."
-
-TRIGGER 2 — TEAM VS TEAM (or franchise vs franchise)
-Two teams' philosophies, dynasties, or approaches being contrasted.
-Lean into what each team REPRESENTS, not just their trophies.
-Example structure: "[Team A] fans believe X built the template. [Team B] fans believe Y scaled it."
-
-TRIGGER 3 — ERA VS ERA (legend vs current gen)
-Dhoni era vs Rohit era, 90s Test cricket vs T20 era, etc.
-The tweet must acknowledge what each era genuinely did well — no nostalgia bias, no recency bias.
-Example structure: "That era gave India X. This era gave India Y. The debate isn't which was better — it's which mattered more."
-
-TRIGGER 4 — FANBASE VS MEDIA / SELECTORS
-When the article's core tension is fans defending a player against an institutional decision.
-The tweet must frame the institutional logic AND the fan counter-argument with equal weight.
-Example structure: "Selectors' logic: [specific reason]. Fans' counter: [specific reason]. One of them is wrong."
-
-STRUCTURE RULES (non-negotiable):
-- Use PATTERN M (The Dividing Line) as the primary structure
-- Two clean lines — one per camp — separated by a line break
-- Each line must be EQUALLY defensible — no subtle favouritism
-- No third line that resolves the tension. The tweet ends at the split.
-- No "who wins?" or "comment below" call-to-action — the structure does the work
-- No emoji
-
-TONE RULES:
-- Calm and analytical — the controversy comes from the setup, not the language
-- Never manufactured — both sides must be grounded in what the article actually says
-- Never personal — compare decisions, eras, stats, philosophies — never character
-- No fanbase slurs, no tribal baiting, no inflammatory language
-
-CONTENT GUARDRAILS:
-- Both sides must be extractable from the article — never fabricate a position
-- If the article clearly favours one side — do not invent a counter-argument
-  Instead, use a different article type (player_form, opinion_piece, etc.)
-- Never introduce religious, ethnic, or identity framing
-- Criticism must be of decisions and results — never of personal character
-
-CLOSING LINE RULE FOR THIS TYPE:
-The tweet has no closing line. Pattern M IS the structure. It ends where the split ends.
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
 `,
 };
 
@@ -562,7 +570,6 @@ The tweet has no closing line. Pattern M IS the structure. It ends where the spl
 //   "selection_news",
 //   "injury_news",
 //   "breaking_news",
-//   // "rivalry_bait",
 // ]);
 
 const CARD_IMAGE_TYPES = new Set([
@@ -572,7 +579,6 @@ const CARD_IMAGE_TYPES = new Set([
   "injury_news",
   "milestone_record",
   "breaking_news",
-  "rivalry_bait",
   // "press_conference",
   // "preview",
   // "tactical_analysis",
@@ -625,12 +631,13 @@ TONE & PERSONALITY
 - Fan voice with analytical depth — not pure analyst, not pure fan
 - Think: the smartest person in the cricket WhatsApp group, not a journalist
 - Emotion under control, but not suppressed — let the story breathe
+- Tone must be analytical, not outraged — the algorithm actively suppresses negative sentiment even when engagement is high. Controversy comes from the insight, never from the anger.
 
 ═══════════════════════════════════════════
 STYLE RULES
 ═══════════════════════════════════════════
 - Plain text only — no markdown, no bold, no asterisks
-- No emoji except for breaking_news type which uses 🚨 as a mandatory format marker
+- No emoji except for breaking_news type which uses ⚡️ as a mandatory format marker
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end (max 1 hashtag ever)
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
@@ -657,9 +664,6 @@ deliberate tension, not uncertainty. There is a difference between
 (intentional tension — allowed) and
 "This might be India's smartest tactical shift." (hedge — banned).
 You either back something or you don't. Pick a lane.
-
-CLOSING LINE RULE EXCEPTION — rivalry_bait type:
-Pattern M has no closing line by design. The tweet ends at the split. This is intentional.
 
 ═══════════════════════════════════════════
 STRUCTURE VARIETY RULE (STRICT)
@@ -700,12 +704,47 @@ Strong openers (earn attention first):
 - "44 years old. Still the story."               → contrast creates the gap
 
 ═══════════════════════════════════════════
+SOURCE FIDELITY RULE
+═══════════════════════════════════════════
+When the source material contains specific named details — other players
+mentioned by name, precise numbers, a stated reason, a direct quote — preserve
+them rather than compressing them into a vague generality. "Tom Banton,
+Cameron Green and Tim David have done that" is stronger and more credible
+than "some batters have done that." Specificity is what makes a tweet read as
+reported fact rather than a paraphrase. Only drop a specific detail if it
+genuinely doesn't serve the angle — not just to save characters.
+
+═══════════════════════════════════════════
+FRICTION SOURCE RULE
+═══════════════════════════════════════════
+Before manufacturing a hot take, check whether the source material already
+contains real tension — a direct quote that is itself controversial, a stated
+disagreement, a specific criticism, a surprising admission. If it does, surface
+THAT as the friction instead of inventing a separate angle. A strong genuine
+quote is usually a better hook than an analyst's constructed take on a bland
+one. Manufactured friction is for when the source is genuinely neutral —
+it is not the default move.
+
+═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 - If a named individual makes a strong claim — name them in tweet
 - NEVER absorb named opinions into the narrator's voice
 - Legacy comparisons must keep the original speaker's name
 - If WHO spoke (or that they chose to speak) is more significant than WHAT they said — lead with the act, not the quote
+
+═══════════════════════════════════════════
+NAME ACCURACY RULE
+═══════════════════════════════════════════
+Auto-generated transcripts frequently mangle names phonetically. When a named
+journalist, commentator, or analyst appears in the source material and you
+recognize them as a known cricket media figure, use their correct standard
+public spelling from your own knowledge — not whatever garbled version
+appears in the transcript. If you are NOT confident which real person is
+being referred to (genuine ambiguity, or the name doesn't clearly match
+anyone you recognize), do not guess a spelling — refer to them by role or
+publication instead (e.g. "a Cricinfo journalist," "the commentator") rather
+than output a name you're unsure is correct.
 
 ═══════════════════════════════════════════
 LANGUAGE RULES
@@ -715,6 +754,27 @@ Banned phrases (never use):
 - "bold call", "surprise pick", "high-stakes clash", "must-win game"
 - "suggests", "indicates", "signals" (newsroom filler verbs)
 - "Overrated", "Clueless", "Bottler", "Liability" (extreme character labels)
+
+BANNED CONSTRUCTION — THE DOWNPLAY-THEN-ESCALATE CONTRAST:
+Never open or build a tweet on a two-clause move where the first clause downplays
+something ("isn't just X", "not merely X", "more than just X") and the second clause
+escalates it ("it's Y", "it's actually Z"). This is a PATTERN, not a fixed phrase —
+banning exact wording does not stop it, because it resurfaces in paraphrase. All of
+these are the same banned move and are equally forbidden:
+  - "wasn't just X — he was Y" / "isn't just X; it's Y" / "didn't just X — Y"
+  - "not only X but also Y" / "not merely X, it's Y"
+  - "more than a X — it's a Y" / "beyond X, this is Y"
+  - any other two-clause structure whose sole job is to reject a smaller framing
+    in favor of a bigger one
+Before finalizing a tweet, check: does any sentence reject one description to
+assert a bigger one? If yes, rewrite it as a single direct statement instead.
+Example of the ban in practice:
+  Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
+  Banned (paraphrase dodge): "Gambhir's coaching has not only raised eyebrows but opened a rift."
+  Instead: "Gambhir's coaching has moved past raised eyebrows into an open rift."
+Also avoid card captions that lean on the same escalation reflex, e.g. "X Comes
+Under Fire" paired with a body that already used this construction — pick one
+angle and state it plainly.
 
 Preferred analyst verbs: exposes, confirms, undermines, justifies, forces, settles, contradicts
 
@@ -759,6 +819,33 @@ If two named individuals are quoted in the article:
 - Lead with the more analytically significant quote or speaker
 - Reference the second only if it adds a contrasting or reinforcing layer
 - Never try to include both equally — one must anchor the tweet
+
+═══════════════════════════════════════════
+REPLY TRIGGER RULE:
+═══════════════════════════════════════════
+Every tweet must contain at least one element that compels a reply —
+not just a read. This means:
+- A verdict someone can disagree with (not just a question)
+- A two-camp framing where the reader must pick a side
+- A named claim specific enough that fans of the other side will push back
+A tweet that everyone agrees with is algorithmically dead.
+
+CLOSING LINE — TAKE THE SIDE, DON'T SUMMARIZE IT:
+Your last line must commit to a specific stance, not describe that a
+tension/debate/decision exists.
+
+WEAK (describes the tension): "It highlights the selectors' priorities
+in a pivotal cycle."
+STRONG (takes a side): "Saransh has earned that spot on form — Jadeja's
+comeback shouldn't come at his expense."
+
+WEAK: "This series victory hints at a promising future for India."
+STRONG: "A 3-0 sweep over Zimbabwe means nothing until this squad wins
+away from home against a top-4 side."
+
+Test before finalizing: could a reasonable cricket fan quote-tweet your
+closer with "disagree" or "nah" and mean it? If the closer is too safe
+to argue with, rewrite it.
 
 ═══════════════════════════════════════════
 ABSOLUTE NOs
@@ -808,12 +895,11 @@ FINAL CHECK before outputting:
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
-- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed — EXCEPTION: rivalry_bait ends at the split, no closing line needed)
+- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
 - For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
-- For rivalry_bait: are both sides EQUALLY defensible? Does the tweet declare a winner anywhere — even subtly? (It must not.)
 - For milestone_record: does the tweet name a comparison, take a side, or surface unresolved tension — or does it just restate the achievement? If it only restates — REWRITE before output, don't send it.
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
@@ -826,11 +912,7 @@ FINAL CHECK before outputting:
   STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
   WEAK: "...but will it be enough against Sri Lanka's batting depth?"
   STRONG: "It won't be enough if Sri Lanka's top order gets set early."
-  Exceptions to this rule:
-  - rivalry_bait tweets may end on a framing question ONLY if the two sides
-    are already stated with full conviction above it — the question must
-    invite the reader to pick a side already presented, not stand in for
-    a missing verdict.
+  Exception to this rule:
   - human_interest tweets may end on a genuine question ONLY if it emerges
     naturally from the emotional tension of the story, not as a generic
     call-to-action or a stand-in for a missing point of view.
@@ -887,9 +969,6 @@ LINE BREAK RULE (strict):
   Even a 2-beat tweet uses a line break between the hook and the verdict.
   The line break IS the pause. It makes the reader feel the weight of each line separately.
 
-  For rivalry_bait specifically — the two camp lines MUST be on separate lines.
-  No comma-joining. No "vs" on the same line. One camp. Line break. Other camp.
-
 ${
   needsCard
     ? `
@@ -902,10 +981,10 @@ CARD_JSON:{"category":"SELECTION NEWS","headline":"Jitesh to RCB","subline":"PBK
 Rules for card fields:
 - category: UPPERCASE label matching the article type. Use one of:
   SELECTION NEWS / INJURY NEWS / BREAKING NEWS / MATCH REPORT /
-  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION / RIVALRY
+  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION
 - headline: max 5 words, punchy, title case. The single most important fact.
 - subline: max 8 words, supporting context. Can be a short phrase or stat.
-- player: primary player's full name, or "" if no single player is central (common for rivalry_bait).
+- player: primary player's full name, or "" if no single player is central.
 
 Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
 Do not add any explanation around the JSON.
@@ -924,8 +1003,8 @@ No card needed for this article type. Output tweet text only.
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-5.6-terra",
-      // temperature: 0.6,
-      // max_tokens: 600,
+      temperature: 0.6,
+      max_tokens: 600,
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: userPrompt },
@@ -1001,12 +1080,8 @@ No card needed for this article type. Output tweet text only.
       );
     }
 
-    console.log("Tweet generated by GPT prompt::");
-    console.log("================================= \n");
-    console.log(tweetText);
-    console.log("\n=================================");
-
-    // console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
+    console.log("tweet generated by GPT prompt::", tweetText);
+    console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
 
     return { tweetText, card };
   } catch (err) {

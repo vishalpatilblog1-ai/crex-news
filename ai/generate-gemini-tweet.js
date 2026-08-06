@@ -17,7 +17,6 @@ const CARD_IMAGE_TYPES = new Set([
   "injury_news",
   "milestone_record",
   "breaking_news",
-  "rivalry_bait",
   // "press_conference",
   // "preview",
   // "tactical_analysis",
@@ -40,7 +39,6 @@ Classify this cricket article into ONE of these types:
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
 - breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
-- rivalry_bait        (explicit comparison between two players, teams, eras, or fanbases that naturally divides opinion)
 
 Classification Rules (apply in order):
 0. Choose breaking_news ONLY if ALL of these are true:
@@ -58,12 +56,12 @@ Classification Rules (apply in order):
 
    These go to injury_news, selection_news, or the appropriate type instead.
 
-0b. Choose rivalry_bait if the article's PRIMARY purpose is to compare two named players,
-   two teams, or two eras — and the comparison naturally splits opinion between two camps.
-   Examples: "Kohli vs Rohit as captains", "CSK vs MI dynasty debate",
-   "Dhoni era vs current team", "Gill vs Pant for the No. 4 slot".
-   DO NOT use rivalry_bait for articles that merely mention two players in passing.
-   The comparison must be the central news peg.
+0b. An article whose PRIMARY purpose is to compare two named players, two teams, or two eras
+   (e.g. "Kohli vs Rohit as captains", "CSK vs MI dynasty debate", "Gill vs Pant for the No. 4
+   slot") is NOT its own type. Route it to whichever of the standard types fits the underlying
+   news peg: a comparison driven by a selection/lineup decision → selection_news; a comparison
+   built on stats/performance trend → player_form; a comparison that's fundamentally a column or
+   personal take → opinion_piece.
 
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
@@ -195,28 +193,10 @@ Rules:
 - The insight between them must connect the two, not just list them
 - Works best for milestone_record and player_form types
 
-PATTERN M — THE DIVIDING LINE
-Split the tweet into two camps with no declared winner. Each side gets one clean, specific line.
-The reader self-selects their camp and goes to the replies to defend it.
-Examples (structure only — NEVER repeat these lines):
-"Dhoni fans: the era built the template.
-Rohit fans: the era scaled it."
-"CSK fans: culture wins trophies.
-MI fans: systems win trophies."
-"Selectors say Gill is the future.
-The stats say Pant never left."
-Rules:
-- Both sides must be EQUALLY defensible — never subtly favour one camp
-- Each line must be concrete — name a player, stat, or specific claim, not vibes
-- No declared winner — the tweet ends at the split. No third line that resolves the tension.
-- No emoji, no "who wins?" call-to-action — the structure IS the provocation
-- Works best for rivalry_bait, but can be used in selection_news, player_form, and milestone_record
-  when a genuine two-camp debate exists in the article
-
 PATTERN DIVERSITY RULE (important):
 Do not default to the same pattern repeatedly.
 Rotate across patterns based on what the article genuinely supports.
-If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, or M this time.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
@@ -560,66 +540,6 @@ CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
 `,
-
-  rivalry_bait: `
-ARTICLE TYPE: Rivalry Bait
-
-This is the fan war tweet. Your job is to draw the line — and let both sides charge at it.
-
-ENGAGEMENT TARGET: Replies + retweets (two-camp debate)
-The tweet must split the audience into exactly two defensible camps with zero resolution.
-Do NOT declare a winner. Do NOT lean toward one side. The tension IS the product.
-
-FOUR TRIGGERS — identify which one this article belongs to:
-
-TRIGGER 1 — PLAYER VS PLAYER
-Two named players being compared directly (stats, role, legacy, selection).
-The tweet must give each player one concrete, specific claim — not vibes.
-Example structure: "[Player A] did X. [Player B] did Y. Pick your side."
-
-TRIGGER 2 — TEAM VS TEAM (or franchise vs franchise)
-Two teams' philosophies, dynasties, or approaches being contrasted.
-Lean into what each team REPRESENTS, not just their trophies.
-Example structure: "[Team A] fans believe X built the template. [Team B] fans believe Y scaled it."
-
-TRIGGER 3 — ERA VS ERA (legend vs current gen)
-Dhoni era vs Rohit era, 90s Test cricket vs T20 era, etc.
-The tweet must acknowledge what each era genuinely did well — no nostalgia bias, no recency bias.
-Example structure: "That era gave India X. This era gave India Y. The debate isn't which was better — it's which mattered more."
-
-TRIGGER 4 — FANBASE VS MEDIA / SELECTORS
-When the article's core tension is fans defending a player against an institutional decision.
-The tweet must frame the institutional logic AND the fan counter-argument with equal weight.
-Example structure: "Selectors' logic: [specific reason]. Fans' counter: [specific reason]. One of them is wrong."
-
-STRUCTURE RULES (non-negotiable):
-- Use PATTERN M (The Dividing Line) as the primary structure
-- Two clean lines — one per camp — separated by a line break
-- Each line must be EQUALLY defensible — no subtle favouritism
-- No third line that resolves the tension. The tweet ends at the split.
-- No "who wins?" or "comment below" call-to-action — the structure does the work
-- No emoji
-
-TONE RULES:
-- Calm and analytical — the controversy comes from the setup, not the language
-- Never manufactured — both sides must be grounded in what the article actually says
-- Never personal — compare decisions, eras, stats, philosophies — never character
-- No fanbase slurs, no tribal baiting, no inflammatory language
-
-CONTENT GUARDRAILS:
-- Both sides must be extractable from the article — never fabricate a position
-- If the article clearly favours one side — do not invent a counter-argument
-  Instead, use a different article type (player_form, opinion_piece, etc.)
-- Never introduce religious, ethnic, or identity framing
-- Criticism must be of decisions and results — never of personal character
-
-CLOSING LINE RULE FOR THIS TYPE:
-The tweet has no closing line. Pattern M IS the structure. It ends where the split ends.
-
-CARD CAPTION RULE:
-If this article type has a card, keep the first line under 60 characters —
-it must not get cut off by the image preview on mobile.
-`,
 };
 
 // ─── SYSTEM PROMPT BUILDER ────────────────────────────────────────────────────
@@ -701,9 +621,6 @@ deliberate tension, not uncertainty. There is a difference between
 (intentional tension — allowed) and
 "This might be India's smartest tactical shift." (hedge — banned).
 You either back something or you don't. Pick a lane.
-
-CLOSING LINE RULE EXCEPTION — rivalry_bait type:
-Pattern M has no closing line by design. The tweet ends at the split. This is intentional.
 
 ═══════════════════════════════════════════
 STRUCTURE VARIETY RULE (STRICT)
@@ -948,12 +865,11 @@ FINAL CHECK before outputting:
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
-- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed — EXCEPTION: rivalry_bait ends at the split, no closing line needed)
+- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
 - For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
-- For rivalry_bait: are both sides EQUALLY defensible? Does the tweet declare a winner anywhere — even subtly? (It must not.)
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
   The reader should finish thinking "but wait, actually..." or "no, I think..."
@@ -965,11 +881,7 @@ FINAL CHECK before outputting:
   STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
   WEAK: "...but will it be enough against Sri Lanka's batting depth?"
   STRONG: "It won't be enough if Sri Lanka's top order gets set early."
-  Exceptions to this rule:
-  - rivalry_bait tweets may end on a framing question ONLY if the two sides
-    are already stated with full conviction above it — the question must
-    invite the reader to pick a side already presented, not stand in for
-    a missing verdict.
+  Exception to this rule:
   - human_interest tweets may end on a genuine question ONLY if it emerges
     naturally from the emotional tension of the story, not as a generic
     call-to-action or a stand-in for a missing point of view.
@@ -1026,10 +938,10 @@ CARD_JSON:{"category":"SELECTION NEWS","headline":"Jitesh to RCB","subline":"PBK
 Rules for card fields:
 - category: UPPERCASE label matching the article type. Use one of:
   SELECTION NEWS / INJURY NEWS / BREAKING NEWS / MATCH REPORT /
-  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION / RIVALRY
+  PLAYER FORM / PREVIEW / MILESTONE / PRESS CONF / TACTICAL / OPINION
 - headline: max 5 words, punchy, title case. The single most important fact.
 - subline: max 8 words, supporting context. Can be a short phrase or stat.
-- player: primary player's full name, or "" if no single player is central (common for rivalry_bait).
+- player: primary player's full name, or "" if no single player is central.
 
 Output the CARD_JSON line IMMEDIATELY after the tweet with NO blank line between them.
 Do not add any explanation around the JSON.
@@ -1052,7 +964,7 @@ No card needed for this article type. Output tweet text only.
       config: {
         systemInstruction,
         temperature: 0.5,
-        maxOutputTokens: 1500, // was 600 -- Gemini 3.x combines thinking + visible output into ONE pool, and "LOW" thinking level is NOT a guaranteed zero. This prompt has a dense multi-hundred-line rule/checklist system+user prompt, so even "LOW" reasoning over that many simultaneous constraints can burn real tokens before the tweet text starts. 1500 matches the budget already used for Claude.
+        maxOutputTokens: 1500, // was 600 -- Gemini 3.x combines thinking + visible output into ONE pool, and "LOW" thinking level is NOT a guaranteed zero (Google's own docs note it still spends thinking tokens on tasks more complex than plain extraction). This prompt has a dense multi-hundred-line rule/checklist system+user prompt, so even "LOW" reasoning over that many simultaneous constraints can burn real tokens before the tweet text starts. 1500 matches the budget already used for Claude, giving room for both.
         thinkingConfig: { thinkingLevel: "LOW" },
       },
     });
@@ -1160,10 +1072,7 @@ No card needed for this article type. Output tweet text only.
       );
     }
 
-    console.log("Tweet generated by gemini prompt::");
-    console.log("================================= \n");
-    console.log(tweetText);
-    console.log("\n=================================");
+    console.log(`🃏 Gemini card fields:`, card ?? "none (text-only type)");
 
     return { tweetText, card };
   } catch (err) {

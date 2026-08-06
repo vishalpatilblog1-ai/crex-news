@@ -1021,6 +1021,14 @@ function extractPublishedAtFromDocument($, html = "") {
 async function fetchPage(url) {
   const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
+  // Small random delay before each request -- cheap to add, doesn't hurt,
+  // and helps if there's also a behavioral/rate-limiting layer stacked on
+  // top of the fingerprint check below. Not expected to be the primary fix
+  // for a 405 specifically (that's more commonly a header/fingerprint
+  // check than a timing one), but costs nothing to include.
+  const jitterMs = 500 + Math.random() * 2000;
+  await new Promise((resolve) => setTimeout(resolve, jitterMs));
+
   const response = await axios.get(url, {
     timeout: REQUEST_TIMEOUT_MS,
     maxRedirects: 5,
@@ -1035,6 +1043,20 @@ async function fetchPage(url) {
       Referer: "https://www.google.com/",
       "Cache-Control": "no-cache",
       Pragma: "no-cache",
+      // Client Hints -- real Chrome sends these alongside the User-Agent
+      // string automatically. A request with a Chrome UA but none of these
+      // is a common WAF tell (Cloudflare/Akamai/Datadome specifically check
+      // for this mismatch and respond with 405 rather than 403 to obscure
+      // that it's a bot check).
+      "Sec-Ch-Ua":
+        '"Not_A Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"macOS"',
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1",
     },
 
     validateStatus: (status) => status >= 200 && status < 400,
