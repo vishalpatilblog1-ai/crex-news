@@ -1,12 +1,12 @@
-import {
-  classifyArticle,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
-
 // import {
 //   classifyArticle,
-//   generateClaudeTweetWithType,
-// } from "../ai/generateClaudeTweet.js";
+//   generateGPTTweetWithType,
+// } from "../ai/generate-gpt-tweet.js";
+
+import {
+  classifyArticle,
+  generateClaudeTweetWithType,
+} from "../ai/generateClaudeTweet.js";
 
 import { generateCardImage } from "../canvas/imageRenderer.js";
 
@@ -269,7 +269,7 @@ export async function skNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const claudeResult = await generateGPTTweetWithType(
+      const claudeResult = await generateClaudeTweetWithType(
         fullText,
         articleType,
       );
