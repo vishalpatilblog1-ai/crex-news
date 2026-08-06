@@ -1036,91 +1036,91 @@ function extractPublishedAtFromDocument($, html = "") {
   return null;
 }
 
-async function fetchPage(url) {
-  const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+// async function fetchPage(url) {
+//   const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
-  // Small random delay before each request -- cheap to add, doesn't hurt,
-  // and helps if there's also a behavioral/rate-limiting layer stacked on
-  // top of the fingerprint check below. Not expected to be the primary fix
-  // for a 405 specifically (that's more commonly a header/fingerprint
-  // check than a timing one), but costs nothing to include.
-  const jitterMs = 500 + Math.random() * 2000;
-  await new Promise((resolve) => setTimeout(resolve, jitterMs));
+//   // Small random delay before each request -- cheap to add, doesn't hurt,
+//   // and helps if there's also a behavioral/rate-limiting layer stacked on
+//   // top of the fingerprint check below. Not expected to be the primary fix
+//   // for a 405 specifically (that's more commonly a header/fingerprint
+//   // check than a timing one), but costs nothing to include.
+//   const jitterMs = 500 + Math.random() * 2000;
+//   await new Promise((resolve) => setTimeout(resolve, jitterMs));
 
-  const response = await axios.get(url, {
-    timeout: REQUEST_TIMEOUT_MS,
-    maxRedirects: 5,
-    responseType: "text",
-    decompress: true,
+//   const response = await axios.get(url, {
+//     timeout: REQUEST_TIMEOUT_MS,
+//     maxRedirects: 5,
+//     responseType: "text",
+//     decompress: true,
 
-    // res = await fetch(CA_RSS, {
-    //     signal: controller.signal,
-    //     headers: {
-    //       "User-Agent": pickUA(),
-    //       Accept:
-    //         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    //       "Accept-Language": "en-US,en;q=0.9",
-    //       "Accept-Encoding": "gzip, deflate, br",
-    //       Referer: "https://www.google.com/search?q=cricket+news",
-    //       Connection: "keep-alive",
-    //       "Cache-Control": "no-cache",
-    //       "Sec-Fetch-Dest": "document",
-    //       "Sec-Fetch-Mode": "navigate",
-    //       "Sec-Fetch-Site": "cross-site",
-    //       "Upgrade-Insecure-Requests": "1",
-    //     },
-    //   });
+//     // res = await fetch(CA_RSS, {
+//     //     signal: controller.signal,
+//     //     headers: {
+//     //       "User-Agent": pickUA(),
+//     //       Accept:
+//     //         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+//     //       "Accept-Language": "en-US,en;q=0.9",
+//     //       "Accept-Encoding": "gzip, deflate, br",
+//     //       Referer: "https://www.google.com/search?q=cricket+news",
+//     //       Connection: "keep-alive",
+//     //       "Cache-Control": "no-cache",
+//     //       "Sec-Fetch-Dest": "document",
+//     //       "Sec-Fetch-Mode": "navigate",
+//     //       "Sec-Fetch-Site": "cross-site",
+//     //       "Upgrade-Insecure-Requests": "1",
+//     //     },
+//     //   });
 
-    headers: {
-      "User-Agent": pickUA(),
-      Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Accept-Encoding": "gzip, deflate, br",
-      Referer: "https://www.google.com/search?q=cricket+news",
-      Connection: "keep-alive",
-      "Cache-Control": "no-cache",
-      "Sec-Fetch-Dest": "document",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "cross-site",
-      "Upgrade-Insecure-Requests": "1",
-    },
+//     headers: {
+//       "User-Agent": pickUA(),
+//       Accept:
+//         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+//       "Accept-Language": "en-US,en;q=0.9",
+//       "Accept-Encoding": "gzip, deflate, br",
+//       Referer: "https://www.google.com/search?q=cricket+news",
+//       Connection: "keep-alive",
+//       "Cache-Control": "no-cache",
+//       "Sec-Fetch-Dest": "document",
+//       "Sec-Fetch-Mode": "navigate",
+//       "Sec-Fetch-Site": "cross-site",
+//       "Upgrade-Insecure-Requests": "1",
+//     },
 
-    // headers: {
-    //   "User-Agent": userAgent,
-    //   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    //   "Accept-Language": "en-US,en;q=0.9",
-    //   "Accept-Encoding": "gzip, deflate, br",
-    //   Referer: "https://www.google.com/",
-    //   "Cache-Control": "no-cache",
-    //   Pragma: "no-cache",
-    //   "Sec-Ch-Ua":
-    //     '"Not_A Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
-    //   "Sec-Ch-Ua-Mobile": "?0",
-    //   "Sec-Ch-Ua-Platform": '"macOS"',
-    //   "Sec-Fetch-Dest": "document",
-    //   "Sec-Fetch-Mode": "navigate",
-    //   "Sec-Fetch-Site": "none",
-    //   "Sec-Fetch-User": "?1",
-    //   "Upgrade-Insecure-Requests": "1",
-    // },
+//     // headers: {
+//     //   "User-Agent": userAgent,
+//     //   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+//     //   "Accept-Language": "en-US,en;q=0.9",
+//     //   "Accept-Encoding": "gzip, deflate, br",
+//     //   Referer: "https://www.google.com/",
+//     //   "Cache-Control": "no-cache",
+//     //   Pragma: "no-cache",
+//     //   "Sec-Ch-Ua":
+//     //     '"Not_A Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
+//     //   "Sec-Ch-Ua-Mobile": "?0",
+//     //   "Sec-Ch-Ua-Platform": '"macOS"',
+//     //   "Sec-Fetch-Dest": "document",
+//     //   "Sec-Fetch-Mode": "navigate",
+//     //   "Sec-Fetch-Site": "none",
+//     //   "Sec-Fetch-User": "?1",
+//     //   "Upgrade-Insecure-Requests": "1",
+//     // },
 
-    validateStatus: (status) => status >= 200 && status < 400,
-  });
+//     validateStatus: (status) => status >= 200 && status < 400,
+//   });
 
-  const html =
-    typeof response.data === "string"
-      ? response.data
-      : String(response.data || "");
+//   const html =
+//     typeof response.data === "string"
+//       ? response.data
+//       : String(response.data || "");
 
-  const finalUrl = response.request?.res?.responseUrl || url;
+//   const finalUrl = response.request?.res?.responseUrl || url;
 
-  return {
-    html,
-    finalUrl,
-    status: response.status,
-  };
-}
+//   return {
+//     html,
+//     finalUrl,
+//     status: response.status,
+//   };
+// }
 
 async function fetchPage(url) {
   if (!SCRAPERAPI_KEY) {
