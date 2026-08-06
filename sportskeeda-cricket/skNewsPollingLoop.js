@@ -209,7 +209,7 @@ export async function skNewsPollingLoop() {
 
     const fullText = `${parsed.headline}\n${parsed.body}`;
 
-    if (isBlockedSKHeadline(fullText)) {
+    if (isBlockedSKHeadline(parsed.headline)) {
       console.log("⏭️ Blocked Sportskeeda article:", parsed.headline);
 
       markSeen(STATE, selectedItem, cleanLink);
