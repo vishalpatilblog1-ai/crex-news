@@ -9,7 +9,7 @@ import * as cheerio from "cheerio";
 (async () => {
   try {
     const testResponse = await axios.get(
-      "https://www.sportskeeda.com/cricket/news-i-remember-ben-stokes-advising-me-ajinkya-rahane-recalls-vital-life-advice-ipl-2017-retirement",
+      "https://r.jina.ai/https://www.sportskeeda.com/cricket/news-i-remember-ben-stokes-advising-me-ajinkya-rahane-recalls-vital-life-advice-ipl-2017-retirement",
       { timeout: 15000 },
     );
     console.log(
