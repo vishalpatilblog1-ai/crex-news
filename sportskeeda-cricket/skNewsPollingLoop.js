@@ -1,11 +1,15 @@
-// sportskeeda-cricket/skNewsPollingLoop.js
-
-import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
-  generateClaudeTweetWithType,
-} from "../ai/generateClaudeTweet.js";
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+
+// import {
+//   classifyArticle,
+//   generateClaudeTweetWithType,
+// } from "../ai/generateClaudeTweet.js";
+
 import { generateCardImage } from "../canvas/imageRenderer.js";
+
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
 import {
@@ -13,15 +17,20 @@ import {
   enqueueTweet,
   isCricketAddictorBlocked,
 } from "../twitter/tweetQueue.js";
+
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
-import { fetchSKCricketHtml } from "./fetchSKCricketHtml.js";
+import { fetchSKCricketFeed } from "./fetchSKCricketFeed.js";
+import { resolveGoogleNewsUrl } from "./resolveGoogleNewsUrl.js";
+
+import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
+
+import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
+import { parseSKArticle } from "./parseSKArticle.js";
+
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
-import { parseSKArticle } from "./parseSKArticle.js";
-import { normalizeSKLink } from "./skFilters.js";
-import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
 
 const MAX_AGE_MIN = 60;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
@@ -29,12 +38,16 @@ const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 export async function skNewsPollingLoop() {
-  console.log("inside skNewsPollingLoop");
+  console.log("skNewsPollingLoop...");
 
-  if (!global.STATE) return false;
+  if (!global.STATE) {
+    console.log("⚠️ global.STATE is not available");
+    return false;
+  }
 
   if (isCricketAddictorBlocked("SK")) {
-    console.log("🚫 SK polling paused (11:30 PM – 6:00 AM window)");
+    console.log("🚫 Sportskeeda polling paused during blocked hours");
+
     return false;
   }
 
@@ -42,240 +55,317 @@ export async function skNewsPollingLoop() {
 
   STATE.sk ??= {};
   STATE.sk.seen ??= {};
-  STATE.dailyContext ??= { contexts: [] };
+  STATE.dailyContext ??= {
+    contexts: [],
+  };
+  STATE.dailyContext.contexts ??= [];
   STATE.usedImages ??= {};
 
-  console.log("-------4-------");
+  let stateChanged = false;
 
-  let stateDirty = false;
-  stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
-  stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
-  stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
+  if (pruneSeen(STATE)) {
+    stateChanged = true;
+  }
 
-  if (stateDirty) await saveState(STATE, "prune cleanup");
+  if (pruneDailyContext(STATE)) {
+    stateChanged = true;
+  }
 
-  let items;
+  if (pruneUsedImages(STATE)) {
+    stateChanged = true;
+  }
+
+  if (stateChanged) {
+    await saveState(STATE, "Sportskeeda state cleanup");
+  }
+
+  let items = [];
+
   try {
-    items = await fetchSKCricketHtml({
-      limit: Number(process.env.SK_FETCH_LIMIT || 50),
+    items = await fetchSKCricketFeed({
+      limit: 50,
     });
-  } catch (err) {
-    console.warn("❌ SK cricket page fetch failed:", err?.message || err);
+  } catch (error) {
+    console.log("❌ Sportskeeda RSS fetch failed:", error?.message || error);
+
     return false;
   }
 
-  if (!Array.isArray(items) || items.length === 0) return false;
+  if (!Array.isArray(items) || items.length === 0) {
+    console.log("ℹ️ No Sportskeeda RSS items found");
+
+    return false;
+  }
+
+  console.log(`📰 Sportskeeda RSS items: ${items.length}`);
 
   const sorted = [...items]
-    .filter((item) => {
-      if (!item?.publishedAt) {
-        return false;
-      }
+    .filter((item) => getPubDate(item))
+    .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-      const publishedTime = Date.parse(item.publishedAt);
-
-      return Number.isFinite(publishedTime);
-    })
-    .sort((a, b) => {
-      return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
-    });
-
-  let selected = null;
+  let selectedItem = null;
+  let cleanLink = null;
 
   for (const item of sorted) {
-    const pubMs = getPubDate(item);
+    const publishedAt = getPubDate(item);
 
-    if (pubMs) {
-      const ageMin = (Date.now() - pubMs) / 60000;
-      if (ageMin > MAX_AGE_MIN) continue;
-    }
+    const ageMinutes = (Date.now() - publishedAt) / 60000;
 
-    const cleanLink = normalizeSKLink(item.link);
-    if (!cleanLink) continue;
-
-    if (STATE.sk.seen[cleanLink]) continue;
-
-    if (isBlockedSKHeadline(item.title)) {
-      STATE.sk.seen[cleanLink] = Date.now();
+    if (ageMinutes > MAX_AGE_MIN) {
       continue;
     }
 
-    selected = item;
+    const googleNewsLink = item.googleNewsLink || item.link || item.guid;
+
+    if (!googleNewsLink) {
+      continue;
+    }
+
+    const googleNewsSeenKey = `google-news:${googleNewsLink}`;
+
+    if (STATE.sk.seen[googleNewsSeenKey]) {
+      continue;
+    }
+
+    if (isBlockedSKHeadline(item.title || item.headline || "")) {
+      STATE.sk.seen[googleNewsSeenKey] = Date.now();
+
+      continue;
+    }
+
+    let resolvedLink = null;
+
+    try {
+      resolvedLink = await resolveGoogleNewsUrl(googleNewsLink);
+    } catch (error) {
+      console.log("⚠️ Google News URL decode failed:", error?.message || error);
+
+      continue;
+    }
+
+    if (!resolvedLink) {
+      console.log("⏭️ Could not resolve Sportskeeda article:", googleNewsLink);
+
+      continue;
+    }
+
+    cleanLink = normalizeSKLink(resolvedLink);
+
+    if (!cleanLink) {
+      console.log("⏭️ Invalid resolved Sportskeeda URL:", resolvedLink);
+
+      continue;
+    }
+
+    if (
+      !isSportskeedaCricketArticle({
+        link: cleanLink,
+      })
+    ) {
+      console.log("⏭️ Not a valid Sportskeeda cricket article:", cleanLink);
+
+      continue;
+    }
+
+    if (STATE.sk.seen[cleanLink]) {
+      STATE.sk.seen[googleNewsSeenKey] = Date.now();
+
+      continue;
+    }
+
+    console.log("✅ Sportskeeda URL resolved:", {
+      googleNewsLink,
+      resolvedLink,
+      cleanLink,
+    });
+
+    selectedItem = {
+      ...item,
+      link: cleanLink,
+      googleNewsLink,
+    };
+
     break;
   }
 
-  if (!selected) return false;
+  if (!selectedItem || !cleanLink) {
+    console.log("ℹ️ No eligible Sportskeeda article found");
 
-  const cleanLink = normalizeSKLink(selected.link);
-  const pubMs = getPubDate(selected);
+    return false;
+  }
 
   try {
-    console.log("selected::", selected);
+    const parsed = await parseSKArticle(selectedItem);
 
-    const parsed = await parseSKArticle(selected);
+    if (!parsed?.headline || !parsed?.body) {
+      console.log("⏭️ Sportskeeda article parsing failed:", cleanLink);
 
-    // console.log("parsed::", parsed);
+      markSeen(STATE, selectedItem, cleanLink);
 
-    if (!parsed?.headline || !parsed?.body || parsed.body.length < 80) {
-      STATE.sk.seen[cleanLink] = Date.now();
-      await saveState(STATE, "invalid article structure");
+      await saveState(STATE, "Sportskeeda parsing failed");
+
       return false;
     }
 
     const fullText = `${parsed.headline}\n${parsed.body}`;
 
-    // console.log("fullText::", fullText);
+    if (isBlockedSKHeadline(fullText)) {
+      console.log("⏭️ Blocked Sportskeeda article:", parsed.headline);
 
-    if (isBlockedSKHeadline(parsed.headline)) {
-      console.log(
-        `⏭️ Skipping blocked-pattern article (body match): ${parsed.headline}`,
-      );
-      STATE.sk.seen[cleanLink] = Date.now();
-      await saveState(STATE, "blocked content pattern found in body");
+      markSeen(STATE, selectedItem, cleanLink);
+
+      await saveState(STATE, "Sportskeeda blocked article");
+
       return false;
     }
 
     let articleType = "player_form";
+
     try {
       articleType = await classifyArticle(fullText);
-    } catch (err) {
-      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+    } catch (error) {
+      console.log(
+        "⚠️ Sportskeeda article classification failed:",
+        error?.message || error,
+      );
     }
 
     let decision = null;
+
     try {
       decision = await judgeNewsContext({
         articleText: fullText,
-        existingContexts:
-          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+
+        existingContexts: STATE.dailyContext.contexts.map(
+          (context) => context.summary,
+        ),
       });
 
       console.log(
         `📊 Scores — significance: ${
           decision?.significanceScore ?? "n/a"
-        }, virality: ${decision?.viralityScore ?? "n/a"} — "${
-          parsed.headline
-        }"`,
+        }, virality: ${
+          decision?.viralityScore ?? "n/a"
+        } — "${parsed.headline}"`,
       );
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 SK skipped — already covered context");
-        STATE.sk.seen[cleanLink] = Date.now();
-        await saveState(STATE, "duplicate context skipped");
+        console.log("🔴 Sportskeeda article already covered");
+
+        markSeen(STATE, selectedItem, cleanLink);
+
+        await saveState(STATE, "Sportskeeda duplicate context");
+
         return false;
       }
-    } catch (err) {
-      console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+    } catch (error) {
+      console.log(
+        "⚠️ Sportskeeda context check failed:",
+        error?.message || error,
+      );
     }
 
-    // ── Step 3: Tweet generation ──────────────────────────────────────────────
     let tweetText = null;
     let generatedPath = null;
 
     try {
-      const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType);
+      const claudeResult = await generateGPTTweetWithType(
+        fullText,
+        articleType,
+      );
 
-      // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
-      //   fullText,
-      //   articleType,
-      // );
+      tweetText = claudeResult?.tweetText || null;
 
-      console.log("tweetToPost:::", tweetToPost);
-
-      // const {
-      //   tweetText: gptTweet,
-      //   card,
-      //   source,
-      // } = await generateGeminiTweet(fullText, articleType);
-
-      tweetText = tweetToPost;
-      console.log("tweetText>>>>", tweetText);
-
-      if (card) {
-        try {
-          generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE,
-            card,
-          );
-
-          console.log("Claude generatedPath:::", generatedPath);
-        } catch (err) {
-          console.error("❌ Image generation failed:", err);
-        }
-      } else {
-        console.log("📝 Text-only tweet (no card)");
-      }
-    } catch (err) {
-      console.warn("⚠️ Claude failed:", err?.message || err);
-    }
-
-    if (!tweetText || tweetText.trim().length < 30) {
-      try {
-        const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
-          fullText,
-          articleType,
+      if (claudeResult?.card) {
+        generatedPath = await generateCardImage(
+          CREX_BASE_IMAGE_TEMPLATE,
+          claudeResult.card,
         );
 
-        // const {
-        //   tweetText: gptTweet,
-        //   card,
-        //   source,
-        // } = await generateGeminiTweet(fullText, articleType);
+        console.log("🖼️ Claude Sportskeeda card generated:", generatedPath);
+      } else {
+        console.log("📝 Claude generated text-only tweet");
+      }
+    } catch (error) {
+      console.log(
+        "⚠️ Claude Sportskeeda generation failed:",
+        error?.message || error,
+      );
+    }
 
-        tweetText = gptTweet;
+    if (!tweetText) {
+      try {
+        const gptResult = await generateGPTTweetWithType(fullText, articleType);
 
-        if (card) {
-          try {
-            generatedPath = await generateCardImage(
-              CREX_BASE_IMAGE_TEMPLATE,
-              card,
-            );
+        tweetText = gptResult?.tweetText || null;
 
-            // console.log("GPT generatedPath:::", generatedPath);
-          } catch (err) {
-            console.error("❌ Image generation failed:", err);
-          }
+        if (gptResult?.card) {
+          generatedPath = await generateCardImage(
+            CREX_BASE_IMAGE_TEMPLATE,
+            gptResult.card,
+          );
+
+          console.log("🖼️ GPT Sportskeeda card generated:", generatedPath);
         } else {
-          console.log("📝 Text-only tweet (no card)");
+          console.log("📝 GPT generated text-only tweet");
         }
-      } catch (err) {
-        console.warn("⚠️ GPT failed:", err?.message || err);
+      } catch (error) {
+        console.log(
+          "⚠️ GPT Sportskeeda generation failed:",
+          error?.message || error,
+        );
       }
     }
 
-    if (!tweetText || tweetText.length < 30) {
-      STATE.sk.seen[cleanLink] = Date.now();
-      await saveState(STATE, "tweet generation failed or too short");
+    if (!tweetText) {
+      console.log("⏭️ Sportskeeda tweet generation failed");
+
+      markSeen(STATE, selectedItem, cleanLink);
+
+      await saveState(STATE, "Sportskeeda tweet generation failed");
+
       return false;
     }
 
-    // ── Image check ───────────────────────────────────────────────────────────
     const imageUrl = parsed.imageUrl || null;
-    const { useImage } = await decideImageUsage({
-      imageUrl,
-      usedImages: STATE.usedImages,
-    });
+
+    const imageResult = await decideImageUsage(imageUrl, STATE.usedImages);
 
     tweetText = applySourceSignature(tweetText, "SK");
-    tweetText = tweetText.trim().replace(/\.?$/, ".");
 
-    const tweetId = `SK:${cleanLink}`;
+    tweetText = tweetText.trim();
+
+    if (!/[.!?]$/.test(tweetText)) {
+      tweetText += ".";
+    }
+
+    if (CONSOLE_ONLY) {
+      console.log("🧪 CONSOLE_ONLY Sportskeeda tweet:", {
+        headline: parsed.headline,
+        articleUrl: cleanLink,
+        tweetText,
+        generatedPath,
+        articleImage: imageUrl,
+        useArticleImage: imageResult.useImage,
+      });
+
+      return false;
+    }
 
     enqueueTweet({
-      id: tweetId,
+      id: `SK:${cleanLink}`,
       source: "SK",
       text: tweetText,
       imageUrl: generatedPath || null,
       seenKey: cleanLink,
-      publishedAt: pubMs || Date.now(),
+      publishedAt: getPubDate(selectedItem) || Date.now(),
     });
 
-    console.log(`📥 Queued SK tweet: ${parsed.headline}`);
+    console.log(`📥 Queued Sportskeeda tweet: ${parsed.headline}`);
 
-    STATE.sk.seen[cleanLink] = Date.now();
+    markSeen(STATE, selectedItem, cleanLink);
 
-    if (useImage && imageUrl) {
+    if (imageResult.useImage && imageUrl) {
       STATE.usedImages[imageUrl] = Date.now();
     }
 
@@ -288,132 +378,129 @@ export async function skNewsPollingLoop() {
       });
     }
 
-    await saveState(STATE);
-    console.log(`✅ SK published: ${parsed.headline}`);
+    await saveState(STATE, "Sportskeeda tweet queued");
+
+    console.log(`✅ Sportskeeda processed: ${parsed.headline}`);
+
     return true;
-  } catch (err) {
-    console.warn("⚠️ SK processing failed:", err?.message || err);
+  } catch (error) {
+    console.log("⚠️ Sportskeeda processing failed:", error?.message || error);
+
     return false;
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
 function getPubDate(item) {
-  const d = item?.pubDate || item?.publishedAt;
-  return d ? new Date(d).getTime() : 0;
-}
+  const value = item?.publishedAt || item?.isoDate || item?.pubDate;
 
-function pruneSeen(STATE, retentionMs) {
-  try {
-    const now = Date.now();
-    let pruned = 0;
-
-    for (const [link, ts] of Object.entries(STATE.sk?.seen || {})) {
-      if (now - ts > retentionMs) {
-        delete STATE.sk.seen[link];
-        pruned++;
-      }
-    }
-
-    if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old SK seen entries`);
-      return true;
-    }
-  } catch (err) {
-    console.warn("⚠️ SK seen prune failed:", err?.message || err);
+  if (!value) {
+    return 0;
   }
-  return false;
+
+  const timestamp = new Date(value).getTime();
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function pruneDailyContext(STATE, retentionMs) {
-  try {
-    const ctx = STATE.dailyContext?.contexts;
-    if (!Array.isArray(ctx) || ctx.length === 0) return false;
+function markSeen(STATE, item, cleanLink) {
+  const now = Date.now();
 
-    const now = Date.now();
-    const before = ctx.length;
-
-    STATE.dailyContext.contexts = ctx.filter((c) => {
-      const t = new Date(c.createdAt).getTime();
-      return Number.isFinite(t) && now - t <= retentionMs;
-    });
-
-    const after = STATE.dailyContext.contexts.length;
-
-    if (before !== after) {
-      console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
-      return true;
-    }
-  } catch (err) {
-    console.warn("⚠️ dailyContext prune failed:", err?.message || err);
+  if (cleanLink) {
+    STATE.sk.seen[cleanLink] = now;
   }
-  return false;
-}
 
-function pruneUsedImages(STATE, retentionMs) {
-  try {
-    const now = Date.now();
-    let pruned = 0;
+  const googleNewsLink = item?.googleNewsLink || item?.link || item?.guid;
 
-    for (const [imgUrl, ts] of Object.entries(STATE.usedImages || {})) {
-      if (now - ts > retentionMs) {
-        delete STATE.usedImages[imgUrl];
-        pruned++;
-      }
-    }
-
-    if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old usedImages entries`);
-      return true;
-    }
-  } catch (err) {
-    console.warn("⚠️ usedImages prune failed:", err?.message || err);
+  if (googleNewsLink) {
+    STATE.sk.seen[`google-news:${googleNewsLink}`] = now;
   }
-  return false;
 }
 
-async function decideImageUsage({ imageUrl, usedImages }) {
-  if (!imageUrl)
-    return { useImage: false, reason: "🖼️ No imageUrl — text-only" };
+function pruneSeen(STATE) {
+  const now = Date.now();
+  let changed = false;
 
-  if (usedImages?.[imageUrl]) {
+  for (const [key, timestamp] of Object.entries(STATE.sk.seen)) {
+    if (now - timestamp > SEEN_RETENTION_MS) {
+      delete STATE.sk.seen[key];
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+function pruneDailyContext(STATE) {
+  const before = STATE.dailyContext.contexts.length;
+
+  STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter(
+    (context) => {
+      const timestamp = new Date(context.createdAt).getTime();
+
+      return (
+        Number.isFinite(timestamp) && Date.now() - timestamp <= RETENTION_MS
+      );
+    },
+  );
+
+  return before !== STATE.dailyContext.contexts.length;
+}
+
+function pruneUsedImages(STATE) {
+  const now = Date.now();
+  let changed = false;
+
+  for (const [imageUrl, timestamp] of Object.entries(STATE.usedImages)) {
+    if (now - timestamp > RETENTION_MS) {
+      delete STATE.usedImages[imageUrl];
+
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+async function decideImageUsage(imageUrl, usedImages) {
+  if (!imageUrl) {
     return {
       useImage: false,
-      reason: "🖼️ Image already used — forcing text-only",
+    };
+  }
+
+  if (usedImages[imageUrl]) {
+    return {
+      useImage: false,
     };
   }
 
   try {
     const localImagePath = await downloadImageToTemp(imageUrl);
-    const ocrResult = await isRiskyTwitterImage(localImagePath);
 
-    if (!ocrResult?.risky) return { useImage: true, reason: "" };
+    const result = await isRiskyTwitterImage(localImagePath);
 
     return {
-      useImage: false,
-      reason: `⚠️ OCR flagged image as risky: ${ocrResult.reason || "unknown"}`,
+      useImage: !result?.risky,
     };
-  } catch (err) {
+  } catch (error) {
+    console.log("⚠️ Sportskeeda image check failed:", error?.message || error);
+
     return {
       useImage: false,
-      reason: `⚠️ OCR check failed, fallback to text-only: ${
-        err?.message || err
-      }`,
     };
   }
 }
 
 function contextExists(STATE, summary) {
-  if (!STATE.dailyContext?.contexts?.length) return false;
-  const norm = normalizeSummary(summary);
+  const normalized = normalizeText(summary);
+
   return STATE.dailyContext.contexts.some(
-    (c) => normalizeSummary(c.summary) === norm,
+    (context) => normalizeText(context.summary) === normalized,
   );
 }
 
-function normalizeSummary(text = "") {
-  return text
+function normalizeText(value = "") {
+  return String(value)
     .toLowerCase()
     .replace(/[^a-z0-9 ]/g, "")
     .replace(/\s+/g, " ")
