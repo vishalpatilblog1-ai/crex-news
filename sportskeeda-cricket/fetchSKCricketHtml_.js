@@ -1,27 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-// TEMPORARY DIAGNOSTIC -- remove after checking deploy logs once.
-// Tests whether an individual SK article page is blocked the same way the
-// listing pages are, using a plain direct request (no ScraperAPI), so we
-// know whether the paid workaround is actually needed for article fetches
-// or just for the 2 listing pages.
-(async () => {
-  try {
-    const testResponse = await axios.get(
-      "https://www.sportskeeda.com/cricket/news-i-remember-ben-stokes-advising-me-ajinkya-rahane-recalls-vital-life-advice-ipl-2017-retirement",
-      { timeout: 15000 },
-    );
-    console.log(
-      `🔬 DIAGNOSTIC: direct article fetch succeeded, status ${testResponse.status}`,
-    );
-  } catch (err) {
-    console.log(
-      `🔬 DIAGNOSTIC: direct article fetch FAILED — ${err.response?.status || err.message}`,
-    );
-  }
-})();
-
 const SPORTSKEEDA_BASE_URL = "https://www.sportskeeda.com";
 
 const SK_CRICKET_URLS = [
