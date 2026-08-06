@@ -1035,29 +1035,57 @@ async function fetchPage(url) {
     responseType: "text",
     decompress: true,
 
+    // res = await fetch(CA_RSS, {
+    //     signal: controller.signal,
+    //     headers: {
+    //       "User-Agent": pickUA(),
+    //       Accept:
+    //         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    //       "Accept-Language": "en-US,en;q=0.9",
+    //       "Accept-Encoding": "gzip, deflate, br",
+    //       Referer: "https://www.google.com/search?q=cricket+news",
+    //       Connection: "keep-alive",
+    //       "Cache-Control": "no-cache",
+    //       "Sec-Fetch-Dest": "document",
+    //       "Sec-Fetch-Mode": "navigate",
+    //       "Sec-Fetch-Site": "cross-site",
+    //       "Upgrade-Insecure-Requests": "1",
+    //     },
+    //   });
+
     headers: {
-      "User-Agent": userAgent,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "User-Agent": pickUA(),
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
       "Accept-Encoding": "gzip, deflate, br",
-      Referer: "https://www.google.com/",
+      Referer: "https://www.google.com/search?q=cricket+news",
+      Connection: "keep-alive",
       "Cache-Control": "no-cache",
-      Pragma: "no-cache",
-      // Client Hints -- real Chrome sends these alongside the User-Agent
-      // string automatically. A request with a Chrome UA but none of these
-      // is a common WAF tell (Cloudflare/Akamai/Datadome specifically check
-      // for this mismatch and respond with 405 rather than 403 to obscure
-      // that it's a bot check).
-      "Sec-Ch-Ua":
-        '"Not_A Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
-      "Sec-Ch-Ua-Mobile": "?0",
-      "Sec-Ch-Ua-Platform": '"macOS"',
       "Sec-Fetch-Dest": "document",
       "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "none",
-      "Sec-Fetch-User": "?1",
+      "Sec-Fetch-Site": "cross-site",
       "Upgrade-Insecure-Requests": "1",
     },
+
+    // headers: {
+    //   "User-Agent": userAgent,
+    //   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    //   "Accept-Language": "en-US,en;q=0.9",
+    //   "Accept-Encoding": "gzip, deflate, br",
+    //   Referer: "https://www.google.com/",
+    //   "Cache-Control": "no-cache",
+    //   Pragma: "no-cache",
+    //   "Sec-Ch-Ua":
+    //     '"Not_A Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"',
+    //   "Sec-Ch-Ua-Mobile": "?0",
+    //   "Sec-Ch-Ua-Platform": '"macOS"',
+    //   "Sec-Fetch-Dest": "document",
+    //   "Sec-Fetch-Mode": "navigate",
+    //   "Sec-Fetch-Site": "none",
+    //   "Sec-Fetch-User": "?1",
+    //   "Upgrade-Insecure-Requests": "1",
+    // },
 
     validateStatus: (status) => status >= 200 && status < 400,
   });
