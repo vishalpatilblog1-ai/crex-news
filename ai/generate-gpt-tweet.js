@@ -85,8 +85,8 @@ ${articleText}
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-5.6-luna",
-      temperature: 0,
-      max_tokens: 20,
+      // temperature: 0,
+      // max_tokens: 20,
       messages: [
         { role: "system", content: "You are a precise classification engine." },
         { role: "user", content: prompt },
@@ -1003,8 +1003,8 @@ No card needed for this article type. Output tweet text only.
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-5.6-terra",
-      temperature: 0.6,
-      max_tokens: 600,
+      // temperature: 0.6,
+      // max_tokens: 600,
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: userPrompt },

@@ -1,12 +1,7 @@
 // import {
 //   classifyArticle,
-//   generateGPTTweetWithType,
-// } from "../ai/generate-gpt-tweet.js";
-
-import {
-  classifyArticle,
-  generateClaudeTweetWithType,
-} from "../ai/generateClaudeTweet.js";
+//   generateClaudeTweetWithType,
+// } from "../ai/generateClaudeTweet.js";
 
 import { generateCardImage } from "../canvas/imageRenderer.js";
 
@@ -31,9 +26,13 @@ import { parseSKArticle } from "./parseSKArticle.js";
 
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
+import {
+  classifyArticle,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
 
 const MAX_AGE_MIN = 60;
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
@@ -269,7 +268,12 @@ export async function skNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const claudeResult = await generateClaudeTweetWithType(
+      // const claudeResult = await generateClaudeTweetWithType(
+      //   fullText,
+      //   articleType,
+      // );
+
+      const claudeResult = await generateGPTTweetWithType(
         fullText,
         articleType,
       );
@@ -339,8 +343,8 @@ export async function skNewsPollingLoop() {
       tweetText += ".";
     }
 
-    if (CONSOLE_ONLY) {
-      console.log("🧪 CONSOLE_ONLY Sportskeeda tweet:", {
+    if (USE_WEB_TWEET) {
+      console.log("🧪 USE_WEB_TWEET Sportskeeda tweet:", {
         headline: parsed.headline,
         articleUrl: cleanLink,
         tweetText,
