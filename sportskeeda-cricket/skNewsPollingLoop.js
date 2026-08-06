@@ -1,7 +1,9 @@
-// import {
-//   classifyArticle,
-//   generateClaudeTweetWithType,
-// } from "../ai/generateClaudeTweet.js";
+import {
+  classifyArticle,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+
+import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
 
 import { generateCardImage } from "../canvas/imageRenderer.js";
 
@@ -26,15 +28,22 @@ import { parseSKArticle } from "./parseSKArticle.js";
 
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
-import {
-  classifyArticle,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
 
 const MAX_AGE_MIN = 60;
-const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
+const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+// SK's article-page fetch has turned out to be intermittently blocked (405
+// on some articles, clean success on others -- not a hard 100% block). The
+// old version picked exactly one candidate per cycle and gave up the whole
+// cycle if that one failed, wasting a full 2-minute poll on a single flaky
+// URL even when the other ~49 items in the same RSS batch were untouched
+// and possibly fine. This caps how many candidates get a real attempt
+// (parse + classify + context + generate) before the cycle gives up --
+// cheap pre-filtering (age/seen/blocked-headline/resolve) doesn't count
+// against this, only genuine parse attempts do.
+const MAX_CANDIDATES_PER_CYCLE = 5;
 
 export async function skNewsPollingLoop() {
   console.log("skNewsPollingLoop...");
@@ -102,10 +111,16 @@ export async function skNewsPollingLoop() {
     .filter((item) => getPubDate(item))
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-  let selectedItem = null;
-  let cleanLink = null;
+  let attemptsUsed = 0;
 
   for (const item of sorted) {
+    if (attemptsUsed >= MAX_CANDIDATES_PER_CYCLE) {
+      console.log(
+        `ℹ️ Reached ${MAX_CANDIDATES_PER_CYCLE} candidate attempts this cycle, stopping.`,
+      );
+      break;
+    }
+
     const publishedAt = getPubDate(item);
 
     const ageMinutes = (Date.now() - publishedAt) / 60000;
@@ -148,7 +163,7 @@ export async function skNewsPollingLoop() {
       continue;
     }
 
-    cleanLink = normalizeSKLink(resolvedLink);
+    const cleanLink = normalizeSKLink(resolvedLink);
 
     if (!cleanLink) {
       console.log("⏭️ Invalid resolved Sportskeeda URL:", resolvedLink);
@@ -178,32 +193,54 @@ export async function skNewsPollingLoop() {
       cleanLink,
     });
 
-    selectedItem = {
+    const selectedItem = {
       ...item,
       link: cleanLink,
       googleNewsLink,
     };
 
-    break;
+    // Everything from here on is a genuine attempt -- counts against the cap.
+    attemptsUsed += 1;
+
+    const result = await attemptSportskeedaTweet(
+      STATE,
+      selectedItem,
+      cleanLink,
+    );
+
+    if (result === "success") {
+      return true;
+    }
+
+    // result === "retry-later" (transient fetch failure, e.g. the
+    // intermittent 405) or "skip" (blocked/duplicate/generation failure) --
+    // either way, move on to the next candidate in this same cycle instead
+    // of ending the whole poll on one bad article.
   }
 
-  if (!selectedItem || !cleanLink) {
-    console.log("ℹ️ No eligible Sportskeeda article found");
+  console.log("ℹ️ No Sportskeeda tweet produced this cycle");
 
-    return false;
-  }
+  return false;
+}
 
+// Runs the full parse -> classify -> context -> generate -> queue pipeline
+// for one candidate. Returns "success", "retry-later" (don't mark seen --
+// this URL might work on a future poll), or "skip" (mark seen -- retrying
+// won't help, e.g. blocked content or a genuine duplicate).
+async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
   try {
     const parsed = await parseSKArticle(selectedItem);
 
     if (!parsed?.headline || !parsed?.body) {
       console.log("⏭️ Sportskeeda article parsing failed:", cleanLink);
 
-      markSeen(STATE, selectedItem, cleanLink);
+      // Deliberately NOT marked seen -- SK's article-page block has turned
+      // out to be intermittent, not absolute (same URL has failed then
+      // succeeded on different polls). Throwing this away permanently would
+      // discard a URL that might work fine on the very next cycle.
+      await saveState(STATE, "Sportskeeda parsing failed (retry later)");
 
-      await saveState(STATE, "Sportskeeda parsing failed");
-
-      return false;
+      return "retry-later";
     }
 
     const fullText = `${parsed.headline}\n${parsed.body}`;
@@ -215,7 +252,7 @@ export async function skNewsPollingLoop() {
 
       await saveState(STATE, "Sportskeeda blocked article");
 
-      return false;
+      return "skip";
     }
 
     let articleType = "player_form";
@@ -255,7 +292,7 @@ export async function skNewsPollingLoop() {
 
         await saveState(STATE, "Sportskeeda duplicate context");
 
-        return false;
+        return "skip";
       }
     } catch (error) {
       console.log(
@@ -268,12 +305,7 @@ export async function skNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      // const claudeResult = await generateClaudeTweetWithType(
-      //   fullText,
-      //   articleType,
-      // );
-
-      const claudeResult = await generateGPTTweetWithType(
+      const claudeResult = await generateClaudeTweetWithType(
         fullText,
         articleType,
       );
@@ -328,7 +360,7 @@ export async function skNewsPollingLoop() {
 
       await saveState(STATE, "Sportskeeda tweet generation failed");
 
-      return false;
+      return "skip";
     }
 
     const imageUrl = parsed.imageUrl || null;
@@ -343,8 +375,8 @@ export async function skNewsPollingLoop() {
       tweetText += ".";
     }
 
-    if (USE_WEB_TWEET) {
-      console.log("🧪 USE_WEB_TWEET Sportskeeda tweet:", {
+    if (CONSOLE_ONLY) {
+      console.log("🧪 CONSOLE_ONLY Sportskeeda tweet:", {
         headline: parsed.headline,
         articleUrl: cleanLink,
         tweetText,
@@ -353,7 +385,7 @@ export async function skNewsPollingLoop() {
         useArticleImage: imageResult.useImage,
       });
 
-      return false;
+      return "skip";
     }
 
     enqueueTweet({
@@ -386,11 +418,11 @@ export async function skNewsPollingLoop() {
 
     console.log(`✅ Sportskeeda processed: ${parsed.headline}`);
 
-    return true;
+    return "success";
   } catch (error) {
     console.log("⚠️ Sportskeeda processing failed:", error?.message || error);
 
-    return false;
+    return "retry-later";
   }
 }
 
