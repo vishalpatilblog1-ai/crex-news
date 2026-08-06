@@ -3,7 +3,7 @@ import {
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
 
-import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
+// import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
 
 import { generateCardImage } from "../canvas/imageRenderer.js";
 
@@ -305,7 +305,11 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     let generatedPath = null;
 
     try {
-      const claudeResult = await generateClaudeTweetWithType(
+      // const claudeResult = await generateClaudeTweetWithType(
+      //   fullText,
+      //   articleType,
+      // );
+      const claudeResult = await generateGPTTweetWithType(
         fullText,
         articleType,
       );
