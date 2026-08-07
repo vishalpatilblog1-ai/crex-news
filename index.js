@@ -15,6 +15,7 @@ import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
 
 import { ndtvNewspolling } from "./ndtv/ndtvNewspolling.js";
 import { skNewsPollingLoop } from "./sportskeeda-cricket/skNewsPollingLoop.js";
+import "./utils/fileLogger.js";
 
 const log = createLogger("prod");
 

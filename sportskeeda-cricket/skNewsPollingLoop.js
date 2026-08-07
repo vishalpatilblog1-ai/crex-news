@@ -35,15 +35,6 @@ const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
-// SK's article-page fetch has turned out to be intermittently blocked (405
-// on some articles, clean success on others -- not a hard 100% block). The
-// old version picked exactly one candidate per cycle and gave up the whole
-// cycle if that one failed, wasting a full 2-minute poll on a single flaky
-// URL even when the other ~49 items in the same RSS batch were untouched
-// and possibly fine. This caps how many candidates get a real attempt
-// (parse + classify + context + generate) before the cycle gives up --
-// cheap pre-filtering (age/seen/blocked-headline/resolve) doesn't count
-// against this, only genuine parse attempts do.
 const MAX_CANDIDATES_PER_CYCLE = 5;
 
 export async function skNewsPollingLoop() {
