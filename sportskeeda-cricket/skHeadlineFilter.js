@@ -21,6 +21,8 @@ const BLOCKED_TITLE_PATTERNS = [
   /scorecard/i,
   /schedule/i,
   /points table/i,
+  /In Pictures/i,
+  /Pictures/i,
 ];
 
 export function isBlockedSKHeadline(title = "") {
