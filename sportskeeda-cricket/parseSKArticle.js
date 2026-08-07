@@ -4,7 +4,7 @@ import * as cheerio from "cheerio";
 
 import { normalizeSKLink } from "./skFilters.js";
 
-const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 30000);
+const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 60000);
 
 // SK's article pages are blocked when fetched directly from Railway's
 // datacenter IP range (confirmed: identical request works fine locally,
