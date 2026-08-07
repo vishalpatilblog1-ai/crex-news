@@ -1,4 +1,4 @@
-# Sportskeeda Cricket source
+<!-- # Sportskeeda Cricket source
 
 This folder mirrors the existing `cricket-addictor` pipeline but discovers articles from the Sportskeeda cricket landing page instead of the mixed Sportskeeda RSS feed.
 
@@ -78,4 +78,4 @@ The polling loop uses source code `SK` and calls the existing `isCricketAddictor
 
 ## Notes
 
-Sportskeeda does not expose a useful public cricket-only RSS feed here. The general feed is mixed, so this implementation discovers links from `https://www.sportskeeda.com/cricket` and then parses each selected article page.
+Sportskeeda does not expose a useful public cricket-only RSS feed here. The general feed is mixed, so this implementation discovers links from `https://www.sportskeeda.com/cricket` and then parses each selected article page. -->

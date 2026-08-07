@@ -1,512 +1,512 @@
+// // import {
+// //   classifyArticle,
+// //   generateClaudeTweetWithType,
+// // } from "../ai/generateClaudeTweet.js";
+
+// import { generateCardImage } from "../canvas/imageRenderer.js";
+
+// import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+
+// import {
+//   applySourceSignature,
+//   enqueueTweet,
+//   isCricketAddictorBlocked,
+// } from "../twitter/tweetQueue.js";
+
+// import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
+// import { saveState } from "../utils/stateStoreCloud.js";
+
+// import { fetchSKCricketFeed } from "./fetchSKCricketFeed.js";
+// import { resolveGoogleNewsUrl } from "./resolveGoogleNewsUrl.js";
+
+// import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
+
+// import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
+// import { parseSKArticle } from "./parseSKArticle.js";
+
+// import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
+// import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 // import {
 //   classifyArticle,
-//   generateClaudeTweetWithType,
-// } from "../ai/generateClaudeTweet.js";
+//   generateGPTTweetWithType,
+// } from "../ai/generate-gpt-tweet.js";
 
-import { generateCardImage } from "../canvas/imageRenderer.js";
+// const MAX_AGE_MIN = 60;
+// const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
+// const RETENTION_MS = 6 * 60 * 60 * 1000;
+// const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
-import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+// export async function skNewsPollingLoop() {
+//   console.log("skNewsPollingLoop...");
 
-import {
-  applySourceSignature,
-  enqueueTweet,
-  isCricketAddictorBlocked,
-} from "../twitter/tweetQueue.js";
+//   if (!global.STATE) {
+//     console.log("⚠️ global.STATE is not available");
+//     return false;
+//   }
 
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
-import { saveState } from "../utils/stateStoreCloud.js";
+//   if (isCricketAddictorBlocked("SK")) {
+//     console.log("🚫 Sportskeeda polling paused during blocked hours");
 
-import { fetchSKCricketFeed } from "./fetchSKCricketFeed.js";
-import { resolveGoogleNewsUrl } from "./resolveGoogleNewsUrl.js";
+//     return false;
+//   }
 
-import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
+//   const STATE = global.STATE;
 
-import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
-import { parseSKArticle } from "./parseSKArticle.js";
+//   STATE.sk ??= {};
+//   STATE.sk.seen ??= {};
+//   STATE.dailyContext ??= {
+//     contexts: [],
+//   };
+//   STATE.dailyContext.contexts ??= [];
+//   STATE.usedImages ??= {};
 
-import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
-import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
-import {
-  classifyArticle,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
+//   let stateChanged = false;
 
-const MAX_AGE_MIN = 60;
-const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "false";
-const RETENTION_MS = 6 * 60 * 60 * 1000;
-const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
+//   if (pruneSeen(STATE)) {
+//     stateChanged = true;
+//   }
 
-export async function skNewsPollingLoop() {
-  console.log("skNewsPollingLoop...");
+//   if (pruneDailyContext(STATE)) {
+//     stateChanged = true;
+//   }
 
-  if (!global.STATE) {
-    console.log("⚠️ global.STATE is not available");
-    return false;
-  }
+//   if (pruneUsedImages(STATE)) {
+//     stateChanged = true;
+//   }
 
-  if (isCricketAddictorBlocked("SK")) {
-    console.log("🚫 Sportskeeda polling paused during blocked hours");
+//   if (stateChanged) {
+//     await saveState(STATE, "Sportskeeda state cleanup");
+//   }
 
-    return false;
-  }
+//   let items = [];
 
-  const STATE = global.STATE;
+//   try {
+//     items = await fetchSKCricketFeed({
+//       limit: 50,
+//     });
+//   } catch (error) {
+//     console.log("❌ Sportskeeda RSS fetch failed:", error?.message || error);
 
-  STATE.sk ??= {};
-  STATE.sk.seen ??= {};
-  STATE.dailyContext ??= {
-    contexts: [],
-  };
-  STATE.dailyContext.contexts ??= [];
-  STATE.usedImages ??= {};
+//     return false;
+//   }
 
-  let stateChanged = false;
+//   if (!Array.isArray(items) || items.length === 0) {
+//     console.log("ℹ️ No Sportskeeda RSS items found");
 
-  if (pruneSeen(STATE)) {
-    stateChanged = true;
-  }
+//     return false;
+//   }
 
-  if (pruneDailyContext(STATE)) {
-    stateChanged = true;
-  }
+//   console.log(`📰 Sportskeeda RSS items: ${items.length}`);
 
-  if (pruneUsedImages(STATE)) {
-    stateChanged = true;
-  }
+//   const sorted = [...items]
+//     .filter((item) => getPubDate(item))
+//     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-  if (stateChanged) {
-    await saveState(STATE, "Sportskeeda state cleanup");
-  }
+//   let selectedItem = null;
+//   let cleanLink = null;
 
-  let items = [];
+//   for (const item of sorted) {
+//     const publishedAt = getPubDate(item);
 
-  try {
-    items = await fetchSKCricketFeed({
-      limit: 50,
-    });
-  } catch (error) {
-    console.log("❌ Sportskeeda RSS fetch failed:", error?.message || error);
+//     const ageMinutes = (Date.now() - publishedAt) / 60000;
 
-    return false;
-  }
+//     if (ageMinutes > MAX_AGE_MIN) {
+//       continue;
+//     }
 
-  if (!Array.isArray(items) || items.length === 0) {
-    console.log("ℹ️ No Sportskeeda RSS items found");
+//     const googleNewsLink = item.googleNewsLink || item.link || item.guid;
 
-    return false;
-  }
+//     if (!googleNewsLink) {
+//       continue;
+//     }
 
-  console.log(`📰 Sportskeeda RSS items: ${items.length}`);
+//     const googleNewsSeenKey = `google-news:${googleNewsLink}`;
 
-  const sorted = [...items]
-    .filter((item) => getPubDate(item))
-    .sort((a, b) => getPubDate(b) - getPubDate(a));
+//     if (STATE.sk.seen[googleNewsSeenKey]) {
+//       continue;
+//     }
 
-  let selectedItem = null;
-  let cleanLink = null;
+//     if (isBlockedSKHeadline(item.title || item.headline || "")) {
+//       STATE.sk.seen[googleNewsSeenKey] = Date.now();
 
-  for (const item of sorted) {
-    const publishedAt = getPubDate(item);
+//       continue;
+//     }
 
-    const ageMinutes = (Date.now() - publishedAt) / 60000;
+//     let resolvedLink = null;
 
-    if (ageMinutes > MAX_AGE_MIN) {
-      continue;
-    }
+//     try {
+//       resolvedLink = await resolveGoogleNewsUrl(googleNewsLink);
+//     } catch (error) {
+//       console.log("⚠️ Google News URL decode failed:", error?.message || error);
 
-    const googleNewsLink = item.googleNewsLink || item.link || item.guid;
+//       continue;
+//     }
 
-    if (!googleNewsLink) {
-      continue;
-    }
+//     if (!resolvedLink) {
+//       console.log("⏭️ Could not resolve Sportskeeda article:", googleNewsLink);
 
-    const googleNewsSeenKey = `google-news:${googleNewsLink}`;
+//       continue;
+//     }
 
-    if (STATE.sk.seen[googleNewsSeenKey]) {
-      continue;
-    }
+//     cleanLink = normalizeSKLink(resolvedLink);
 
-    if (isBlockedSKHeadline(item.title || item.headline || "")) {
-      STATE.sk.seen[googleNewsSeenKey] = Date.now();
+//     if (!cleanLink) {
+//       console.log("⏭️ Invalid resolved Sportskeeda URL:", resolvedLink);
 
-      continue;
-    }
+//       continue;
+//     }
 
-    let resolvedLink = null;
+//     if (
+//       !isSportskeedaCricketArticle({
+//         link: cleanLink,
+//       })
+//     ) {
+//       console.log("⏭️ Not a valid Sportskeeda cricket article:", cleanLink);
 
-    try {
-      resolvedLink = await resolveGoogleNewsUrl(googleNewsLink);
-    } catch (error) {
-      console.log("⚠️ Google News URL decode failed:", error?.message || error);
+//       continue;
+//     }
 
-      continue;
-    }
+//     if (STATE.sk.seen[cleanLink]) {
+//       STATE.sk.seen[googleNewsSeenKey] = Date.now();
 
-    if (!resolvedLink) {
-      console.log("⏭️ Could not resolve Sportskeeda article:", googleNewsLink);
+//       continue;
+//     }
 
-      continue;
-    }
+//     console.log("✅ Sportskeeda URL resolved:", {
+//       googleNewsLink,
+//       resolvedLink,
+//       cleanLink,
+//     });
 
-    cleanLink = normalizeSKLink(resolvedLink);
+//     selectedItem = {
+//       ...item,
+//       link: cleanLink,
+//       googleNewsLink,
+//     };
 
-    if (!cleanLink) {
-      console.log("⏭️ Invalid resolved Sportskeeda URL:", resolvedLink);
+//     break;
+//   }
 
-      continue;
-    }
+//   if (!selectedItem || !cleanLink) {
+//     console.log("ℹ️ No eligible Sportskeeda article found");
 
-    if (
-      !isSportskeedaCricketArticle({
-        link: cleanLink,
-      })
-    ) {
-      console.log("⏭️ Not a valid Sportskeeda cricket article:", cleanLink);
+//     return false;
+//   }
 
-      continue;
-    }
+//   try {
+//     const parsed = await parseSKArticle(selectedItem);
 
-    if (STATE.sk.seen[cleanLink]) {
-      STATE.sk.seen[googleNewsSeenKey] = Date.now();
+//     if (!parsed?.headline || !parsed?.body) {
+//       console.log("⏭️ Sportskeeda article parsing failed:", cleanLink);
 
-      continue;
-    }
+//       markSeen(STATE, selectedItem, cleanLink);
 
-    console.log("✅ Sportskeeda URL resolved:", {
-      googleNewsLink,
-      resolvedLink,
-      cleanLink,
-    });
+//       await saveState(STATE, "Sportskeeda parsing failed");
 
-    selectedItem = {
-      ...item,
-      link: cleanLink,
-      googleNewsLink,
-    };
+//       return false;
+//     }
 
-    break;
-  }
+//     const fullText = `${parsed.headline}\n${parsed.body}`;
 
-  if (!selectedItem || !cleanLink) {
-    console.log("ℹ️ No eligible Sportskeeda article found");
+//     if (isBlockedSKHeadline(parsed.headline)) {
+//       console.log("⏭️ Blocked Sportskeeda article:", parsed.headline);
 
-    return false;
-  }
+//       markSeen(STATE, selectedItem, cleanLink);
 
-  try {
-    const parsed = await parseSKArticle(selectedItem);
+//       await saveState(STATE, "Sportskeeda blocked article");
 
-    if (!parsed?.headline || !parsed?.body) {
-      console.log("⏭️ Sportskeeda article parsing failed:", cleanLink);
+//       return false;
+//     }
 
-      markSeen(STATE, selectedItem, cleanLink);
+//     let articleType = "player_form";
 
-      await saveState(STATE, "Sportskeeda parsing failed");
+//     try {
+//       articleType = await classifyArticle(fullText);
+//     } catch (error) {
+//       console.log(
+//         "⚠️ Sportskeeda article classification failed:",
+//         error?.message || error,
+//       );
+//     }
 
-      return false;
-    }
+//     let decision = null;
 
-    const fullText = `${parsed.headline}\n${parsed.body}`;
+//     try {
+//       decision = await judgeNewsContext({
+//         articleText: fullText,
 
-    if (isBlockedSKHeadline(parsed.headline)) {
-      console.log("⏭️ Blocked Sportskeeda article:", parsed.headline);
+//         existingContexts: STATE.dailyContext.contexts.map(
+//           (context) => context.summary,
+//         ),
+//       });
 
-      markSeen(STATE, selectedItem, cleanLink);
+//       console.log(
+//         `📊 Scores — significance: ${
+//           decision?.significanceScore ?? "n/a"
+//         }, virality: ${
+//           decision?.viralityScore ?? "n/a"
+//         } — "${parsed.headline}"`,
+//       );
 
-      await saveState(STATE, "Sportskeeda blocked article");
+//       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+//         console.log("🔴 Sportskeeda article already covered");
 
-      return false;
-    }
+//         markSeen(STATE, selectedItem, cleanLink);
 
-    let articleType = "player_form";
+//         await saveState(STATE, "Sportskeeda duplicate context");
 
-    try {
-      articleType = await classifyArticle(fullText);
-    } catch (error) {
-      console.log(
-        "⚠️ Sportskeeda article classification failed:",
-        error?.message || error,
-      );
-    }
+//         return false;
+//       }
+//     } catch (error) {
+//       console.log(
+//         "⚠️ Sportskeeda context check failed:",
+//         error?.message || error,
+//       );
+//     }
 
-    let decision = null;
+//     let tweetText = null;
+//     let generatedPath = null;
 
-    try {
-      decision = await judgeNewsContext({
-        articleText: fullText,
+//     try {
+//       // const claudeResult = await generateClaudeTweetWithType(
+//       //   fullText,
+//       //   articleType,
+//       // );
 
-        existingContexts: STATE.dailyContext.contexts.map(
-          (context) => context.summary,
-        ),
-      });
+//       const claudeResult = await generateGPTTweetWithType(
+//         fullText,
+//         articleType,
+//       );
 
-      console.log(
-        `📊 Scores — significance: ${
-          decision?.significanceScore ?? "n/a"
-        }, virality: ${
-          decision?.viralityScore ?? "n/a"
-        } — "${parsed.headline}"`,
-      );
+//       tweetText = claudeResult?.tweetText || null;
 
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 Sportskeeda article already covered");
+//       if (claudeResult?.card) {
+//         generatedPath = await generateCardImage(
+//           CREX_BASE_IMAGE_TEMPLATE,
+//           claudeResult.card,
+//         );
 
-        markSeen(STATE, selectedItem, cleanLink);
+//         console.log("🖼️ Claude Sportskeeda card generated:", generatedPath);
+//       } else {
+//         console.log("📝 Claude generated text-only tweet");
+//       }
+//     } catch (error) {
+//       console.log(
+//         "⚠️ Claude Sportskeeda generation failed:",
+//         error?.message || error,
+//       );
+//     }
 
-        await saveState(STATE, "Sportskeeda duplicate context");
+//     if (!tweetText) {
+//       try {
+//         const gptResult = await generateGPTTweetWithType(fullText, articleType);
 
-        return false;
-      }
-    } catch (error) {
-      console.log(
-        "⚠️ Sportskeeda context check failed:",
-        error?.message || error,
-      );
-    }
+//         tweetText = gptResult?.tweetText || null;
 
-    let tweetText = null;
-    let generatedPath = null;
+//         if (gptResult?.card) {
+//           generatedPath = await generateCardImage(
+//             CREX_BASE_IMAGE_TEMPLATE,
+//             gptResult.card,
+//           );
 
-    try {
-      // const claudeResult = await generateClaudeTweetWithType(
-      //   fullText,
-      //   articleType,
-      // );
+//           console.log("🖼️ GPT Sportskeeda card generated:", generatedPath);
+//         } else {
+//           console.log("📝 GPT generated text-only tweet");
+//         }
+//       } catch (error) {
+//         console.log(
+//           "⚠️ GPT Sportskeeda generation failed:",
+//           error?.message || error,
+//         );
+//       }
+//     }
 
-      const claudeResult = await generateGPTTweetWithType(
-        fullText,
-        articleType,
-      );
+//     if (!tweetText) {
+//       console.log("⏭️ Sportskeeda tweet generation failed");
 
-      tweetText = claudeResult?.tweetText || null;
+//       markSeen(STATE, selectedItem, cleanLink);
 
-      if (claudeResult?.card) {
-        generatedPath = await generateCardImage(
-          CREX_BASE_IMAGE_TEMPLATE,
-          claudeResult.card,
-        );
+//       await saveState(STATE, "Sportskeeda tweet generation failed");
 
-        console.log("🖼️ Claude Sportskeeda card generated:", generatedPath);
-      } else {
-        console.log("📝 Claude generated text-only tweet");
-      }
-    } catch (error) {
-      console.log(
-        "⚠️ Claude Sportskeeda generation failed:",
-        error?.message || error,
-      );
-    }
+//       return false;
+//     }
 
-    if (!tweetText) {
-      try {
-        const gptResult = await generateGPTTweetWithType(fullText, articleType);
+//     const imageUrl = parsed.imageUrl || null;
 
-        tweetText = gptResult?.tweetText || null;
+//     const imageResult = await decideImageUsage(imageUrl, STATE.usedImages);
 
-        if (gptResult?.card) {
-          generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE,
-            gptResult.card,
-          );
+//     tweetText = applySourceSignature(tweetText, "SK");
 
-          console.log("🖼️ GPT Sportskeeda card generated:", generatedPath);
-        } else {
-          console.log("📝 GPT generated text-only tweet");
-        }
-      } catch (error) {
-        console.log(
-          "⚠️ GPT Sportskeeda generation failed:",
-          error?.message || error,
-        );
-      }
-    }
+//     tweetText = tweetText.trim();
 
-    if (!tweetText) {
-      console.log("⏭️ Sportskeeda tweet generation failed");
+//     if (!/[.!?]$/.test(tweetText)) {
+//       tweetText += ".";
+//     }
 
-      markSeen(STATE, selectedItem, cleanLink);
+//     if (USE_WEB_TWEET) {
+//       console.log("🧪 USE_WEB_TWEET Sportskeeda tweet:", {
+//         headline: parsed.headline,
+//         articleUrl: cleanLink,
+//         tweetText,
+//         generatedPath,
+//         articleImage: imageUrl,
+//         useArticleImage: imageResult.useImage,
+//       });
 
-      await saveState(STATE, "Sportskeeda tweet generation failed");
+//       return false;
+//     }
 
-      return false;
-    }
+//     enqueueTweet({
+//       id: `SK:${cleanLink}`,
+//       source: "SK",
+//       text: tweetText,
+//       imageUrl: generatedPath || null,
+//       seenKey: cleanLink,
+//       publishedAt: getPubDate(selectedItem) || Date.now(),
+//     });
 
-    const imageUrl = parsed.imageUrl || null;
+//     console.log(`📥 Queued Sportskeeda tweet: ${parsed.headline}`);
 
-    const imageResult = await decideImageUsage(imageUrl, STATE.usedImages);
+//     markSeen(STATE, selectedItem, cleanLink);
 
-    tweetText = applySourceSignature(tweetText, "SK");
+//     if (imageResult.useImage && imageUrl) {
+//       STATE.usedImages[imageUrl] = Date.now();
+//     }
 
-    tweetText = tweetText.trim();
+//     if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+//       STATE.dailyContext.contexts.push({
+//         summary: decision.newContext,
+//         source: "SK",
+//         link: cleanLink,
+//         createdAt: new Date().toISOString(),
+//       });
+//     }
 
-    if (!/[.!?]$/.test(tweetText)) {
-      tweetText += ".";
-    }
+//     await saveState(STATE, "Sportskeeda tweet queued");
 
-    if (USE_WEB_TWEET) {
-      console.log("🧪 USE_WEB_TWEET Sportskeeda tweet:", {
-        headline: parsed.headline,
-        articleUrl: cleanLink,
-        tweetText,
-        generatedPath,
-        articleImage: imageUrl,
-        useArticleImage: imageResult.useImage,
-      });
+//     console.log(`✅ Sportskeeda processed: ${parsed.headline}`);
 
-      return false;
-    }
+//     return true;
+//   } catch (error) {
+//     console.log("⚠️ Sportskeeda processing failed:", error?.message || error);
 
-    enqueueTweet({
-      id: `SK:${cleanLink}`,
-      source: "SK",
-      text: tweetText,
-      imageUrl: generatedPath || null,
-      seenKey: cleanLink,
-      publishedAt: getPubDate(selectedItem) || Date.now(),
-    });
+//     return false;
+//   }
+// }
 
-    console.log(`📥 Queued Sportskeeda tweet: ${parsed.headline}`);
+// function getPubDate(item) {
+//   const value = item?.publishedAt || item?.isoDate || item?.pubDate;
 
-    markSeen(STATE, selectedItem, cleanLink);
+//   if (!value) {
+//     return 0;
+//   }
 
-    if (imageResult.useImage && imageUrl) {
-      STATE.usedImages[imageUrl] = Date.now();
-    }
+//   const timestamp = new Date(value).getTime();
 
-    if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
-      STATE.dailyContext.contexts.push({
-        summary: decision.newContext,
-        source: "SK",
-        link: cleanLink,
-        createdAt: new Date().toISOString(),
-      });
-    }
+//   return Number.isFinite(timestamp) ? timestamp : 0;
+// }
 
-    await saveState(STATE, "Sportskeeda tweet queued");
+// function markSeen(STATE, item, cleanLink) {
+//   const now = Date.now();
 
-    console.log(`✅ Sportskeeda processed: ${parsed.headline}`);
+//   if (cleanLink) {
+//     STATE.sk.seen[cleanLink] = now;
+//   }
 
-    return true;
-  } catch (error) {
-    console.log("⚠️ Sportskeeda processing failed:", error?.message || error);
+//   const googleNewsLink = item?.googleNewsLink || item?.link || item?.guid;
 
-    return false;
-  }
-}
+//   if (googleNewsLink) {
+//     STATE.sk.seen[`google-news:${googleNewsLink}`] = now;
+//   }
+// }
 
-function getPubDate(item) {
-  const value = item?.publishedAt || item?.isoDate || item?.pubDate;
+// function pruneSeen(STATE) {
+//   const now = Date.now();
+//   let changed = false;
 
-  if (!value) {
-    return 0;
-  }
+//   for (const [key, timestamp] of Object.entries(STATE.sk.seen)) {
+//     if (now - timestamp > SEEN_RETENTION_MS) {
+//       delete STATE.sk.seen[key];
+//       changed = true;
+//     }
+//   }
 
-  const timestamp = new Date(value).getTime();
+//   return changed;
+// }
 
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
+// function pruneDailyContext(STATE) {
+//   const before = STATE.dailyContext.contexts.length;
 
-function markSeen(STATE, item, cleanLink) {
-  const now = Date.now();
+//   STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter(
+//     (context) => {
+//       const timestamp = new Date(context.createdAt).getTime();
 
-  if (cleanLink) {
-    STATE.sk.seen[cleanLink] = now;
-  }
+//       return (
+//         Number.isFinite(timestamp) && Date.now() - timestamp <= RETENTION_MS
+//       );
+//     },
+//   );
 
-  const googleNewsLink = item?.googleNewsLink || item?.link || item?.guid;
+//   return before !== STATE.dailyContext.contexts.length;
+// }
 
-  if (googleNewsLink) {
-    STATE.sk.seen[`google-news:${googleNewsLink}`] = now;
-  }
-}
+// function pruneUsedImages(STATE) {
+//   const now = Date.now();
+//   let changed = false;
 
-function pruneSeen(STATE) {
-  const now = Date.now();
-  let changed = false;
+//   for (const [imageUrl, timestamp] of Object.entries(STATE.usedImages)) {
+//     if (now - timestamp > RETENTION_MS) {
+//       delete STATE.usedImages[imageUrl];
 
-  for (const [key, timestamp] of Object.entries(STATE.sk.seen)) {
-    if (now - timestamp > SEEN_RETENTION_MS) {
-      delete STATE.sk.seen[key];
-      changed = true;
-    }
-  }
+//       changed = true;
+//     }
+//   }
 
-  return changed;
-}
+//   return changed;
+// }
 
-function pruneDailyContext(STATE) {
-  const before = STATE.dailyContext.contexts.length;
+// async function decideImageUsage(imageUrl, usedImages) {
+//   if (!imageUrl) {
+//     return {
+//       useImage: false,
+//     };
+//   }
 
-  STATE.dailyContext.contexts = STATE.dailyContext.contexts.filter(
-    (context) => {
-      const timestamp = new Date(context.createdAt).getTime();
+//   if (usedImages[imageUrl]) {
+//     return {
+//       useImage: false,
+//     };
+//   }
 
-      return (
-        Number.isFinite(timestamp) && Date.now() - timestamp <= RETENTION_MS
-      );
-    },
-  );
+//   try {
+//     const localImagePath = await downloadImageToTemp(imageUrl);
 
-  return before !== STATE.dailyContext.contexts.length;
-}
+//     const result = await isRiskyTwitterImage(localImagePath);
 
-function pruneUsedImages(STATE) {
-  const now = Date.now();
-  let changed = false;
+//     return {
+//       useImage: !result?.risky,
+//     };
+//   } catch (error) {
+//     console.log("⚠️ Sportskeeda image check failed:", error?.message || error);
 
-  for (const [imageUrl, timestamp] of Object.entries(STATE.usedImages)) {
-    if (now - timestamp > RETENTION_MS) {
-      delete STATE.usedImages[imageUrl];
+//     return {
+//       useImage: false,
+//     };
+//   }
+// }
 
-      changed = true;
-    }
-  }
+// function contextExists(STATE, summary) {
+//   const normalized = normalizeText(summary);
 
-  return changed;
-}
+//   return STATE.dailyContext.contexts.some(
+//     (context) => normalizeText(context.summary) === normalized,
+//   );
+// }
 
-async function decideImageUsage(imageUrl, usedImages) {
-  if (!imageUrl) {
-    return {
-      useImage: false,
-    };
-  }
-
-  if (usedImages[imageUrl]) {
-    return {
-      useImage: false,
-    };
-  }
-
-  try {
-    const localImagePath = await downloadImageToTemp(imageUrl);
-
-    const result = await isRiskyTwitterImage(localImagePath);
-
-    return {
-      useImage: !result?.risky,
-    };
-  } catch (error) {
-    console.log("⚠️ Sportskeeda image check failed:", error?.message || error);
-
-    return {
-      useImage: false,
-    };
-  }
-}
-
-function contextExists(STATE, summary) {
-  const normalized = normalizeText(summary);
-
-  return STATE.dailyContext.contexts.some(
-    (context) => normalizeText(context.summary) === normalized,
-  );
-}
-
-function normalizeText(value = "") {
-  return String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+// function normalizeText(value = "") {
+//   return String(value)
+//     .toLowerCase()
+//     .replace(/[^a-z0-9 ]/g, "")
+//     .replace(/\s+/g, " ")
+//     .trim();
+// }

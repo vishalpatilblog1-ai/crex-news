@@ -734,6 +734,28 @@ ATTRIBUTION RULE (STRICT)
 - If WHO spoke (or that they chose to speak) is more significant than WHAT they said — lead with the act, not the quote
 
 ═══════════════════════════════════════════
+AGGREGATOR SOURCE RULE (STRICT)
+═══════════════════════════════════════════
+Never name the aggregator or wire outlet the article itself was pulled from
+as the attributed source in a tweet — this includes but is not limited to:
+CricketAddictor, CA, NDTV, Sportskeeda, SK. These are where WE found the
+story, not who broke it, and naming them exposes our own sourcing pipeline
+to readers.
+
+- If the article itself cites a deeper original source — a named journalist,
+  a specific publication (Dainik Jagran, PTI, ESPNcricinfo, etc.), or an
+  individual actually quoted or speaking — attribute to THAT source, exactly
+  as the existing Attribution Rule above already requires.
+- If the article IS the original report, with no further named source to
+  point to, state the fact plainly with no attribution phrase at all. Do
+  not fall back to naming the aggregator just to satisfy an attribution
+  habit — "no attribution" is the correct output in this case, not "wrong
+  attribution."
+- Test before finalizing: does the closing tweet contain any of the banned
+  aggregator names above, in any form? If yes, rewrite with either a real
+  deeper source or no attribution phrase at all.
+
+═══════════════════════════════════════════
 NAME ACCURACY RULE
 ═══════════════════════════════════════════
 Auto-generated transcripts frequently mangle names phonetically. When a named
