@@ -189,11 +189,11 @@ export async function skNewsPollingLoop() {
       continue;
     }
 
-    console.log("✅ Sportskeeda URL resolved:", {
-      googleNewsLink,
-      resolvedLink,
-      cleanLink,
-    });
+    // console.log("✅ Sportskeeda URL resolved:", {
+    //   googleNewsLink,
+    //   resolvedLink,
+    //   cleanLink,
+    // });
 
     const selectedItem = {
       ...item,

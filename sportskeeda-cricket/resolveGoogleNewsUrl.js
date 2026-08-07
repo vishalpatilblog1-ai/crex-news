@@ -10,8 +10,6 @@ export async function resolveGoogleNewsUrl(googleNewsUrl) {
   try {
     const result = await decoder.decode(googleNewsUrl);
 
-    console.log("Google News decoder result:", result);
-
     if (result?.status && result?.decoded_url) {
       return result.decoded_url;
     }

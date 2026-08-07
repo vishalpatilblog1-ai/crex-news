@@ -138,15 +138,11 @@ function isSubjectOnCooldown(STATE, subjectKey) {
   return Date.now() - lastAt < SAME_SUBJECT_COOLDOWN_MS;
 }
 
-// Finds the earliest queued tweet that's allowed to post right now, skipping
-// PAST (never dropping) any tweet whose subject already posted recently.
-// Everything stays in the queue in its original order -- this just decides
-// which one goes out next.
 function pickNextEligibleIndex(STATE) {
   for (let i = 0; i < STATE.tweetQueue.length; i++) {
     if (!isSubjectOnCooldown(STATE, STATE.tweetQueue[i].subjectKey)) return i;
   }
-  return -1; // everything currently queued shares a recently-posted subject
+  return -1;
 }
 
 export function enqueueTweet({
@@ -156,7 +152,7 @@ export function enqueueTweet({
   imageUrl,
   seenKey,
   publishedAt,
-  subjectKey, // optional -- pass explicitly (e.g. card.player) when the caller already knows it; falls back to a best-effort guess from the text
+  subjectKey,
 }) {
   const STATE = global.STATE;
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
@@ -177,21 +173,12 @@ export function enqueueTweet({
   console.log(`📥 Queued tweet from ${source}: ${id}`);
 }
 
-// Removes anything sitting in the queue that's now older than MAX_TWEET_AGE_MS.
-// Prevents stale news from firing once a blocked window lifts (e.g. overnight backlog).
 function dropStaleQueuedTweets(STATE) {
   let droppedAny = false;
 
   while (STATE.tweetQueue.length) {
     const head = STATE.tweetQueue[0];
-    // Measures how long this tweet has sat unposted in OUR queue, not how
-    // old the underlying article was when it got picked up. Those are two
-    // separate concerns -- news freshness is each poller's own job (its own
-    // MAX_AGE_MIN), this is purely "has generation-to-post taken too long."
-    // Using publishedAt here used to conflate the two: a source with a
-    // looser freshness window (e.g. SK's 180min) could hand the queue an
-    // article that was already older than MAX_TWEET_AGE_MS the instant it
-    // was queued, getting dropped before it ever had a real chance to post.
+
     const age = Date.now() - head.createdAt;
 
     if (age <= MAX_TWEET_AGE_MS) break;
@@ -219,9 +206,6 @@ export async function tryFlushTweetQueue() {
   let index = pickNextEligibleIndex(STATE);
 
   if (index === -1) {
-    // Safety valve: never let cooldown spacing fully deadlock the queue.
-    // If the oldest queued tweet has been waiting past the override
-    // threshold, post it regardless of subject cooldown.
     const head = STATE.tweetQueue[0];
     const waitedMs = Date.now() - (head.createdAt ?? Date.now());
 

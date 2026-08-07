@@ -18,6 +18,7 @@ import { skNewsPollingLoop } from "./sportskeeda-cricket/skNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
+//https://app.scrappey.com/#/
 global.STATE = null;
 global.LAST_CA_SUCCESS_AT = 0;
 global.CA_COOLDOWN_UNTIL = 0;
