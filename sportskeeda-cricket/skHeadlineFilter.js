@@ -23,6 +23,7 @@ const BLOCKED_TITLE_PATTERNS = [
   /points table/i,
   /In Pictures/i,
   /Pictures/i,
+  /Watch/i,
 ];
 
 export function isBlockedSKHeadline(title = "") {
