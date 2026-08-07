@@ -1,16 +1,15 @@
 // cricket-addictor/caNewsPollingLoop.js
 
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import {
-  generateGPTTweet,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
-  generateClaudeTweet,
-  generateClaudeTweetWithType,
-  SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet.js";
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+// import {
+//   classifyArticle,
+//   generateClaudeTweet,
+//   generateClaudeTweetWithType,
+//   SIGNIFICANCE_EXEMPT_TYPES,
+// } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 // import {
@@ -163,8 +162,10 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType);
+      const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
+        fullText,
+        articleType,
+      );
 
       // const {
       //   tweetText: gptTweet,
