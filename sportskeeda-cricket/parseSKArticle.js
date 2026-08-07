@@ -6,15 +6,27 @@ import { normalizeSKLink } from "./skFilters.js";
 
 const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 60000);
 
-// SK's article pages are blocked when fetched directly from Railway's
-// datacenter IP range (confirmed: identical request works fine locally,
-// fails only from Railway). Requests are routed through Scrappey instead,
-// which fetches on our behalf from IPs that aren't flagged. "request.get"
-// is Scrappey's plain/direct mode (0.1 credit) -- NOT their browser-render
-// mode (1 credit, 10x cost) -- SK's pages are plain server-rendered HTML,
-// no JS execution needed, so the cheap mode is the right one.
 const SCRAPPEY_API_KEY = process.env.SCRAPPEY_API_KEY;
 const SCRAPPEY_ENDPOINT = "https://publisher.scrappey.com/api/v1";
+
+function classifyFetchFailure(error, statusCode, scrappeyData) {
+  if (error?.code === "ECONNABORTED" || /timeout/i.test(error?.message || "")) {
+    return "timeout";
+  }
+
+  if (statusCode === 407) {
+    return "scrappey_proxy";
+  }
+
+  if (
+    (statusCode === 403 || statusCode === 405) &&
+    scrappeyData === "success"
+  ) {
+    return "sk_waf_block";
+  }
+
+  return "other";
+}
 
 export async function parseSKArticle(itemOrUrl) {
   const link =
@@ -32,30 +44,43 @@ export async function parseSKArticle(itemOrUrl) {
     );
   }
 
-  const { data } = await axios.post(
-    SCRAPPEY_ENDPOINT,
-    {
-      cmd: "request.get",
-      url: cleanLink,
-    },
-    {
-      params: {
-        key: SCRAPPEY_API_KEY,
-      },
-      timeout: REQUEST_TIMEOUT_MS,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    },
-  );
+  let response;
 
+  try {
+    response = await axios.post(
+      SCRAPPEY_ENDPOINT,
+      {
+        cmd: "request.get",
+        url: cleanLink,
+      },
+      {
+        params: {
+          key: SCRAPPEY_API_KEY,
+        },
+        timeout: REQUEST_TIMEOUT_MS,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (error) {
+    const wrapped = new Error(
+      `Scrappey request failed for ${cleanLink}: ${error.message}`,
+    );
+    wrapped.category = classifyFetchFailure(error, null, null);
+    throw wrapped;
+  }
+
+  const { data } = response;
   const statusCode = data?.solution?.statusCode;
   const html = data?.solution?.response;
 
   if (!html || (statusCode && (statusCode < 200 || statusCode >= 400))) {
-    throw new Error(
+    const wrapped = new Error(
       `Scrappey fetch failed for ${cleanLink} (status: ${statusCode ?? "unknown"}, data: ${data?.data ?? "unknown"})`,
     );
+    wrapped.category = classifyFetchFailure(null, statusCode, data?.data);
+    throw wrapped;
   }
 
   const $ = cheerio.load(html);
