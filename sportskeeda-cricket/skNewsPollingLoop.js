@@ -13,6 +13,7 @@ import {
   applySourceSignature,
   enqueueTweet,
   isCricketAddictorBlocked,
+  isQuietHoursBlocked,
 } from "../twitter/tweetQueue.js";
 
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
@@ -53,9 +54,10 @@ export async function skNewsPollingLoop() {
     return false;
   }
 
-  if (isCricketAddictorBlocked("SK")) {
-    console.log("🚫 Sportskeeda polling paused during blocked hours");
-
+  if (isQuietHoursBlocked("SK")) {
+    console.log(
+      "🚫 Sportskeeda polling paused during quiet hours (1-5 AM IST)",
+    );
     return false;
   }
 
