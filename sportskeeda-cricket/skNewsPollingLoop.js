@@ -105,9 +105,17 @@ export async function skNewsPollingLoop() {
       break;
     }
 
-    if (isBlockedSKHeadline(candidate.headline || "")) continue;
-    if (candidate.ageMinutes !== null && candidate.ageMinutes > MAX_AGE_MIN)
+    if (isBlockedSKHeadline(candidate.headline || "")) {
+      console.log("⏭️ SK headline blocked:", candidate.headline);
       continue;
+    }
+    if (candidate.ageMinutes !== null && candidate.ageMinutes > MAX_AGE_MIN) {
+      console.log(
+        `⏭️ SK candidate too old (${candidate.ageMinutes}min > ${MAX_AGE_MIN}min):`,
+        candidate.headline,
+      );
+      continue;
+    }
 
     const cleanLink = normalizeSKLink(candidate.link);
 
@@ -121,7 +129,10 @@ export async function skNewsPollingLoop() {
       continue;
     }
 
-    if (!IGNORE_SEEN && STATE.sk.seen[cleanLink]) continue;
+    if (!IGNORE_SEEN && STATE.sk.seen[cleanLink]) {
+      console.log("⏭️ SK already seen:", cleanLink);
+      continue;
+    }
 
     const selectedItem = { link: cleanLink, headline: candidate.headline };
 
