@@ -1,4 +1,3 @@
-
 import {
   classifyArticle,
   generateGPTTweetWithType,
@@ -258,10 +257,11 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     }
 
     if (!tweetText) {
-      console.log("⏭️ Sportskeeda tweet generation failed");
-      markSeen(STATE, selectedItem, cleanLink);
+      console.log(
+        "⏭️ Sportskeeda tweet generation failed — NOT marking seen, will retry next cycle",
+      );
       await saveState(STATE, "Sportskeeda tweet generation failed");
-      return "skip";
+      return "retry-later";
     }
 
     const imageUrl = parsed.imageUrl || null;
