@@ -2,7 +2,7 @@ import {
   classifyArticle,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
-import { generateCardImage } from "../canvas/imageRenderer.js";
+// import { getPlayerImageUrl } from "../utils/cloudinaryPlayerImage.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import {
   applySourceSignature,
@@ -10,7 +10,6 @@ import {
   isCricketAddictorBlocked,
   isQuietHoursBlocked,
 } from "../twitter/tweetQueue.js";
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { fetchSKCricketListing } from "./fetchSKCricketListing.js";
 import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
@@ -18,6 +17,7 @@ import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
 import { parseSKArticle } from "./parseSKArticle.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
+import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
@@ -209,7 +209,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     }
 
     let tweetText = null;
-    let generatedPath = null;
+    let player = "";
 
     try {
       const claudeResult = await generateGPTTweetWithType(
@@ -217,16 +217,12 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         articleType,
       );
       tweetText = claudeResult?.tweetText || null;
-
-      if (claudeResult?.card) {
-        generatedPath = await generateCardImage(
-          CREX_BASE_IMAGE_TEMPLATE,
-          claudeResult.card,
-        );
-        console.log("🖼️ Claude Sportskeeda card generated:", generatedPath);
-      } else {
-        console.log("📝 Claude generated text-only tweet");
-      }
+      player = claudeResult?.player || "";
+      console.log(
+        tweetText
+          ? "📝 Claude generated tweet"
+          : "📝 Claude generation returned no tweet",
+      );
     } catch (error) {
       console.log(
         "⚠️ Claude Sportskeeda generation failed:",
@@ -238,16 +234,12 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       try {
         const gptResult = await generateGPTTweetWithType(fullText, articleType);
         tweetText = gptResult?.tweetText || null;
-
-        if (gptResult?.card) {
-          generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE,
-            gptResult.card,
-          );
-          console.log("🖼️ GPT Sportskeeda card generated:", generatedPath);
-        } else {
-          console.log("📝 GPT generated text-only tweet");
-        }
+        player = gptResult?.player || "";
+        console.log(
+          tweetText
+            ? "📝 GPT generated tweet"
+            : "📝 GPT generation returned no tweet",
+        );
       } catch (error) {
         console.log(
           "⚠️ GPT Sportskeeda generation failed:",
@@ -262,6 +254,30 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       );
       await saveState(STATE, "Sportskeeda tweet generation failed");
       return "retry-later";
+    }
+
+    let generatedPath = null;
+
+    if (player) {
+      const cloudinaryImageUrl = await getPlayerImageUrl(player);
+      if (cloudinaryImageUrl) {
+        try {
+          generatedPath = await downloadImageToTemp(cloudinaryImageUrl);
+          console.log(`🖼️ Using Cloudinary photo for "${player}"`);
+        } catch (error) {
+          console.log(
+            `⚠️ Failed to download Cloudinary photo for "${player}", posting text-only:`,
+            error?.message || error,
+          );
+          generatedPath = null;
+        }
+      } else {
+        console.log(
+          `⏭️ No Cloudinary photo found for "${player}" — posting text-only`,
+        );
+      }
+    } else {
+      console.log("⏭️ No central player identified — posting text-only");
     }
 
     const imageUrl = parsed.imageUrl || null;

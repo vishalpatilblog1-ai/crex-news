@@ -2,18 +2,14 @@ import {
   classifyArticle,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
-
 import { generateCardImage } from "../canvas/imageRenderer.js";
-
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-
 import {
   applySourceSignature,
   enqueueTweet,
   isCricketAddictorBlocked,
   isQuietHoursBlocked,
 } from "../twitter/tweetQueue.js";
-
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { fetchSKCricketListing } from "./fetchSKCricketListing.js";
@@ -24,58 +20,66 @@ import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
-
-const RETENTION_MS = 6 * 60 * 60 * 1e3;
-
-const SEEN_RETENTION_MS = 24 * 60 * 60 * 1e3;
-
+const RETENTION_MS = 6 * 60 * 60 * 1000;
+const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 const IGNORE_SEEN = process.env.SK_IGNORE_SEEN === "true";
-
 const MAX_CANDIDATES_PER_CYCLE = 5;
-
 const MAX_AGE_MIN = Number(process.env.SK_MAX_AGE_MIN || 60);
 
 export async function skNewsPollingLoop() {
   console.log("skNewsPollingLoop...");
+
   if (IGNORE_SEEN && USE_WEB_TWEET) {
     console.log(
       "🚨 SK_IGNORE_SEEN is true WITH USE_WEB_TWEET also true — this can re-post an already-tweeted article live. Leave USE_WEB_TWEET unset/false unless this is intentional.",
     );
   }
+
   if (!global.STATE) {
     console.log("⚠️ global.STATE is not available");
     return false;
   }
+
   if (isQuietHoursBlocked("SK")) {
     console.log(
       "🚫 Sportskeeda polling paused during quiet hours (1-5 AM IST)",
     );
     return false;
   }
+
   const STATE = global.STATE;
   STATE.sk ??= {};
   STATE.sk.seen ??= {};
-  STATE.dailyContext ??= {
-    contexts: [],
-  };
+  STATE.dailyContext ??= { contexts: [] };
   STATE.dailyContext.contexts ??= [];
   STATE.usedImages ??= {};
+  STATE.sk.failureStats ??= {
+    scrappey_proxy: 0,
+    sk_waf_block: 0,
+    timeout: 0,
+    other: 0,
+  };
+
   let stateChanged = false;
-  if (pruneSeen(STATE)) {
-    stateChanged = true;
-  }
-  if (pruneDailyContext(STATE)) {
-    stateChanged = true;
-  }
-  if (pruneUsedImages(STATE)) {
-    stateChanged = true;
-  }
-  if (stateChanged) {
-    await saveState(STATE, "Sportskeeda state cleanup");
-  }
+  if (pruneSeen(STATE)) stateChanged = true;
+  if (pruneDailyContext(STATE)) stateChanged = true;
+  if (pruneUsedImages(STATE)) stateChanged = true;
+  if (stateChanged) await saveState(STATE, "Sportskeeda state cleanup");
+
   let candidates = [];
+
   try {
-    candidates = await fetchSKCricketListing();
+    const result = await fetchSKCricketListing();
+    candidates = result.candidates;
+
+    for (const failure of result.failures) {
+      STATE.sk.failureStats[failure.category] =
+        (STATE.sk.failureStats[failure.category] || 0) + 1;
+    }
+
+    if (result.failures.length > 0) {
+      console.log("📊 SK failure tally so far:", STATE.sk.failureStats);
+    }
   } catch (error) {
     console.log(
       "❌ Sportskeeda listing fetch failed:",
@@ -83,12 +87,16 @@ export async function skNewsPollingLoop() {
     );
     return false;
   }
+
   if (!Array.isArray(candidates) || candidates.length === 0) {
     console.log("ℹ️ No Sportskeeda articles found on listing pages");
     return false;
   }
+
   console.log(`📰 Sportskeeda candidates found: ${candidates.length}`);
+
   let attemptsUsed = 0;
+
   for (const candidate of candidates) {
     if (attemptsUsed >= MAX_CANDIDATES_PER_CYCLE) {
       console.log(
@@ -96,42 +104,49 @@ export async function skNewsPollingLoop() {
       );
       break;
     }
+
     if (isBlockedSKHeadline(candidate.headline || "")) {
+      console.log("⏭️ SK headline blocked:", candidate.headline);
       continue;
     }
     if (candidate.ageMinutes !== null && candidate.ageMinutes > MAX_AGE_MIN) {
+      console.log(
+        `⏭️ SK candidate too old (${candidate.ageMinutes}min > ${MAX_AGE_MIN}min):`,
+        candidate.headline,
+      );
       continue;
     }
+
     const cleanLink = normalizeSKLink(candidate.link);
+
     if (!cleanLink) {
       console.log("⏭️ Invalid Sportskeeda URL:", candidate.link);
       continue;
     }
-    if (
-      !isSportskeedaCricketArticle({
-        link: cleanLink,
-      })
-    ) {
+
+    if (!isSportskeedaCricketArticle({ link: cleanLink })) {
       console.log("⏭️ Not a valid Sportskeeda cricket article:", cleanLink);
       continue;
     }
+
     if (!IGNORE_SEEN && STATE.sk.seen[cleanLink]) {
+      console.log("⏭️ SK already seen:", cleanLink);
       continue;
     }
-    const selectedItem = {
-      link: cleanLink,
-      headline: candidate.headline,
-    };
+
+    const selectedItem = { link: cleanLink, headline: candidate.headline };
+
     attemptsUsed += 1;
+
     const result = await attemptSportskeedaTweet(
       STATE,
       selectedItem,
       cleanLink,
     );
-    if (result === "success") {
-      return true;
-    }
+
+    if (result === "success") return true;
   }
+
   console.log("ℹ️ No Sportskeeda tweet produced this cycle");
   return false;
 }
@@ -139,19 +154,24 @@ export async function skNewsPollingLoop() {
 async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
   try {
     const parsed = await parseSKArticle(selectedItem);
+
     if (!parsed?.headline || !parsed?.body) {
       console.log("⏭️ Sportskeeda article parsing failed:", cleanLink);
       await saveState(STATE, "Sportskeeda parsing failed (retry later)");
       return "retry-later";
     }
+
     const fullText = `${parsed.headline}\n${parsed.body}`;
+
     if (isBlockedSKHeadline(parsed.headline)) {
       console.log("⏭️ Blocked Sportskeeda article:", parsed.headline);
       markSeen(STATE, selectedItem, cleanLink);
       await saveState(STATE, "Sportskeeda blocked article");
       return "skip";
     }
+
     let articleType = "player_form";
+
     try {
       articleType = await classifyArticle(fullText);
     } catch (error) {
@@ -160,7 +180,9 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         error?.message || error,
       );
     }
+
     let decision = null;
+
     try {
       decision = await judgeNewsContext({
         articleText: fullText,
@@ -168,9 +190,11 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
           (context) => context.summary,
         ),
       });
+
       console.log(
         `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
       );
+
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         console.log("🔴 Sportskeeda article already covered");
         markSeen(STATE, selectedItem, cleanLink);
@@ -183,14 +207,17 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         error?.message || error,
       );
     }
+
     let tweetText = null;
     let generatedPath = null;
+
     try {
       const claudeResult = await generateGPTTweetWithType(
         fullText,
         articleType,
       );
       tweetText = claudeResult?.tweetText || null;
+
       if (claudeResult?.card) {
         generatedPath = await generateCardImage(
           CREX_BASE_IMAGE_TEMPLATE,
@@ -206,10 +233,12 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         error?.message || error,
       );
     }
+
     if (!tweetText) {
       try {
         const gptResult = await generateGPTTweetWithType(fullText, articleType);
         tweetText = gptResult?.tweetText || null;
+
         if (gptResult?.card) {
           generatedPath = await generateCardImage(
             CREX_BASE_IMAGE_TEMPLATE,
@@ -226,33 +255,37 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         );
       }
     }
+
     if (!tweetText) {
-      console.log("⏭️ Sportskeeda tweet generation failed");
-      markSeen(STATE, selectedItem, cleanLink);
+      console.log(
+        "⏭️ Sportskeeda tweet generation failed — NOT marking seen, will retry next cycle",
+      );
       await saveState(STATE, "Sportskeeda tweet generation failed");
-      return "skip";
+      return "retry-later";
     }
+
     const imageUrl = parsed.imageUrl || null;
     const imageResult = await decideImageUsage(imageUrl, STATE.usedImages);
+
     tweetText = applySourceSignature(tweetText, "SK");
     tweetText = tweetText.trim();
-    if (!/[.!?]$/.test(tweetText)) {
-      tweetText += ".";
-    }
+    if (!/[.!?]$/.test(tweetText)) tweetText += ".";
+
     if (!USE_WEB_TWEET) {
       console.log(
         "🧪 USE_WEB_TWEET is false — logging Sportskeeda tweet instead of posting:",
         {
           headline: parsed.headline,
           articleUrl: cleanLink,
-          tweetText: tweetText,
-          generatedPath: generatedPath,
+          tweetText,
+          generatedPath,
           articleImage: imageUrl,
           useArticleImage: imageResult.useImage,
         },
       );
       return "skip";
     }
+
     enqueueTweet({
       id: `SK:${cleanLink}`,
       source: "SK",
@@ -261,11 +294,14 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       seenKey: cleanLink,
       publishedAt: Date.now(),
     });
+
     console.log(`📥 Queued Sportskeeda tweet: ${parsed.headline}`);
     markSeen(STATE, selectedItem, cleanLink);
+
     if (imageResult.useImage && imageUrl) {
       STATE.usedImages[imageUrl] = Date.now();
     }
+
     if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
@@ -274,19 +310,21 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         createdAt: new Date().toISOString(),
       });
     }
+
     await saveState(STATE, "Sportskeeda tweet queued");
     console.log(`✅ Sportskeeda processed: ${parsed.headline}`);
     return "success";
   } catch (error) {
     console.log("⚠️ Sportskeeda processing failed:", error?.message || error);
+    const category = error?.category || "other";
+    STATE.sk.failureStats[category] =
+      (STATE.sk.failureStats[category] || 0) + 1;
     return "retry-later";
   }
 }
 
 function markSeen(STATE, item, cleanLink) {
-  if (cleanLink) {
-    STATE.sk.seen[cleanLink] = Date.now();
-  }
+  if (cleanLink) STATE.sk.seen[cleanLink] = Date.now();
 }
 
 function pruneSeen(STATE) {
@@ -327,27 +365,16 @@ function pruneUsedImages(STATE) {
 }
 
 async function decideImageUsage(imageUrl, usedImages) {
-  if (!imageUrl) {
-    return {
-      useImage: false,
-    };
-  }
-  if (usedImages[imageUrl]) {
-    return {
-      useImage: false,
-    };
-  }
+  if (!imageUrl) return { useImage: false };
+  if (usedImages[imageUrl]) return { useImage: false };
+
   try {
     const localImagePath = await downloadImageToTemp(imageUrl);
     const result = await isRiskyTwitterImage(localImagePath);
-    return {
-      useImage: !result?.risky,
-    };
+    return { useImage: !result?.risky };
   } catch (error) {
     console.log("⚠️ Sportskeeda image check failed:", error?.message || error);
-    return {
-      useImage: false,
-    };
+    return { useImage: false };
   }
 }
 
