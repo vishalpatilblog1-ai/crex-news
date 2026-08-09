@@ -1180,6 +1180,7 @@ export async function generateGPTTweetWithType(articleText, articleType) {
       articleType: resolvedType,
       card: null,
       player: null,
+      source: "GPT",
     };
   }
 }

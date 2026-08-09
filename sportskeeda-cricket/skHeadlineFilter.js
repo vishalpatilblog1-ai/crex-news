@@ -22,6 +22,7 @@ const BLOCKED_TITLE_PATTERNS = [
   /schedule/i,
   /points table/i,
   /\[in pictures?\]/i,
+  /\[watch?\]/i,
   /watch/i,
 ];
 

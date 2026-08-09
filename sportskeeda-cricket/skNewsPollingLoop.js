@@ -110,10 +110,10 @@ export async function skNewsPollingLoop() {
       continue;
     }
     if (candidate.ageMinutes !== null && candidate.ageMinutes > MAX_AGE_MIN) {
-      console.log(
-        `⏭️ SK candidate too old (${candidate.ageMinutes}min > ${MAX_AGE_MIN}min):`,
-        candidate.headline,
-      );
+      // console.log(
+      //   `⏭️ SK candidate too old (${candidate.ageMinutes}min > ${MAX_AGE_MIN}min):`,
+      //   candidate.headline,
+      // );
       continue;
     }
 
@@ -218,11 +218,6 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       );
       tweetText = claudeResult?.tweetText || null;
       player = claudeResult?.player || "";
-      console.log(
-        tweetText
-          ? "📝 Claude generated tweet"
-          : "📝 Claude generation returned no tweet",
-      );
     } catch (error) {
       console.log(
         "⚠️ Claude Sportskeeda generation failed:",
