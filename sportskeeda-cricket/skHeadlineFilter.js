@@ -1,7 +1,6 @@
 // sportskeeda-cricket/skHeadlineFilter.js
 
 const BLOCKED_TITLE_PATTERNS = [
-  /playing xi/i,
   /probable xi/i,
   /match prediction/i,
   /who will win/i,
