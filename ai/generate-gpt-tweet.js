@@ -1093,7 +1093,6 @@ Do not add any explanation around the JSON.
       return { tweetText: null, card: null };
     }
 
-    // ── Parse tweet + card/player fields ─────────────────────────────────────
     let tweetText = rawText;
     let card = null;
     let player = "";
@@ -1109,7 +1108,7 @@ Do not add any explanation around the JSON.
         try {
           const parsed = JSON.parse(jsonMatch[0]);
           player = parsed.player || "";
-          // Only treat it as a renderable card when card-specific fields are present
+
           if (needsCard && parsed.category && parsed.headline) {
             card = parsed;
           }

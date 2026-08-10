@@ -27,8 +27,6 @@ const MAX_CANDIDATES_PER_CYCLE = 5;
 const MAX_AGE_MIN = Number(process.env.SK_MAX_AGE_MIN || 60);
 
 export async function skNewsPollingLoop() {
-  console.log("skNewsPollingLoop...");
-
   if (IGNORE_SEEN && USE_WEB_TWEET) {
     console.log(
       "🚨 SK_IGNORE_SEEN is true WITH USE_WEB_TWEET also true — this can re-post an already-tweeted article live. Leave USE_WEB_TWEET unset/false unless this is intentional.",

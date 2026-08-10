@@ -16,6 +16,7 @@ import { espnNewsPollingLoop } from "./espn-cricinfo/espnNewsPollingLoop.js";
 import { ndtvNewspolling } from "./ndtv/ndtvNewspolling.js";
 import { skNewsPollingLoop } from "./sportskeeda-cricket/skNewsPollingLoop.js";
 import "./utils/fileLogger.js";
+import { xNewsPollingLoop } from "./x-news-cricket/xNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
@@ -93,6 +94,11 @@ async function bootstrap() {
   if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
     console.log("The sportskeeda news polling enabled");
     setInterval(skNewsPollingLoop, 1000 * 60 * 3);
+  }
+
+  if (process.env.ENABLE_XNEWS_NEWS_POLLING === "true") {
+    console.log("The xNewsPollingLoop news polling enabled");
+    setInterval(xNewsPollingLoop, 1000 * 60 * 15);
   }
 }
 
