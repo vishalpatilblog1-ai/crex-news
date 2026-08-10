@@ -13,7 +13,7 @@
 const NEWS_SEARCH_ENDPOINT = "https://api.x.com/2/news/search";
 
 const DEFAULT_QUERY = "cricket";
-const DEFAULT_MAX_RESULTS = Number(process.env.XNEWS_MAX_RESULTS || 5);
+const DEFAULT_MAX_RESULTS = Number(process.env.XNEWS_MAX_RESULTS || 3);
 const DEFAULT_MAX_AGE_HOURS = Number(process.env.XNEWS_MAX_AGE_HOURS || 1);
 
 const NEWS_FIELDS = "contexts,hook,summary,cluster_posts_results";
