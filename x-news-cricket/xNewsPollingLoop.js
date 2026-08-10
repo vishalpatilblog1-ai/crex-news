@@ -101,6 +101,7 @@ export async function xNewsPollingLoop() {
   console.log(`📰 X News candidates found: ${candidates.length}`);
 
   let attemptsUsed = 0;
+  let queuedCount = 0;
 
   for (const candidate of candidates) {
     if (attemptsUsed >= MAX_CANDIDATES_PER_CYCLE) {
@@ -127,9 +128,17 @@ export async function xNewsPollingLoop() {
 
     attemptsUsed += 1;
 
+    // Don't stop after the first success — the tweet queue already paces
+    // real posting (~156s gaps observed in prod), so every good candidate
+    // this cycle gets queued rather than waiting for the next 15-min poll.
     const result = await attemptXNewsTweet(STATE, candidate);
 
-    if (result === "success") return true;
+    if (result === "success") queuedCount += 1;
+  }
+
+  if (queuedCount > 0) {
+    console.log(`✅ Queued ${queuedCount} X News tweet(s) this cycle`);
+    return true;
   }
 
   console.log("ℹ️ No X News tweet produced this cycle");
@@ -175,11 +184,14 @@ async function attemptXNewsTweet(STATE, story) {
     let tweetText = null;
 
     try {
-      const tweetResult = await generateGPTTweetWithType(fullText, articleType);
-      tweetText = tweetResult?.tweetText || null;
+      const claudeResult = await generateGPTTweetWithType(
+        fullText,
+        articleType,
+      );
+      tweetText = claudeResult?.tweetText || null;
     } catch (error) {
       console.log(
-        "⚠️ Tweet for X News generation failed:",
+        "⚠️ Claude X News generation failed:",
         error?.message || error,
       );
     }
