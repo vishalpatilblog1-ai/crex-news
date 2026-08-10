@@ -653,6 +653,27 @@ Use contrast words — "but", "yet", "instead", "then" — when they create narr
 They make the tweet feel like storytelling, not reporting.
 
 ═══════════════════════════════════════════
+PLAIN LANGUAGE RULE (STRICT)
+═══════════════════════════════════════════
+Write like a sharp verbal take, not a written essay. If you wouldn't say a
+line out loud to a friend watching the match, don't write it.
+
+- No abstract or literary metaphors used as connective tissue — e.g. a team's
+  "control" that "travels" between venues, a result that "flattens" years of
+  history, a match framed as a "test" of something abstract. These read as
+  AI-generated and force a re-read to parse.
+- Every sentence must parse correctly on FIRST read. If a sentence needs a
+  second pass to understand what it's saying, rewrite it in plain words.
+- Open with a concrete claim, number, or quote — not an abstract framing
+  sentence that needs the rest of the tweet to make sense.
+- Prefer short, direct sentences over compound or layered ones. If a sentence
+  has more than one embedded clause doing narrative work, split it.
+- A vivid, earned metaphor tied to something concrete in the article (e.g.
+  PATTERN K's before/after contrast, PATTERN C's loaded stat) is fine — this
+  rule targets ABSTRACT imagery invented to sound literary, not concrete
+  detail from the article.
+
+═══════════════════════════════════════════
 CLOSING LINE RULE (STRICT)
 ═══════════════════════════════════════════
 The closing line is a verdict, not a possibility.
