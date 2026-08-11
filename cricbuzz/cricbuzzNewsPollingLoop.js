@@ -38,10 +38,6 @@ export async function cricbuzzNewsPollingLoop() {
 
     let selected = null;
 
-    // ── Step 0: pick first unseen, fresh, India/IPL-relevant story ───────────
-    // India/IPL filter runs here — before any API spend — same principle as
-    // the age/seen checks: reject cheaply, in code, before paying for a
-    // generation call.
     for (const item of storyList) {
       const story = item.story;
       if (!story) continue;
@@ -58,11 +54,11 @@ export async function cricbuzzNewsPollingLoop() {
         if (ageMin > MAX_AGE_MIN) continue;
       }
 
-      if (!isIndiaRelated(story)) {
-        console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        continue;
-      }
+      // if (!isIndiaRelated(story)) {
+      //   console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
+      //   STATE.cricbuzz.seen[newsKey] = Date.now();
+      //   continue;
+      // }
 
       selected = story;
       break;
