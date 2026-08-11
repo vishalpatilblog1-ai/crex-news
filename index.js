@@ -142,7 +142,10 @@ async function bootstrap() {
   }
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling enabled");
-    setInterval(runIfAwake(cricbuzzNewsPollingLoop, "Cricbuzz"), 1000 * 60 * 3);
+    setInterval(
+      runIfAwake(cricbuzzNewsPollingLoop, "Cricbuzz"),
+      1000 * 60 * 15,
+    );
   }
 }
 

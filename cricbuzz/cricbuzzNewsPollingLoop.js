@@ -35,8 +35,6 @@ export async function cricbuzzNewsPollingLoop() {
     const newsIndex = await getLiveNewsList();
     const storyList = newsIndex?.storyList || [];
 
-    console.log("storyList::", storyList);
-
     if (storyList.length === 0) return false;
 
     let selected = null;
@@ -52,11 +50,9 @@ export async function cricbuzzNewsPollingLoop() {
       if (STATE.cricbuzz.seen[newsKey]) continue;
 
       const pubMs = story.pubTime ? Number(story.pubTime) : null;
-      console.log("item::", item);
 
       if (pubMs) {
         const ageMin = (Date.now() - pubMs) / 60000;
-        console.log("ageMin > MAX_AGE_MIN:::", ageMin > MAX_AGE_MIN);
 
         if (ageMin > MAX_AGE_MIN) continue;
       }
