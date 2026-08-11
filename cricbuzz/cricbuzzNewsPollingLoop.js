@@ -1,9 +1,10 @@
 import {
-  classifyArticle,
+  // classifyArticle,
   generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import {
+  classifyArticle,
   generateGPTTweetWithType,
   isLongTweetEligible,
 } from "../ai/generate-gpt-tweet.js";
@@ -15,8 +16,8 @@ import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const SOURCE = "CB";
 
-const MAX_AGE_MIN = 420;
-const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
+const MAX_AGE_MIN = 120;
+const RETENTION_MS = 6 * 60 * 60 * 1000; // 4 hours
 
 export async function cricbuzzNewsPollingLoop() {
   if (!global.STATE) {
@@ -33,6 +34,8 @@ export async function cricbuzzNewsPollingLoop() {
   try {
     const newsIndex = await getLiveNewsList();
     const storyList = newsIndex?.storyList || [];
+
+    // console.log("storyList::", storyList);
 
     if (storyList.length === 0) return false;
 
@@ -87,9 +90,6 @@ export async function cricbuzzNewsPollingLoop() {
       return false;
     }
 
-    // ── Step 1: Classify article type first ──────────────────────────────────
-    // Classified once here so both the significance gate and generation reuse
-    // it — no duplicate classification call.
     let articleType = "player_form";
     try {
       articleType = await classifyArticle(fullText);
@@ -112,25 +112,25 @@ export async function cricbuzzNewsPollingLoop() {
         return false;
       }
 
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
+      // const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      // const score = decision?.significanceScore ?? 10;
 
-      if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
-        );
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        await saveState(STATE);
-        return false;
-      }
+      // if (!isExempt && score < 7) {
+      //   console.log(
+      //     `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
+      //   );
+      //   STATE.cricbuzz.seen[newsKey] = Date.now();
+      //   await saveState(STATE);
+      //   return false;
+      // }
 
-      if (isExempt) {
-        console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
+      // if (isExempt) {
+      //   console.log(
+      //     `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+      //   );
+      // } else {
+      //   console.log(`✅ Significance: ${score}/10 — proceeding`);
+      // }
     } catch (err) {
       console.warn("⚠️ Cricbuzz judgeNewsContext failed:", err?.message || err);
     }

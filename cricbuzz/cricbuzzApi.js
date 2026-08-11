@@ -36,10 +36,10 @@ export async function getLiveNewsList() {
   return await fetchJson(`${BASE_URL}/news`);
 }
 export async function getNewsDetailsByNewsId(newsId) {
-  // ⚠️ NOT yet confirmed against the new API — /news/v1/detail/:id was the
-  // OLD host's path. Verify the correct detail endpoint in Postman/RapidAPI
-  // docs for "Crickbuzz Official APIs" and update this if it 404s.
-  return await fetchJson(`${BASE_URL}/news/v1/detail/${newsId}`);
+  // Confirmed via RapidAPI endpoint browser for Crickbuzz Official APIs:
+  // GET /news/details/:id (NOT /news/v1/detail/:id — that was the old
+  // cricbuzz-cricket API's path and 404s on this host).
+  return await fetchJson(`${BASE_URL}/news/details/${newsId}`);
 }
 
 export async function findIndiaMatch() {
@@ -95,10 +95,12 @@ export async function findIndiaMatch() {
 
         if (!isIndia) continue;
 
+        // Reject domestic leagues or IPL-like tournaments
         const isBlocked = BLOCKED_KEYS.some((key) => seriesName.includes(key));
 
         if (isBlocked) continue;
 
+        // Must match international formats
         const isInternational = INTERNATIONAL_KEYS.some((key) =>
           format.includes(key),
         );
