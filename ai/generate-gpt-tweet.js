@@ -1108,7 +1108,7 @@ SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
 RULES:
 - No Emoji at all — EXCEPTION: breaking_news type uses ⚡️ as specified in its format
 - Plain text only
-- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
+- No hashtags.
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
 - Target length: STRICT ${MIN_CHARS}–${MAX_CHARS} characters, no exceptions.
