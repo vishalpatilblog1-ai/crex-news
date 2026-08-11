@@ -104,7 +104,7 @@ export async function skNewsPollingLoop() {
     }
 
     if (isBlockedSKHeadline(candidate.headline || "")) {
-      console.log("⏭️ SK headline blocked:", candidate.headline);
+      // console.log("⏭️ SK headline blocked:", candidate.headline);
       continue;
     }
     if (candidate.ageMinutes !== null && candidate.ageMinutes > MAX_AGE_MIN) {

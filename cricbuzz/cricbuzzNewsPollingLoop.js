@@ -103,10 +103,6 @@ export async function cricbuzzNewsPollingLoop() {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
 
-    // ── Step 2: Deduplication + significance gate ─────────────────────────────
-    // judgeNewsContext checks against STATE.dailyContext — the SAME shared
-    // context pool that CA/SK/XNews all write into, so this is cross-source
-    // dedup, not just Cricbuzz-vs-Cricbuzz.
     let decision = null;
     try {
       decision = await judgeNewsContext({
