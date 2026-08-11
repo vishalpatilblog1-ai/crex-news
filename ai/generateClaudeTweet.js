@@ -17,6 +17,54 @@ export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   // "milestone_record",
 ]);
 
+// ─── SOURCE-BASED CHAR LIMITS ─────────────────────────────────────────────────
+// Mirrors generate-gpt-tweet.js exactly, so char-limit resolution is identical
+// regardless of which model ends up generating the tweet. Default 200–280
+// applies to every source unless overridden below. CB (Cricbuzz) gets extra
+// room ONLY when isLongTweetEligible() clears the article first (source is
+// original + article actually has enough substance to justify more length) —
+// this is a ceiling, not a target bump for every CB tweet.
+
+const CHAR_LIMITS = {
+  DEFAULT: { min: 200, max: 280 },
+  CB: {
+    default: { min: 200, max: 280 },
+    long: { min: 320, max: 420 },
+  },
+};
+
+function resolveCharLimit(source, isLongEligible) {
+  if (source === "CB" && isLongEligible) return CHAR_LIMITS.CB.long;
+  if (source === "CB") return CHAR_LIMITS.CB.default;
+  return CHAR_LIMITS.DEFAULT;
+}
+
+// ─── LONG-TWEET ELIGIBILITY (Cricbuzz only) ───────────────────────────────────
+// Cheap, deterministic, no-API-call gate — runs in the polling loop BEFORE
+// generation so we only pay for a longer completion when the source article
+// actually has enough material to fill it. Duplicated from generate-gpt-tweet.js
+// intentionally (both generators need the same gate, no shared import between
+// the two standalone files).
+
+export function isLongTweetEligible(articleText) {
+  if (!articleText || typeof articleText !== "string") return false;
+
+  const text = articleText.trim();
+  if (text.length < 600) return false;
+
+  const sentenceCount = (text.match(/[.!?](\s|$)/g) || []).length;
+  if (sentenceCount < 6) return false;
+
+  const hasQuote = /["“][^"”]{15,}["”]/.test(text);
+  const namedEntityCount = (
+    text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b/g) || []
+  ).length;
+
+  if (!hasQuote && namedEntityCount < 3) return false;
+
+  return true;
+}
+
 const CLASSIFY_ARTICLE_SYSTEM_PROMPT = `
 Classify this cricket article into ONE of these types:
 
@@ -865,7 +913,8 @@ const CARD_IMAGE_TYPES = new Set([
 // was billed fresh on every single call. Pulling it out into its own
 // cache_control block means it's now cached same as the rest of the system
 // prompt, instead of being the one uncached chunk dragging cost up.
-function buildStaticInstructionsBlock(needsCard) {
+function buildStaticInstructionsBlock(needsCard, source, MIN_CHARS, MAX_CHARS) {
+  const isLongMode = MAX_CHARS > 280;
   return `
 OUTPUT RULES:
 - Output ONLY the tweet text — no explanation, no preamble, no label, no article type mention
@@ -878,6 +927,25 @@ STRUCTURE GUIDANCE (optional — use only if it fits naturally):
 - Body: 1–2 lines of factual context OR the specific insight
 - Stance: a clear analytical conclusion or open tension that pulls people into replies
 
+${
+  isLongMode
+    ? `LONG-FORM MODE (original-source article — use the extra room):
+- This source is an original report, not a wire rewrite. You have ${MIN_CHARS}-${MAX_CHARS} characters instead of the usual 280.
+- Use the extra length for genuine additional detail already IN the article — a second named specific, a fuller quote, an extra beat of context — not for padding, repetition, or restating the hook in different words.
+- Still one clean read, not a thread crammed into one tweet. Keep the same line-break/beat structure, just with room for one more beat if the article supports it.
+- If the article doesn't actually have enough distinct material to fill the extra room honestly, it's fine to land under ${MAX_CHARS} — do not pad to hit the ceiling.
+`
+    : ""
+}
+${
+  source === "CB"
+    ? `OPENER VARIATION (Cricbuzz only):
+- This source posts rarely and is India/IPL-filtered, so its tweets should not all read as one template.
+- If the article is genuinely urgent/first-to-report (a squad drop, injury, selection call, result just in — not a routine update or opinion piece), you MAY open the tweet with exactly this line: "🚨 Breaking - <short punchy headline>" — then continue the rest of the tweet as normal on the next line(s).
+- Use this opener occasionally, only when the news actually justifies "breaking" — never on analysis, opinion, or soft/human-interest pieces. Do not use it on every CB tweet; most should still use your normal hook style.
+`
+    : ""
+}
 FINAL CHECK before outputting:
 
 - Does the tweet say something the article doesn't explicitly state? (It should)
@@ -943,11 +1011,11 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: STRICT 200–280 characters for every article type, no exceptions.
+- Target length: STRICT ${MIN_CHARS}–${MAX_CHARS} characters for every article type, no exceptions.
   This applies uniformly — press_conference and opinion_piece no longer get extra
   room for long quotes (that's ARRT's job now, not the automated pipeline's).
-  If a quote is too long to fit while staying under 280, trim it to its sharpest
-  clause rather than running long. Never go under 200 or over 280.
+  If a quote is too long to fit while staying under ${MAX_CHARS}, trim it to its sharpest
+  clause rather than running long. Never go under ${MIN_CHARS} or over ${MAX_CHARS}.
 
 ${
   needsCard
@@ -981,11 +1049,21 @@ No card needed for this article type. Output tweet text only.
 `;
 }
 
-async function _generateTweet(articleText, articleType, isRetry = false) {
+async function _generateTweet(
+  articleText,
+  articleType,
+  isRetry = false,
+  source = null,
+  isLongEligible = false,
+) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
 
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
+  const { min: MIN_CHARS, max: MAX_CHARS } = resolveCharLimit(
+    source,
+    isLongEligible,
+  );
 
   // Only the article text + trigger line are genuinely different call to
   // call -- everything else (output rules, checklist, card format) now
@@ -993,17 +1071,22 @@ async function _generateTweet(articleText, articleType, isRetry = false) {
   // message and billed fresh every time.
   //
   // isRetry adds one extra line only on the (rare) second attempt, when the
-  // first draft came back over 280 -- this keeps the cached blocks above
+  // first draft came back over MAX_CHARS -- this keeps the cached blocks above
   // identical between the two calls, so the retry still hits cache.
   const userPrompt = `
 [NEWS CONTEXT]
 ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
-${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to fit 200-280 characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff." : ""}
+${isRetry ? `\nSTRICT: your previous draft exceeded ${MAX_CHARS} characters. Rewrite to fit ${MIN_CHARS}-${MAX_CHARS} characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff.` : ""}
 `;
 
-  const staticInstructionsBlock = buildStaticInstructionsBlock(needsCard);
+  const staticInstructionsBlock = buildStaticInstructionsBlock(
+    needsCard,
+    source,
+    MIN_CHARS,
+    MAX_CHARS,
+  );
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
@@ -1100,22 +1183,22 @@ ${isRetry ? "\nSTRICT: your previous draft exceeded 280 characters. Rewrite to f
     return { tweetText: null, card: null };
   }
 
-  // if (tweetText.length > 280 && !isRetry) {
+  // if (tweetText.length > MAX_CHARS && !isRetry) {
   //   console.log(
-  //     `📏 Tweet is ${tweetText.length} chars — over 280. Retrying once to get a complete tweet within range instead of truncating it.`,
+  //     `📏 Tweet is ${tweetText.length} chars — over ${MAX_CHARS}. Retrying once to get a complete tweet within range instead of truncating it.`,
   //   );
-  //   return _generateTweet(articleText, articleType, true);
+  //   return _generateTweet(articleText, articleType, true, source, isLongEligible);
   // }
 
-  // if (tweetText.length > 280 && isRetry) {
+  // if (tweetText.length > MAX_CHARS && isRetry) {
   //   console.warn(
-  //     `⚠️ Retry still over 280 chars (${tweetText.length}) — posting as-is rather than truncating the verdict off.`,
+  //     `⚠️ Retry still over ${MAX_CHARS} chars (${tweetText.length}) — posting as-is rather than truncating the verdict off.`,
   //   );
   // }
 
-  if (tweetText.length < 200) {
+  if (tweetText.length < MIN_CHARS) {
     console.warn(
-      `⚠️ Tweet is only ${tweetText.length} chars — under the 200 target. Not padding artificially; posting as-is.`,
+      `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`,
     );
   }
 
@@ -1153,7 +1236,12 @@ export async function generateClaudeTweet(articleText) {
   }
 }
 
-export async function generateClaudeTweetWithType(articleText, articleType) {
+export async function generateClaudeTweetWithType(
+  articleText,
+  articleType,
+  source = null,
+  isLongEligible = false,
+) {
   let resolvedType = articleType;
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
@@ -1163,10 +1251,20 @@ export async function generateClaudeTweetWithType(articleText, articleType) {
     resolvedType = "player_form";
   }
 
-  console.log(`🏷️ Article type (pre-classified): ${resolvedType}`);
+  console.log(
+    `🏷️ Article type (pre-classified): ${resolvedType}${
+      source ? ` | source: ${source}` : ""
+    }${isLongEligible ? " | long-tweet mode" : ""}`,
+  );
 
   try {
-    const { tweetText, card } = await _generateTweet(articleText, resolvedType);
+    const { tweetText, card } = await _generateTweet(
+      articleText,
+      resolvedType,
+      false,
+      source,
+      isLongEligible,
+    );
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);

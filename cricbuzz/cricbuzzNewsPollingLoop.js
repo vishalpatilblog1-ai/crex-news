@@ -1,10 +1,10 @@
 import {
-  // classifyArticle,
+  classifyArticle,
   generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import {
-  classifyArticle,
+  // classifyArticle,
   generateGPTTweetWithType,
   isLongTweetEligible,
 } from "../ai/generate-gpt-tweet.js";
@@ -146,7 +146,7 @@ export async function cricbuzzNewsPollingLoop() {
 
     let tweetText = null;
     try {
-      const result = await generateGPTTweetWithType(
+      const result = await generateClaudeTweetWithType(
         fullText,
         articleType,
         SOURCE,
