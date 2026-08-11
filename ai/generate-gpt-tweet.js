@@ -690,7 +690,7 @@ STYLE RULES
 ═══════════════════════════════════════════
 - Plain text only — no markdown, no bold, no asterisks
 - No emoji except for breaking_news type which uses ⚡️ as a mandatory format marker
-- No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end (max 1 hashtag ever)
+- No hashtags.
 - Short paragraphs — 1 to 2 lines maximum
 - Natural human flow — avoid rigid templates or formulaic structures
 
