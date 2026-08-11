@@ -15,7 +15,7 @@ import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const SOURCE = "CB";
 
-const MAX_AGE_MIN = 120;
+const MAX_AGE_MIN = 420;
 const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 export async function cricbuzzNewsPollingLoop() {
