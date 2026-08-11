@@ -60,14 +60,12 @@ export async function cricbuzzNewsPollingLoop() {
 
       if (!isIndiaRelated(story)) {
         console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
-        // Mark seen so we don't re-evaluate this story on every poll cycle —
-        // it's not going to become India-related on a later pass.
         STATE.cricbuzz.seen[newsKey] = Date.now();
         continue;
       }
 
       selected = story;
-      break; // 🔑 SINGLE ITEM ONLY
+      break;
     }
 
     if (!selected) {

@@ -35,19 +35,6 @@ function resolveCharLimit(source, isLongEligible) {
   return CHAR_LIMITS.DEFAULT;
 }
 
-// ─── LONG-TWEET ELIGIBILITY (Cricbuzz only) ───────────────────────────────────
-// Cheap, deterministic, no-API-call gate — runs in the polling loop BEFORE
-// generation so we only pay for a longer completion when the source article
-// actually has enough material to fill it. Do not call this from inside the
-// prompt/generation path.
-//
-// Heuristics (article must clear ALL of these to qualify):
-// - Long enough raw text that there's real detail to draw on (not just a
-//   two-line wire update padded into an "article")
-// - Multiple distinct sentences/paragraphs (rules out single-quote blurbs)
-// - At least one direct quote OR multiple named entities (players, teams,
-//   officials) — signals texture worth preserving instead of just a headline rehash
-
 export function isLongTweetEligible(articleText) {
   if (!articleText || typeof articleText !== "string") return false;
 
@@ -1046,6 +1033,16 @@ STRUCTURE GUIDANCE (optional — use only if it fits naturally):
 - Hook: one sharp line that earns the reader's attention (not a question unless it's genuinely provocative)
 - Body: 1–2 lines of factual context OR the specific insight
 - Stance: a clear analytical conclusion or open tension that pulls people into replies
+
+${
+  source === "CB"
+    ? `OPENER VARIATION (Cricbuzz only):
+- This source posts rarely and is India/IPL-filtered, so its tweets should not all read as one template.
+- If the article is genuinely urgent/first-to-report (a squad drop, injury, selection call, result just in — not a routine update or opinion piece), you MAY open the tweet with exactly this line: "🚨 Breaking - <short punchy headline>" — then continue the rest of the tweet as normal on the next line(s).
+- Use this opener occasionally, only when the news actually justifies "breaking" — never on analysis, opinion, or soft/human-interest pieces. Do not use it on every CB tweet; most should still use your normal hook style.
+`
+    : ""
+}
 
 FINAL CHECK before outputting:
 - Does the tweet say something the article doesn't explicitly state? (It should)

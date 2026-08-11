@@ -3,7 +3,8 @@ import fetch from "node-fetch";
 import "dotenv/config";
 
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
-const BASE_URL = "https://cricbuzz-cricket.p.rapidapi.com";
+const BASE_URL = "https://crickbuzz-official-apis.p.rapidapi.com";
+const RAPIDAPI_HOST = "crickbuzz-official-apis.p.rapidapi.com";
 
 /* Helper to fetch JSON safely */
 async function fetchJson(url) {
@@ -12,7 +13,7 @@ async function fetchJson(url) {
       method: "GET",
       headers: {
         "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
+        "x-rapidapi-host": RAPIDAPI_HOST,
         "User-Agent": "Mozilla/5.0",
         Accept: "application/json",
       },
@@ -30,9 +31,14 @@ export async function getLiveMatches() {
 }
 
 export async function getLiveNewsList() {
-  return await fetchJson(`${BASE_URL}/news/v1/index`);
+  // Postman-confirmed working endpoint for the new subscription: GET /news
+  // (old /news/v1/index was the previous cricbuzz-cricket API's path)
+  return await fetchJson(`${BASE_URL}/news`);
 }
 export async function getNewsDetailsByNewsId(newsId) {
+  // ⚠️ NOT yet confirmed against the new API — /news/v1/detail/:id was the
+  // OLD host's path. Verify the correct detail endpoint in Postman/RapidAPI
+  // docs for "Crickbuzz Official APIs" and update this if it 404s.
   return await fetchJson(`${BASE_URL}/news/v1/detail/${newsId}`);
 }
 
@@ -89,14 +95,12 @@ export async function findIndiaMatch() {
 
         if (!isIndia) continue;
 
-        // Reject domestic leagues or IPL-like tournaments
         const isBlocked = BLOCKED_KEYS.some((key) => seriesName.includes(key));
 
         if (isBlocked) continue;
 
-        // Must match international formats
         const isInternational = INTERNATIONAL_KEYS.some((key) =>
-          format.includes(key)
+          format.includes(key),
         );
 
         if (!isInternational) continue;
