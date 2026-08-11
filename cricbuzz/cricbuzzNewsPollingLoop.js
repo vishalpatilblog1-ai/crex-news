@@ -83,6 +83,8 @@ export async function cricbuzzNewsPollingLoop() {
       return false;
     }
 
+    console.log("detailNews>>>", detailNews);
+
     const fullText = buildFullArticleText(detailNews);
     if (fullText.length < 80) {
       STATE.cricbuzz.seen[newsKey] = Date.now();
