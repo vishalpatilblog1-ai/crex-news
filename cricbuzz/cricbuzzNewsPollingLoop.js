@@ -57,11 +57,11 @@ export async function cricbuzzNewsPollingLoop() {
         if (ageMin > MAX_AGE_MIN) continue;
       }
 
-      // if (!isIndiaRelated(story)) {
-      //   console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
-      //   STATE.cricbuzz.seen[newsKey] = Date.now();
-      //   continue;
-      // }
+      if (!isIndiaRelated(story)) {
+        console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        continue;
+      }
 
       selected = story;
       break;
