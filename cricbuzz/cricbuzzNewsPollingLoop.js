@@ -1,19 +1,22 @@
-import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import {
+  generateGPTTweetWithType,
+  isLongTweetEligible,
+} from "../ai/generate-gpt-tweet.js";
+import { isIndiaRelated } from "./cricbuzzFilters.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
-const BASE_IMAGE_URL = "https://static.cricbuzz.com";
+const SOURCE = "CB";
 
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 4 * 60 * 60 * 1000; // 4 hours
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 export async function cricbuzzNewsPollingLoop() {
   if (!global.STATE) {
@@ -35,7 +38,10 @@ export async function cricbuzzNewsPollingLoop() {
 
     let selected = null;
 
-    /* ---------------- CT-style selection ---------------- */
+    // ── Step 0: pick first unseen, fresh, India/IPL-relevant story ───────────
+    // India/IPL filter runs here — before any API spend — same principle as
+    // the age/seen checks: reject cheaply, in code, before paying for a
+    // generation call.
     for (const item of storyList) {
       const story = item.story;
       if (!story) continue;
@@ -47,17 +53,27 @@ export async function cricbuzzNewsPollingLoop() {
       if (STATE.cricbuzz.seen[newsKey]) continue;
 
       const pubMs = story.pubTime ? Number(story.pubTime) : null;
-
       if (pubMs) {
         const ageMin = (Date.now() - pubMs) / 60000;
         if (ageMin > MAX_AGE_MIN) continue;
+      }
+
+      if (!isIndiaRelated(story)) {
+        console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
+        // Mark seen so we don't re-evaluate this story on every poll cycle —
+        // it's not going to become India-related on a later pass.
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        continue;
       }
 
       selected = story;
       break; // 🔑 SINGLE ITEM ONLY
     }
 
-    if (!selected) return false;
+    if (!selected) {
+      await saveState(STATE);
+      return false;
+    }
 
     /* ---------------- process selected ---------------- */
     const newsId = selected.id;
@@ -78,17 +94,19 @@ export async function cricbuzzNewsPollingLoop() {
     }
 
     // ── Step 1: Classify article type first ──────────────────────────────────
-    // We classify here (not inside generateClaudeTweet) so the polling loop
-    // can use the type for gate decisions before spending tokens on generation.
+    // Classified once here so both the significance gate and generation reuse
+    // it — no duplicate classification call.
     let articleType = "player_form";
     try {
       articleType = await classifyArticle(fullText);
-      // console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
 
     // ── Step 2: Deduplication + significance gate ─────────────────────────────
+    // judgeNewsContext checks against STATE.dailyContext — the SAME shared
+    // context pool that CA/SK/XNews all write into, so this is cross-source
+    // dedup, not just Cricbuzz-vs-Cricbuzz.
     let decision = null;
     try {
       decision = await judgeNewsContext({
@@ -109,7 +127,7 @@ export async function cricbuzzNewsPollingLoop() {
 
       if (!isExempt && score < 7) {
         console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`
+          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
         );
         STATE.cricbuzz.seen[newsKey] = Date.now();
         await saveState(STATE);
@@ -118,7 +136,7 @@ export async function cricbuzzNewsPollingLoop() {
 
       if (isExempt) {
         console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
         );
       } else {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
@@ -127,21 +145,43 @@ export async function cricbuzzNewsPollingLoop() {
       console.warn("⚠️ Cricbuzz judgeNewsContext failed:", err?.message || err);
     }
 
-    // ── Step 3: Tweet generation ──────────────────────────────────────────────
-    // Pass the pre-classified type into Claude to avoid a duplicate API call.
+    // ── Step 3: Long-tweet eligibility ─────────────────────────────────────────
+    // Cheap, no-API-call check — decides whether generation gets the extended
+    // 320-420 char budget instead of the standard 200-280. Cricbuzz is our one
+    // original/fast source, so it's the only one wired to this flag.
+    const longEligible = isLongTweetEligible(fullText);
+    if (longEligible) {
+      console.log("📏 Cricbuzz article qualifies for long-tweet mode");
+    }
+
+    // ── Step 4: Tweet generation ──────────────────────────────────────────────
+    // Claude primary, GPT fallback — both receive source + longEligible so
+    // char-limit resolution is consistent regardless of which model ends up
+    // generating the tweet.
     let tweetText = null;
     try {
-      const result = await generateClaudeTweetWithType(fullText, articleType);
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        SOURCE,
+        longEligible,
+      );
       tweetText = result.tweetText;
-      console.log("Prompt generated by claude ....");
+      console.log("Prompt generated by Claude ....");
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        tweetText = await generateGPTTweet(fullText);
-        console.log("Prompt generated by GPT ....");
+        const result = await generateGPTTweetWithType(
+          fullText,
+          articleType,
+          SOURCE,
+          longEligible,
+        );
+        tweetText = result.tweetText;
+        console.log("Prompt generated by GPT (fallback) ....");
       } catch (err) {
         console.warn("⚠️ Cricbuzz AI failed, skipping tweet:", err.message);
         return false;
@@ -155,18 +195,21 @@ export async function cricbuzzNewsPollingLoop() {
       return false;
     }
 
-    const imageId = selected.imageId || selected.coverImage?.id;
-    tweetText = applySourceSignature(tweetText, "CB");
+    tweetText = applySourceSignature(tweetText, SOURCE);
 
-    const imageUrl = imageId
-      ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
-      : null;
+    // Text-only tweets for CB — no image, same as the current SK text-only test.
+    const imageUrl = null;
 
-    const tweetId = `CB:${newsKey}`;
+    // For future if required
+    //  const imageUrl = imageId
+    // ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
+    // : null;
+
+    const tweetId = `${SOURCE}:${newsKey}`;
 
     enqueueTweet({
       id: tweetId,
-      source: "CB",
+      source: SOURCE,
       text: tweetText,
       imageUrl,
       seenKey: newsKey,
@@ -181,7 +224,7 @@ export async function cricbuzzNewsPollingLoop() {
       };
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
-        source: "CB",
+        source: SOURCE,
         link: newsKey,
         createdAt: new Date().toISOString(),
       });

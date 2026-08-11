@@ -25,6 +25,45 @@ global.STATE = null;
 global.LAST_CA_SUCCESS_AT = 0;
 global.CA_COOLDOWN_UNTIL = 0;
 
+// ─── SLEEP WINDOW (applies to every source, not source-specific) ──────────────
+// No polling loop fires between 1:00 AM - 5:00 AM IST — this skips the poll
+// call itself (saves API quota, e.g. Cricbuzz's free-tier request cap), not
+// just the tweet posting. Computed via Asia/Kolkata explicitly so this stays
+// correct no matter what timezone the server (Railway etc.) actually runs in.
+
+const SLEEP_WINDOW_START_HOUR = 1; // 1:00 AM IST
+const SLEEP_WINDOW_END_HOUR = 5; // 5:00 AM IST
+
+function getISTHour() {
+  const istHourStr = new Date().toLocaleString("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    hour12: false,
+  });
+  return parseInt(istHourStr, 10) % 24;
+}
+
+function isSleepWindow() {
+  const hour = getISTHour();
+  return hour >= SLEEP_WINDOW_START_HOUR && hour < SLEEP_WINDOW_END_HOUR;
+}
+
+// Wraps a polling loop fn so setInterval calls this instead of the loop
+// directly — every source gets the same gate, added in exactly one place.
+function runIfAwake(pollFn, label) {
+  return async () => {
+    if (isSleepWindow()) {
+      console.log(`😴 Sleep window (1-5 AM IST) — skipping ${label} poll`);
+      return;
+    }
+    try {
+      await pollFn();
+    } catch (err) {
+      console.error(`❌ ${label} poll error:`, err?.message || err);
+    }
+  };
+}
+
 async function bootstrap() {
   global.STATE = await loadState();
 
@@ -51,54 +90,62 @@ async function bootstrap() {
     await saveState(global.STATE);
   }
 
-  if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
-    console.log("📰 Cricbuzz news polling enabled");
-    setInterval(cricbuzzNewsPollingLoop, 1000 * 60 * 2);
-  }
-
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
     console.log("📰 Indian Express news polling enabled");
-    setInterval(ieNewsPollingLoop, 1000 * 60 * 3);
+    setInterval(runIfAwake(ieNewsPollingLoop, "Indian Express"), 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
     console.log("📰 Ndtv news polling enabled");
-    setInterval(ndtvNewspolling, 1000 * 60 * 2);
+    setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 2);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("The Hindu news polling enabled");
-    setInterval(hinduNewsPollingLoop, 1000 * 60 * 2);
+    setInterval(runIfAwake(hinduNewsPollingLoop, "The Hindu"), 1000 * 60 * 2);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
     console.log("The Crictracker news polling enabled");
-    setInterval(ctNewsPollingLoop, 1000 * 60 * 3);
+    setInterval(runIfAwake(ctNewsPollingLoop, "CricTracker"), 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
     console.log("The ESPN news polling enabled");
-    setInterval(espnNewsPollingLoop, 1000 * 60 * 4);
+    setInterval(
+      runIfAwake(espnNewsPollingLoop, "ESPN Cricinfo"),
+      1000 * 60 * 4,
+    );
   }
 
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("The cricker addictore news polling enabled");
-    setInterval(caNewsPollingLoop, 1000 * 60 * 2);
+    setInterval(
+      runIfAwake(caNewsPollingLoop, "CricketAddictor"),
+      1000 * 60 * 2,
+    );
   }
 
   if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
     console.log("📺 YouTube transcript polling enabled");
-    setInterval(youtubeNewsPollingLoop, 1000 * 60 * 0.3); // every 15 min
+    setInterval(runIfAwake(youtubeNewsPollingLoop, "YouTube"), 1000 * 60 * 0.3); // every 15 min
   }
 
   if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
     console.log("The sportskeeda news polling enabled");
-    setInterval(skNewsPollingLoop, 1000 * 60 * 3);
+    setInterval(runIfAwake(skNewsPollingLoop, "SportsKeeda"), 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_XNEWS_NEWS_POLLING === "true") {
     console.log("The xNewsPollingLoop news polling enabled");
-    setInterval(xNewsPollingLoop, 1000 * 60 * 15);
+    setInterval(runIfAwake(xNewsPollingLoop, "X News"), 1000 * 60 * 15);
+  }
+  if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
+    console.log("📰 Cricbuzz news polling enabled");
+    setInterval(
+      runIfAwake(cricbuzzNewsPollingLoop, "Cricbuzz"),
+      1000 * 60 * 15,
+    );
   }
 }
 
