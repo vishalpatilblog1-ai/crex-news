@@ -1,9 +1,14 @@
 // cricket-addictor/caNewsPollingLoop.js
 
 import {
-  classifyArticle,
+  // classifyArticle,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
+
+import {
+  classifyArticle,
+  generateClaudeTweetWithType,
+} from "../ai/generateClaudeTweet.js";
 // import {
 //   classifyArticle,
 //   generateClaudeTweet,
@@ -162,10 +167,8 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
-        fullText,
-        articleType,
-      );
+      const { tweetText: tweetToPost, card } =
+        await generateClaudeTweetWithType(fullText, articleType);
 
       // const {
       //   tweetText: gptTweet,
