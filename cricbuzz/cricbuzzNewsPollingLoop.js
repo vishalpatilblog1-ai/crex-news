@@ -140,7 +140,8 @@ export async function cricbuzzNewsPollingLoop() {
       console.warn("⚠️ Cricbuzz judgeNewsContext failed:", err?.message || err);
     }
 
-    const longEligible = isLongTweetEligible(fullText);
+    // const longEligible = isLongTweetEligible(fullText);
+    const longEligible = false;
     if (longEligible) {
       console.log("📏 Cricbuzz article qualifies for long-tweet mode");
     }

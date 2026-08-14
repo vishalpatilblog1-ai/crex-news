@@ -17,14 +17,6 @@ export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   // "milestone_record",
 ]);
 
-// ─── SOURCE-BASED CHAR LIMITS ─────────────────────────────────────────────────
-// Mirrors generate-gpt-tweet.js exactly, so char-limit resolution is identical
-// regardless of which model ends up generating the tweet. Default 200–280
-// applies to every source unless overridden below. CB (Cricbuzz) gets extra
-// room ONLY when isLongTweetEligible() clears the article first (source is
-// original + article actually has enough substance to justify more length) —
-// this is a ceiling, not a target bump for every CB tweet.
-
 const CHAR_LIMITS = {
   DEFAULT: { min: 200, max: 280 },
   CB: {
