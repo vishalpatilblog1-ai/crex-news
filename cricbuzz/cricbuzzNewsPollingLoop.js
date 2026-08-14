@@ -13,6 +13,7 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
+import { generateGullyPointVoiceTweet } from "../ai/generateGullyPointVoiceTweet.js";
 
 const SOURCE = "CB";
 
@@ -146,13 +147,14 @@ export async function cricbuzzNewsPollingLoop() {
 
     let tweetText = null;
     try {
-      const result = await generateClaudeTweetWithType(
-        fullText,
-        articleType,
-        SOURCE,
-        longEligible,
-      );
-      tweetText = result.tweetText;
+      // const result = await generateClaudeTweetWithType(
+      //   fullText,
+      //   articleType,
+      //   SOURCE,
+      //   longEligible,
+      // );
+      // tweetText = result.tweetText;
+      tweetText = await generateGullyPointVoiceTweet(fullText);
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
