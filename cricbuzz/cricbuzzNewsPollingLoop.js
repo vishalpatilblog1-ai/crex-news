@@ -147,14 +147,14 @@ export async function cricbuzzNewsPollingLoop() {
 
     let tweetText = null;
     try {
-      // const result = await generateClaudeTweetWithType(
-      //   fullText,
-      //   articleType,
-      //   SOURCE,
-      //   longEligible,
-      // );
-      // tweetText = result.tweetText;
-      tweetText = await generateGullyPointVoiceTweet(fullText);
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        SOURCE,
+        longEligible,
+      );
+      tweetText = result.tweetText;
+      // tweetText = await generateGullyPointVoiceTweet(fullText);
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
