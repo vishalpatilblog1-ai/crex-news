@@ -128,7 +128,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
     console.log("📺 YouTube transcript polling enabled");
-    setInterval(runIfAwake(youtubeNewsPollingLoop, "YouTube"), 1000 * 60 * 0.3); // every 15 min
+    setInterval(runIfAwake(youtubeNewsPollingLoop, "YouTube"), 1000 * 60 * 15); // every 15 min
   }
 
   if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {

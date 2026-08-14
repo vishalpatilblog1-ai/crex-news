@@ -1,27 +1,18 @@
 // cricket-addictor/caNewsPollingLoop.js
 
 import {
-  // classifyArticle,
+  classifyArticle,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
 
 import {
-  classifyArticle,
+  // classifyArticle,
   generateClaudeTweetWithType,
 } from "../ai/generateClaudeTweet.js";
-// import {
-//   classifyArticle,
-//   generateClaudeTweet,
-//   generateClaudeTweetWithType,
-//   SIGNIFICANCE_EXEMPT_TYPES,
-// } from "../ai/generateClaudeTweet.js";
+
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-// import {
-//   classifyArticle,
-//   generateClaudeTweet,
-//   generateClaudeTweetWithType,
-// } from "../old-claude-prompt-jul29.js";
+
 import {
   applySourceSignature,
   enqueueTweet,
@@ -36,11 +27,40 @@ import { fetchCARSS } from "./fetchCARss.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticleRss } from "./parseCAArticleRss.js";
+import fs from "fs";
+import path from "path";
 
-const MAX_AGE_MIN = 60;
+const MAX_AGE_MIN = 660;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
+const LOCAL_TWEETS_DIR = path.join(process.cwd(), "local-tweets");
+
+function saveTweetLocally(tweetText) {
+  try {
+    if (!fs.existsSync(LOCAL_TWEETS_DIR)) {
+      fs.mkdirSync(LOCAL_TWEETS_DIR, { recursive: true });
+    }
+
+    const now = new Date();
+    const istString = now.toLocaleString("en-CA", {
+      timeZone: "Asia/Kolkata",
+      hour12: false,
+    }); // "YYYY-MM-DD, HH:mm:ss"
+    const [istDate, istTime] = istString.split(", ");
+
+    const filePath = path.join(LOCAL_TWEETS_DIR, `tweet_${istDate}.txt`);
+
+    const entry = `=====\n${istDate} ${istTime} (IST):\n${tweetText}\n=====\n\n`;
+
+    fs.appendFileSync(filePath, entry, "utf-8");
+    console.log(`💾 Tweet saved locally: ${filePath}`);
+  } catch (err) {
+    console.error("❌ Failed to save tweet locally:", err?.message || err);
+  }
+}
 
 export async function caNewsPollingLoop() {
   if (!global.STATE) return false;
@@ -167,14 +187,13 @@ export async function caNewsPollingLoop() {
     let generatedPath = null;
 
     try {
-      const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType);
+      const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
+        fullText,
+        articleType,
+      );
 
-      // const {
-      //   tweetText: gptTweet,
-      //   card,
-      //   source,
-      // } = await generateGeminiTweet(fullText, articleType);
+      //  const { tweetText: tweetToPost, card } =
+      //   await generateClaudeTweetWithType(fullText, articleType);
 
       tweetText = tweetToPost;
 
@@ -236,33 +255,38 @@ export async function caNewsPollingLoop() {
       return false;
     }
 
-    // ── Image check ───────────────────────────────────────────────────────────
-    const imageUrl = parsed.imageUrl || null;
-    const { useImage } = await decideImageUsage({
-      imageUrl,
-      usedImages: STATE.usedImages,
-    });
-
     tweetText = applySourceSignature(tweetText, "CA");
     tweetText = tweetText.trim().replace(/\.?$/, ".");
 
-    const tweetId = `CA:${cleanLink}`;
-
-    enqueueTweet({
-      id: tweetId,
-      source: "CA",
-      text: tweetText,
-      imageUrl: generatedPath || null,
-      seenKey: cleanLink,
-      publishedAt: pubMs || Date.now(),
-    });
-
-    console.log(`📥 Queued CA tweet: ${parsed.headline}`);
-
     STATE.ca.seen[cleanLink] = Date.now();
 
-    if (useImage && imageUrl) {
-      STATE.usedImages[imageUrl] = Date.now();
+    if (ENABLE_LOCAL_TWEETS) {
+      saveTweetLocally(tweetText);
+      console.log(`📝 Local-only mode: ${parsed.headline}`);
+    } else {
+      // ── Image check ─────────────────────────────────────────────────────────
+      const imageUrl = parsed.imageUrl || null;
+      const { useImage } = await decideImageUsage({
+        imageUrl,
+        usedImages: STATE.usedImages,
+      });
+
+      const tweetId = `CA:${cleanLink}`;
+
+      enqueueTweet({
+        id: tweetId,
+        source: "CA",
+        text: tweetText,
+        imageUrl: generatedPath || null,
+        seenKey: cleanLink,
+        publishedAt: pubMs || Date.now(),
+      });
+
+      console.log(`📥 Queued CA tweet: ${parsed.headline}`);
+
+      if (useImage && imageUrl) {
+        STATE.usedImages[imageUrl] = Date.now();
+      }
     }
 
     if (decision?.newContext && !contextExists(STATE, decision.newContext)) {

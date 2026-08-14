@@ -194,7 +194,7 @@ export async function tryFlushTweetQueue() {
 
 export function applySourceSignature(text, source) {
   const signatureMap = {
-    CB: "_",
+    CB: ".",
     SK: ".",
     XN: "!.",
     CT: ".",
