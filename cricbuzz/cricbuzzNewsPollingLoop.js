@@ -65,7 +65,7 @@ export async function cricbuzzNewsPollingLoop() {
       break;
     }
 
-    console.log("selected>>>", selected);
+    // console.log("selected>>>", selected);
 
     if (!selected) {
       await saveState(STATE);
@@ -145,6 +145,10 @@ export async function cricbuzzNewsPollingLoop() {
 
     let tweetText = null;
     try {
+      console.log("================ Full Article ================");
+      console.log(fullText);
+      console.log(" =============================================");
+
       const result = await generateClaudeTweetWithType(
         fullText,
         articleType,
