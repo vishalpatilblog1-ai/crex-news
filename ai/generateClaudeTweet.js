@@ -236,23 +236,36 @@ If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
+// MERGED VERSION — Grok's tighter phrasing/formatting applied throughout,
+// but every rule that was fixing a real observed problem is kept intact:
+// CARD CAPTION RULE, REPLACEMENT CANDIDATE RULE, STAT SELECTION RULE,
+// CHARACTER BOUNDARY RULE, STAT SUPPRESSION RULE, NON-CRICKET READER TEST,
+// ATTRIBUTION STAYS TO THE END, SO WHAT RULE, MULTI-SPEAKER RULE,
+// MILESTONE closer WEAK/STRONG examples — none of these were dropped.
+// Grok's version had cut all of them; this version keeps his tightening
+// of prose but restores the substance.
+
 const ARTICLE_TYPE_INSTRUCTIONS = {
   match_report: `
 ARTICLE TYPE: Match Report
 
 Your job is NOT to recap the score. The reader already knows the result.
 
-ENGAGEMENT TARGET: Bookmarks + replies
-The tweet should surface the one moment that made the result inevitable — the turning point most people felt but couldn't articulate.
+ENGAGEMENT TARGET: Fast replies + bookmarks
+Surface the one moment that made the result inevitable — the turning point most people felt but couldn't articulate.
 
 Focus on:
 - The specific over, ball, or decision that tilted the match
 - The player who changed the game's shape — not just who scored most
-- What this result reveals about the team's identity going forward
+- What this result reveals about the team's identity or problems going forward
 
-Use PATTERN A (Reframe), PATTERN B (Specific Contradiction), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
-Lead with insight. The scoreline is context, not the point.
-Avoid: ball-by-ball recap, "team played well", generic momentum language.
+Preferred patterns: A (Reframe), B (Specific Contradiction), H (Sharp Punch), I (Curiosity Gap)
+
+Rules:
+- Lead with insight or contradiction, never the scoreline
+- Prefer 2-line structure when possible
+- End with a clear stance someone can disagree with
+- Avoid ball-by-ball recap, "team played well", generic momentum language
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -262,37 +275,44 @@ it must not get cut off by the image preview on mobile.
   tactical_analysis: `
 ARTICLE TYPE: Tactical Analysis
 
-This article is about HOW and WHY — decisions, plans, and the gap between intention and execution.
+This is about HOW and WHY — decisions, plans, and the gap between intention and execution.
 
 ENGAGEMENT TARGET: Bookmarks + quote-tweets from analysts and coaches
-The tweet should name the specific decision that contradicted the team's own stated plan.
+Name the specific decision that contradicted the team's own stated plan.
 
 Focus on:
 - The exact tactical call that proved decisive (field setting, bowling rotation, batting order)
 - The gap between what the team said they'd do and what they actually did
-- What a better decision would have looked like — without being vague
+- What a better decision would have looked like — be specific, not vague
 
-Use PATTERN B (Specific Contradiction), PATTERN C (Loaded Stat), PATTERN H (Sharp Punch), or PATTERN I (Curiosity Gap) from the engagement mechanics.
-The reader should finish the tweet thinking: "I'll watch for that next time."
-Avoid: vague "poor decision-making", scoreline recap, praise without a specific reason.
+Preferred patterns: B (Specific Contradiction), C (Loaded Stat), H (Sharp Punch), I (Curiosity Gap)
+
+Rules:
+- Name the specific decision, don't gesture at it
+- Take a clear position on whether it was justified or not
+- Avoid vague "poor decision-making", scoreline recap, praise without a specific reason
+- Prefer 2-line structure when the insight is strong enough
 `,
 
   selection_news: `
 ARTICLE TYPE: Selection News
 
-The debate IS the content. Your job is to frame the logic — not just announce the decision.
+The debate IS the content. Frame the logic — don't just announce the decision.
 
 ENGAGEMENT TARGET: Replies + retweets (debate fuel)
-The tweet should create a clear, defensible position that invites disagreement without baiting outrage.
+Create a clear, defensible position that invites disagreement without baiting outrage.
 
 Focus on:
 - What this selection reveals about team priorities or philosophy
 - The player displaced and why that displacement matters
-- The one balance question this combination creates OR solves
+- The real balance question this combination creates OR solves
 
-Use PATTERN E (Open Verdict) or PATTERN J (Uncomfortable Truth) from the engagement mechanics — end with the tension, not the conclusion.
-Name both the selected player AND the one left out if both are newsworthy.
-Avoid: "bold call", "surprise pick", "questions will be asked".
+Preferred patterns: E (Open Verdict), J (Uncomfortable Truth)
+
+Rules:
+- Name both the selected player AND the one left out when both are newsworthy
+- End with a clear stance, not "questions will be asked" or "bold call"
+- Prefer direct verdicts over soft analysis — strong reply potential is mandatory
 
 CLOSING LINE EXCEPTION:
 A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
@@ -308,21 +328,23 @@ ARTICLE TYPE: Player Form
 Numbers are your entry point, not your whole tweet.
 
 ENGAGEMENT TARGET: Bookmarks + replies (fan vs. analyst split)
-The tweet should force the reader to confront what the numbers actually mean — pattern, not event.
+Force the reader to confront what the numbers actually mean — pattern, not event.
 
 Focus on:
 - Is this a blip or a confirmed trend?
-- What does this form reveal about the player's role or confidence right now?
-- What does it force management to confront — even if they don't want to?
+- What this form reveals about the player's role or confidence right now
+- What it forces management to confront — even if they don't want to
 
-Use PATTERN C (Loaded Stat), PATTERN F (Earned Compliment), or PATTERN L (Number Sandwich) from the engagement mechanics.
-Use stats only when they reveal a trend. One strong evaluative phrase allowed.
-Avoid single-match overreaction. Avoid pure celebration without substance.
+Preferred patterns: C (Loaded Stat), F (Earned Compliment), L (Number Sandwich), J (Uncomfortable Truth)
+
+Rules:
+- Use stats only when they reveal a trend
+- Take a position — in form, still unconvincing, or has earned more trust
+- Avoid single-match overreaction and pure celebration without substance
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
-
 `,
 
   human_interest: `
@@ -332,51 +354,44 @@ This is a story, not a debate. Let the narrative carry the weight.
 
 ENGAGEMENT TARGET: Shares + saves (emotional resonance)
 
-STRUCTURE — use this two-beat format:
+STRUCTURE — two-beat format:
 Beat 1 (Scene): What happened, who was involved, and ONE hyper-specific detail
   (exact distance, exact time, exact place). Make it visual and concrete.
-  The reader should be able to picture it.
 Beat 2 (Meaning): One universal sentence — the emotional truth this moment represents.
-  This line must make sense and hit hard even if the reader has never watched cricket.
-  It should feel quotable. It should make someone want to share it, not just like it.
+  Must hit hard even if the reader has never watched cricket. Should feel quotable.
 
 OPENING FRAME OPTION (use when it beats a direct scene-open):
-Instead of opening straight into the scene, you may open with a curiosity frame —
-"[Name] reveals why...", "What [Name] told [someone] about..." — when the story
-has a genuine "why" or "what happened next" the reader would want answered.
-Don't default to this on every human_interest tweet — use it only when it
-creates a sharper pull than opening directly on the scene.
+You may open with a curiosity frame — "[Name] reveals why...", "What [Name] told
+[someone] about..." — when the story has a genuine "why" the reader would want
+answered. Don't default to this on every tweet; use only when it's sharper than
+opening directly on the scene.
 
 SPECIFICITY RULE:
-  If the article contains any exact number, distance, time, or place — use it verbatim.
-  Exact figures build credibility and make the story feel reported, not invented.
+If the article contains any exact number, distance, time, or place — use it verbatim.
 
 NON-CRICKET READER TEST:
-  Read Beat 2 as if you know nothing about cricket.
-  If it still lands emotionally — it's the right line.
-  If it only works for fans — rewrite it.
+Read Beat 2 as if you know nothing about cricket. If it still lands emotionally
+— it's right. If it only works for fans — rewrite it.
 
 STAT SUPPRESSION RULE:
-  Do NOT mention runs, wickets, averages, match results, or rankings.
-  This is about the person, not the player.
-  Stats break the emotional register of this article type.
-
-PATTERNS:
-  Use PATTERN D (Historical Anchor), PATTERN F (Earned Compliment), or PATTERN K (Before/After Contrast).
-  Warmth is allowed here. Sentimentality is not.
-  Do NOT add pressure framing, selection debate, or analytical conclusions to this type.
+Do NOT mention runs, wickets, averages, match results, or rankings.
+This is about the person, not the player. Stats break the emotional register.
 
 CHARACTER BOUNDARY RULE:
-  This type covers a player's personal life — family, background, spirituality,
-  wealth, milestones outside cricket. Stay observational. Do NOT imply hypocrisy,
-  moral judgment, or a contradiction in the player's character (e.g. framing a
-  purchase as undercutting a spiritual visit, or wealth as undercutting humility).
-  Report what happened and let the moment carry its own weight — do not editorialize
-  about what it says about the person.
+This type covers a player's personal life — family, background, spirituality,
+wealth, milestones outside cricket. Stay observational. Do NOT imply hypocrisy,
+moral judgment, or a contradiction in the player's character (e.g. framing a
+purchase as undercutting a spiritual visit, or wealth as undercutting humility).
+Report what happened and let the moment carry its own weight.
+
+Preferred patterns: D (Historical Anchor), F (Earned Compliment), K (Before/After Contrast)
+Warmth is allowed. Sentimentality is not. No pressure framing, selection debate, or
+analytical conclusions on this type.
 
 CLOSING LINE EXCEPTION:
-  A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the emotional tension of the story, not as a generic call-to-action.
-
+A genuine question that invites replies is allowed as a closer — provided it
+emerges naturally from the emotional tension of the story, not as a generic
+call-to-action.
 `,
 
   opinion_piece: `
@@ -385,16 +400,19 @@ ARTICLE TYPE: Opinion / Column / Personal Account
 A named individual is sharing their view. Your job is to frame why their vantage point matters.
 
 ENGAGEMENT TARGET: Replies + quote-tweets (agree/disagree)
-The tweet should attribute clearly and frame the claim in a way that invites a response.
+Attribute clearly and frame the claim in a way that invites a response.
 
 Focus on:
 - The single most compelling observation or claim the author makes
-- What their unique position (career, history, relationship to the subject) adds to the argument
+- What their unique position (career, history, relationship to the subject) adds
 - Attribute everything to them — never absorb their opinion into the narrator's voice
 
-Use PATTERN A (Reframe), PATTERN E (Open Verdict), or PATTERN J (Uncomfortable Truth) from the engagement mechanics.
-NEVER write in first person. Extract, attribute, analyze.
-The named author's perspective IS the news. Your job is to say why it matters.
+Preferred patterns: A (Reframe), E (Open Verdict), J (Uncomfortable Truth)
+
+Rules:
+- NEVER write in first person — extract, attribute, analyze
+- The named author's perspective IS the news — your job is to say why it matters
+- Prefer 2-line structure when the insight is strong enough
 `,
 
   preview: `
@@ -403,18 +421,19 @@ ARTICLE TYPE: Match Preview
 Generic preview framing kills engagement. One sharp question beats five talking points.
 
 ENGAGEMENT TARGET: Replies + saves (pre-match debate)
-The tweet should frame the ONE thing this match will answer — not recap what both teams need.
+Frame the ONE thing this match will answer — not what both teams need.
 
 Focus on:
 - The single key question this match will settle
 - One specific player battle or tactical decision that could determine the outcome
 - What each team is genuinely risking — not just "needing momentum"
 
-Use PATTERN E (Open Verdict) from the engagement mechanics.
-Frame around what is being tested, not who is playing.
-Avoid: "high-stakes clash", "must-win game", "both teams will be eager".
-Don't preview the match — preview the question the match will answer.
-The SO WHAT is what's genuinely at stake beyond the result.
+Preferred pattern: E (Open Verdict)
+
+Rules:
+- Frame around what is being tested, not who is playing
+- Avoid "high-stakes clash", "must-win game", "both teams will be eager"
+- Don't preview the match — preview the question the match will answer
 `,
 
   injury_news: `
@@ -423,30 +442,29 @@ ARTICLE TYPE: Injury / Availability News
 The injury is not the tweet. The consequence is.
 
 ENGAGEMENT TARGET: Replies + saves (team balance debate)
-The tweet should force the reader to confront what the team actually loses — in structure, not just personnel.
+Force the reader to confront what the team actually loses — in structure, not just personnel.
 
 Focus on:
-- What the team loses in terms of balance (batting depth, bowling variation, fielding)
+- What the team loses in balance (batting depth, bowling variation, fielding)
 - Who realistically fills the gap — and whether that changes team shape
-- Whether this creates an opportunity for someone or exposes a structural problem
+- Whether this creates an opportunity for someone, or exposes a structural problem
 
-Use PATTERN B (Specific Contradiction) or PATTERN E (Open Verdict) from the engagement mechanics.
-Lead with impact. Avoid sympathy framing entirely.
-The consequence must reveal something about team structure —
-not just "X is out, Y comes in." That's the WHAT.
-The SO WHAT is what this exposes about the squad's depth or planning.
+Preferred patterns: B (Specific Contradiction), E (Open Verdict)
+
+Rules:
+- Lead with impact. Avoid sympathy framing entirely.
+- The consequence must reveal something about team structure, not just "X is out, Y comes in"
 
 REPLACEMENT CANDIDATE RULE:
 If the article lists multiple replacement candidates (2 or more named players),
-do NOT focus on just one. The tweet must either:
+do NOT focus on just one. Either:
   a) Name all candidates as a punchy inline list — never bullets
      Example: "Sakariya, Simarjeet, Madhwal — three different solutions to the same problem."
   b) Frame the replacement question as the tension — what the choice reveals about team priorities
-     Example: "Like-for-like or upgrade? CSK's replacement call says more about their season plan than the injury does."
-DO NOT pick one candidate and ignore the rest unless the article itself clearly
-identifies one as the frontrunner with specific reasoning.
-DO NOT treat squad players mentioned as context (existing XI options) as replacement candidates.
-Only players explicitly recommended as replacements qualify.
+DO NOT pick one candidate and ignore the rest unless the article clearly identifies
+one as the frontrunner with specific reasoning. DO NOT treat existing squad/XI
+players mentioned as context as replacement candidates — only explicitly
+recommended replacements qualify.
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -463,83 +481,76 @@ ENGAGEMENT TARGET: Replies + retweets (reaction and debate)
 TWO MODES — choose the right one:
 
 MODE 1 — QUOTE AS HOOK
-Use when: the quote itself is sharp, surprising, or unusually candid.
+Use when the quote itself is sharp, surprising, or unusually candid.
 Lead with the quote (under 12 words), then frame what it reveals.
 Attribute in the first or second sentence. Never absorb the quote into the narrator's voice.
 
-OPENING FRAME OPTION (use when it beats a direct quote-open):
-Instead of leading with the quote itself, you may open with a curiosity frame —
-"[Name] explains why...", "[Name] reveals what happened when...", "[Name] on
-why..." — then deliver the specific quote/claim right after. This works
-especially well when the quote needs context to land, or when the fact that
-the person is addressing this topic at all is itself the hook. Don't default
-to this on every press_conference tweet — use whichever opener (direct quote
-vs. curiosity frame) creates the sharper first line for THIS specific quote.
+OPENING FRAME OPTION: instead of leading with the quote, you may open with a
+curiosity frame — "[Name] explains why...", "[Name] on why..." — then deliver
+the quote right after. Useful when the quote needs context to land, or when
+the fact that the person is addressing this at all is itself the hook.
 
 MODE 2 — ACT OVER QUOTE
-Use when: the significance of WHO is speaking, or THAT they chose to speak at all, is more newsworthy than what they said.
-Use PATTERN G (Act-Over-Quote) from the engagement mechanics.
-Example: "MS Dhoni breaks a near two-year social media silence to validate Gambhir. The first public endorsement from the man who started this World Cup dynasty."
+Use when WHO is speaking, or THAT they chose to speak at all, is more
+newsworthy than what they said. Use PATTERN G (Act-Over-Quote).
+Example: "MS Dhoni breaks a near two-year social media silence to validate
+Gambhir. The first public endorsement from the man who started this World Cup dynasty."
 
 Rules for both modes:
 - Name the speaker in the first or second sentence — no vague attribution
-- Frame around what the statement or act reveals about team thinking, internal dynamics, or relationships
-- Avoid paraphrasing quotes so loosely that the speaker's actual position is lost
+- Frame around what the statement or act reveals about team thinking or internal dynamics
+- Avoid paraphrasing quotes so loosely the speaker's actual position is lost
 
 ATTRIBUTION STAYS TO THE END (strict):
-The closing verdict must still be framed as the speaker's position — not the narrator's conclusion.
-The reader must always know whose argument they are evaluating.
+The closing verdict must still be framed as the speaker's position, not the
+narrator's conclusion. The reader must always know whose argument they're evaluating.
 Wrong: "The pitch preparation is the strategy — not the team selection."
 Right: "Faf's point: KKR's problem last season wasn't the spinners — it was the surface they were handed."
-If the closing line could have been written without reading the article — it has lost its attribution. Rewrite it.
+If the closing line could have been written without reading the article, it has
+lost its attribution. Rewrite it.
 
 MULTI-SPEAKER RULE:
-If the article quotes more than one named individual, do not try to include both equally.
-Pick the speaker whose claim is most analytically significant or most likely to generate debate.
-The second speaker can appear only if their quote directly reinforces or contradicts the first.
+If the article quotes more than one named individual, pick the speaker whose
+claim is most analytically significant or most likely to generate debate.
+The second speaker appears only if their quote reinforces or contradicts the first.
 
 SO WHAT RULE:
-The quote is raw material. Your job is to say what it reveals
-that the speaker didn't intend to reveal.
-A tweet that could have been written before reading the article has failed this rule.
+The quote is raw material. Your job is to say what it reveals that the speaker
+didn't intend to reveal. A tweet that could've been written before reading the
+article has failed this rule.
 `,
 
   milestone_record: `
 ARTICLE TYPE: Milestone / Record
 
 STAT SELECTION RULE (do this before writing anything):
-Scan the full article and list every stat mentioned.
-The most tweet-worthy number is rarely the first one — it is the one with the most
-historical context, or the one no player has achieved before, or the one closest to
-an unprecedented landmark. Choose that number as your anchor, not the most obvious one.
-If the headline stat and a deeper stat both exist — the deeper one wins.
-
+Scan the full article and list every stat mentioned. The most tweet-worthy
+number is rarely the first one — it's the one with the most historical
+context, or the one closest to an unprecedented landmark. If the headline
+stat and a deeper stat both exist, the deeper one wins.
 
 The number is your entry point, not your destination.
 
 ENGAGEMENT TARGET: Bookmarks + shares (legacy debate)
-The tweet should add one layer of analytical depth beyond the stat — context that
-makes the number feel inevitable in hindsight, or genuinely unprecedented going forward.
+Add one layer of analytical depth beyond the stat — context that makes the
+number feel inevitable in hindsight, or genuinely unprecedented going forward.
 
 Focus on:
 - What this milestone reveals about the player's career arc, not just the achievement
-- Who else has done this, when, and under what conditions — context that adds weight
+- Who else has done this, when, and under what conditions
 - What the record says about the era, the format, or the team around them
 - If an upcoming landmark is more significant than the current one — lead with that
 
-Use PATTERN C (Loaded Stat), PATTERN D (Historical Anchor), PATTERN H (Sharp Punch),
-or PATTERN L (Number Sandwich) from the engagement mechanics.
-PATTERN L is preferred when two stats from the article can be sandwiched around a single insight.
-Avoid pure congratulation. The milestone is the opening, not the conclusion.
+Preferred patterns: C (Loaded Stat), D (Historical Anchor), H (Sharp Punch), L (Number Sandwich)
+L is preferred when two stats can be sandwiched around a single insight.
+Avoid pure congratulation — the milestone is the opening, not the conclusion.
 
 MILESTONE/ACHIEVEMENT CLOSERS — don't inspire, interrogate:
 Do not close with a values statement about dreams, hard work, or destiny —
-these are universally agreeable and generate zero replies.
-Instead, close with a forward-looking scrutiny angle:
-- Can this be sustained at the next level? (age-group cricket → international)
-- What historical precedent (a prodigy who flamed out, or one who delivered)
-  does this invite comparison to?
-- What specific pressure does this record now put on the player?
+these are universally agreeable and generate zero replies. Close with a
+forward-looking scrutiny angle instead: can this be sustained at the next
+level, what historical precedent does this invite comparison to, what
+specific pressure does this now put on the player.
 WEAK: "His journey shows that dreams, when nurtured, can turn into reality."
 STRONG: "The real test starts now — plenty of teenage prodigies have peaked
 early. Can Vaibhav back this up against senior bowling attacks?"
@@ -560,9 +571,10 @@ FORMAT (mandatory):
 ⚡️ [SHORT HEADLINE IN CAPS — max 6 words] -
 
 Then 1-2 lines of the key fact — who, what, and the immediate consequence.
-Lead with the consequence, not the act. If the news reveals something non-obvious
-about the team, tournament, or system — state that instead of repeating the headline.
-No rage, no opinion. But if there's a SO WHAT — say it in one clean line.
+Lead with the consequence, not the act. If the news reveals something
+non-obvious about the team, tournament, or system — state that instead of
+repeating the headline. No rage, no opinion — but if there's a SO WHAT, say
+it in one clean line.
 
 Use this type for:
 - Player ruled out / availability confirmed
@@ -570,13 +582,12 @@ Use this type for:
 - Board decisions with immediate impact
 - Transfer/trade confirmed
 
-The headline must be factual — never sensationalized.
-The body must answer: what does this mean RIGHT NOW for the team or tournament?
+The headline must be factual, never sensationalized. The body must answer:
+what does this mean RIGHT NOW for the team or tournament?
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
-
 `,
 };
 
