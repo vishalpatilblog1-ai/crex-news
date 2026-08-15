@@ -5,6 +5,7 @@ import {
 import {
   classifyArticle,
   generateClaudeTweetWithType,
+  SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
@@ -113,25 +114,25 @@ export async function cricbuzzNewsPollingLoop() {
         return false;
       }
 
-      // const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      // const score = decision?.significanceScore ?? 10;
+      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      const score = decision?.significanceScore ?? 10;
 
-      // if (!isExempt && score < 7) {
-      //   console.log(
-      //     `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
-      //   );
-      //   STATE.cricbuzz.seen[newsKey] = Date.now();
-      //   await saveState(STATE);
-      //   return false;
-      // }
+      if (!isExempt && score < 7) {
+        console.log(
+          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
+        );
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        await saveState(STATE);
+        return false;
+      }
 
-      // if (isExempt) {
-      //   console.log(
-      //     `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-      //   );
-      // } else {
-      //   console.log(`✅ Significance: ${score}/10 — proceeding`);
-      // }
+      if (isExempt) {
+        console.log(
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+        );
+      } else {
+        console.log(`✅ Significance: ${score}/10 — proceeding`);
+      }
     } catch (err) {
       console.warn("⚠️ Cricbuzz judgeNewsContext failed:", err?.message || err);
     }

@@ -18,6 +18,7 @@ import { parseSKArticle } from "./parseSKArticle.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
+import { SIGNIFICANCE_EXEMPT_TYPES } from "../ai/generateClaudeTweet.js";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
@@ -180,31 +181,72 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     }
 
     let decision = null;
-
     try {
       decision = await judgeNewsContext({
         articleText: fullText,
-        existingContexts: STATE.dailyContext.contexts.map(
-          (context) => context.summary,
-        ),
+        existingContexts:
+          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
 
-      console.log(
-        `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
-      );
-
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 Sportskeeda article already covered");
-        markSeen(STATE, selectedItem, cleanLink);
-        await saveState(STATE, "Sportskeeda duplicate context");
-        return "skip";
+        console.log("🔴 Cricbuzz skipped — already covered context");
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        await saveState(STATE);
+        return false;
       }
-    } catch (error) {
-      console.log(
-        "⚠️ Sportskeeda context check failed:",
-        error?.message || error,
+
+      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      const score = decision?.significanceScore ?? 10;
+
+      if (!isExempt && score < 7) {
+        console.log(
+          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
+        );
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        await saveState(STATE);
+        return false;
+      }
+
+      if (isExempt) {
+        console.log(
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+        );
+      } else {
+        console.log(`✅ Significance: ${score}/10 — proceeding`);
+      }
+    } catch (err) {
+      console.warn(
+        "⚠️ sportskeeda judgeNewsContext failed:",
+        err?.message || err,
       );
     }
+
+    // let decision = null;
+
+    // try {
+    //   decision = await judgeNewsContext({
+    //     articleText: fullText,
+    //     existingContexts: STATE.dailyContext.contexts.map(
+    //       (context) => context.summary,
+    //     ),
+    //   });
+
+    //   console.log(
+    //     `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
+    //   );
+
+    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+    //     console.log("🔴 Sportskeeda article already covered");
+    //     markSeen(STATE, selectedItem, cleanLink);
+    //     await saveState(STATE, "Sportskeeda duplicate context");
+    //     return "skip";
+    //   }
+    // } catch (error) {
+    //   console.log(
+    //     "⚠️ Sportskeeda context check failed:",
+    //     error?.message || error,
+    //   );
+    // }
 
     let tweetText = null;
     let player = "";

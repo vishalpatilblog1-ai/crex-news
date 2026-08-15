@@ -32,29 +32,24 @@ export async function judgeNewsContext({ articleText, existingContexts = [] }) {
   5. Score TWO separate things — do not blend them into one number:
 
   SIGNIFICANCE SCORE (1-10) — how important is this to an Indian cricket audience:
-  9-10 : Major breaking news — key player injury, selection shock, series result, sacking
-  7-8  : Meaningful development — squad named, notable performance, coaching decision, controversy
-  5-6  : Standard coverage — routine press conference, minor match report, expected squad
+  9-10 : Major breaking news — key player injury, selection shock, series result, sacking, big controversy
+  7-8  : Meaningful development — squad named, notable performance, coaching decision, important statement
+  5-6  : Standard coverage — routine press conference, normal match report, expected squad news
   3-4  : Filler — generic preview, repeated angle on an old story, minor domestic fixture
-  1-2  : Non-story — listicle, throwback, stats trivia with no live news peg
+  1-2  : Non-story — listicle, throwback, pure stats trivia with no live news peg
 
-  VIRALITY SCORE (1-10) — how likely is this specific article to generate replies,
-  reposts, and disagreement on social media, independent of how "important" the
-  underlying news is:
-  9-10 : Genuine surprise or controversy — an unexpected decision, a scandal, a
-         named-figure conflict, something that splits opinion into two camps
-  7-8  : Real tension or a strong number/record that invites argument — a
-         contentious selection, a milestone with an edge to it
-  5-6  : Solid but expected — a routine squad announcement, a predictable result
-  3-4  : Low reaction potential — retrospective features, career profiles,
-         speculative "what if" opinion pieces, routine fitness updates
-  1-2  : No reaction hook at all — pure informational content, listicles
+  VIRALITY SCORE (1-10) — how likely is this specific article to generate replies, quote tweets, and disagreement:
+  9-10 : High conflict potential — unexpected decision, clear two-camp debate, strong criticism of a big name, selection outrage, captaincy controversy
+  7-8  : Real tension or strong opinion trigger — contentious selection, sharp statement from a big name, milestone with an edge, visible failure/success that invites judgment
+  5-6  : Mild reaction potential — solid but expected news, routine performance praise/criticism
+  3-4  : Low reaction potential — retrospective features, career profiles, speculative pieces, routine fitness updates
+  1-2  : Almost no reaction hook — pure informational content, dry announcements, listicles
 
-  IMPORTANT: significance and virality are NOT the same axis. A long profile piece
-  on a coach's career journey can be significant (a real coaching appointment) but
-  score LOW on virality (nothing to disagree with, no surprise, no stakes). A minor
-  controversy involving a beloved player can score LOW on significance but HIGH on
-  virality. Score each independently — do not let one influence the other.
+  IMPORTANT RULES:
+  - Score Significance and Virality independently. Do not let one influence the other.
+  - A story can be high significance + low virality (e.g. routine but important squad announcement).
+  - A story can be medium significance + high virality (e.g. a sharp comment that splits fans).
+  - Prefer giving high virality scores only when there is clear potential for disagreement or strong emotional reaction.
 
   Deduplication rules:
   - SAME EVENT with same outcome or same core issue = already covered
