@@ -18,14 +18,15 @@ import { parseSKArticle } from "./parseSKArticle.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
-import { SIGNIFICANCE_EXEMPT_TYPES } from "../ai/generateClaudeTweet.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
+// import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 const IGNORE_SEEN = process.env.SK_IGNORE_SEEN === "true";
 const MAX_CANDIDATES_PER_CYCLE = 5;
-const MAX_AGE_MIN = Number(process.env.SK_MAX_AGE_MIN || 60);
+const MAX_AGE_MIN = Number(process.env.SK_MAX_AGE_MIN || 260);
 
 export async function skNewsPollingLoop() {
   if (IGNORE_SEEN && USE_WEB_TWEET) {
@@ -181,72 +182,31 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     }
 
     let decision = null;
+
     try {
       decision = await judgeNewsContext({
         articleText: fullText,
-        existingContexts:
-          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+        existingContexts: STATE.dailyContext.contexts.map(
+          (context) => context.summary,
+        ),
       });
 
+      console.log(
+        `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
+      );
+
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 Cricbuzz skipped — already covered context");
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        await saveState(STATE);
-        return false;
+        console.log("🔴 Sportskeeda article already covered");
+        markSeen(STATE, selectedItem, cleanLink);
+        await saveState(STATE, "Sportskeeda duplicate context");
+        return "skip";
       }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
-
-      if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
-        );
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        await saveState(STATE);
-        return false;
-      }
-
-      if (isExempt) {
-        console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
-    } catch (err) {
-      console.warn(
-        "⚠️ sportskeeda judgeNewsContext failed:",
-        err?.message || err,
+    } catch (error) {
+      console.log(
+        "⚠️ Sportskeeda context check failed:",
+        error?.message || error,
       );
     }
-
-    // let decision = null;
-
-    // try {
-    //   decision = await judgeNewsContext({
-    //     articleText: fullText,
-    //     existingContexts: STATE.dailyContext.contexts.map(
-    //       (context) => context.summary,
-    //     ),
-    //   });
-
-    //   console.log(
-    //     `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
-    //   );
-
-    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-    //     console.log("🔴 Sportskeeda article already covered");
-    //     markSeen(STATE, selectedItem, cleanLink);
-    //     await saveState(STATE, "Sportskeeda duplicate context");
-    //     return "skip";
-    //   }
-    // } catch (error) {
-    //   console.log(
-    //     "⚠️ Sportskeeda context check failed:",
-    //     error?.message || error,
-    //   );
-    // }
 
     let tweetText = null;
     let player = "";
@@ -324,16 +284,23 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
 
     if (!USE_WEB_TWEET) {
       console.log(
-        "🧪 USE_WEB_TWEET is false — logging Sportskeeda tweet instead of posting:",
-        {
-          headline: parsed.headline,
-          articleUrl: cleanLink,
-          tweetText,
-          generatedPath,
-          articleImage: imageUrl,
-          useArticleImage: imageResult.useImage,
-        },
+        "🧪 USE_WEB_TWEET is false — sending Sportskeeda tweet to WhatsApp for review instead of posting:",
+        { headline: parsed.headline, articleUrl: cleanLink, tweetText },
       );
+
+      // Prefer the article's own public image; the Cloudinary player photo
+      // is also a public URL if present. The local downloaded temp path
+      // (generatedPath) is NOT usable here — Twilio needs a public URL.
+      const whatsappImageUrl = (imageResult.useImage && imageUrl) || null;
+
+      await sendTweetDraftToWhatsApp({
+        source: "SK",
+        headline: parsed.headline,
+        tweetText,
+        articleUrl: cleanLink,
+        imageUrl: whatsappImageUrl,
+      });
+
       return "skip";
     }
 
