@@ -9,9 +9,9 @@ const client = new Anthropic({
 });
 
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
-  "human_interest",
   "breaking_news",
   // "selection_news",
+  // "human_interest",
   // "press_conference",
   // "injury_news",
   // "milestone_record",

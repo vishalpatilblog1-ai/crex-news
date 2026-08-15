@@ -13,11 +13,6 @@ export async function judgeNewsContext({ articleText, existingContexts = [] }) {
     throw new Error("Article text too short for context judgment");
   }
 
-  // Cap to the most recent N -- older-in-the-day contexts are the least
-  // likely to be a duplicate of something just published, and this stops
-  // the prompt (and cost) from growing across the whole day as more gets
-  // tweeted. Take the LAST 20, since contexts are pushed in chronological
-  // order and recency is what matters for catching a real duplicate.
   const MAX_EXISTING_CONTEXTS = 20;
   const cappedContexts = existingContexts.slice(-MAX_EXISTING_CONTEXTS);
 
