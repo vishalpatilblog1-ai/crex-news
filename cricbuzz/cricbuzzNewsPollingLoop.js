@@ -1,19 +1,15 @@
 import {
-  classifyArticle,
-  generateClaudeTweetWithType,
-  SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet.js";
-import {
   // classifyArticle,
   generateGPTTweetWithType,
-  isLongTweetEligible,
 } from "../ai/generate-gpt-tweet.js";
-import { isIndiaRelated } from "./cricbuzzFilters.js";
+import {
+  classifyArticle,
+  generateClaudeTweetWithType,
+} from "../ai/generateClaudeTweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
-import { generateGullyPointVoiceTweet } from "../ai/generateGullyPointVoiceTweet.js";
 
 const SOURCE = "CB";
 
