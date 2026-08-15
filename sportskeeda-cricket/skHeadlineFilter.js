@@ -18,6 +18,8 @@ const BLOCKED_TITLE_PATTERNS = [
   /preview$/i,
   /live score/i,
   /scorecard/i,
+  /playing 11/i,
+  /playing xi/i,
   /schedule/i,
   /points table/i,
   /\[in pictures?\]/i,
