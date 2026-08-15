@@ -164,10 +164,11 @@ async function main() {
     console.dir(result, { depth: 4 });
     throw new Error("The selected generator returned an empty tweet.");
   }
-
-  // console.log("================ GENERATED TWEET ================\n");
-  // console.log(tweet);
-  // console.log("\n=================================================");
+  console.log("================ Full Article ================\n");
+  console.log(articleText);
+  console.log("================ GENERATED TWEET ================\n");
+  console.log(tweet);
+  console.log("\n=================================================");
   console.log(`Characters: ${tweet.length}`);
 
   if (result?.articleType) {

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 60000);
+const REQUEST_TIMEOUT_MS = Number(process.env.SK_REQUEST_TIMEOUT_MS || 80000);
 const SCRAPPEY_API_KEY = process.env.SCRAPPEY_API_KEY;
 const SCRAPPEY_ENDPOINT = "https://publisher.scrappey.com/api/v1";
 

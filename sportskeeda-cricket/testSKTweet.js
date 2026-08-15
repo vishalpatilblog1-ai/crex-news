@@ -1,106 +1,167 @@
-import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import "dotenv/config";
+import dotenv from "dotenv";
+import { generateClaudeTweetWithType } from "../ai/generateClaudeTweet.js";
 
-import { parseSKArticle } from "./parseSKArticle.js";
-
-const SUPPORTED_PROVIDERS = new Set(["gpt", "gemini", "claude"]);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config();
 
 function printUsage() {
   console.log(`
 Usage:
-  node sportskeeda-cricket/testSKTweet.js <sportskeeda-cricket-url> [provider]
+  node sportskeeda/testSKTweet.js <sportskeeda-url>
 
-Providers: gpt | gemini | claude
-AI_DIR defaults to ../ai and is resolved from this file.
+Example:
+  node sportskeeda/testSKTweet.js "https://www.sportskeeda.com/cricket/news-example"
+
+This test:
+  - parses only the requested Sportskeeda article
+  - builds fullText exactly like skNewsPollingLoop.js
+  - classifies the article
+  - generates the tweet using generateGPTTweetWithType()
+  - does NOT enqueue a tweet
+  - does NOT update global.STATE
+  - does NOT mark the article as seen
 `);
 }
 
-function validateUrl(rawUrl) {
-  const url = new URL(rawUrl);
+function validateUrl(value) {
+  let url;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Input must be a valid URL.");
+  }
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Only HTTP/HTTPS URLs are supported.");
+  }
+
   if (!/(^|\.)sportskeeda\.com$/i.test(url.hostname)) {
-    throw new Error("Only sportskeeda.com URLs are supported.");
+    throw new Error("Only sportskeeda.com article URLs are supported.");
   }
-  if (!url.pathname.startsWith("/cricket/")) {
-    throw new Error("The URL must be a Sportskeeda cricket article.");
-  }
+
   return url.toString();
 }
 
-function assertApiKey(provider) {
-  const key = {
-    gpt: "OPENAI_API_KEY",
-    gemini: "GEMINI_API_KEY",
-    claude: "ANTHROPIC_API_KEY",
-  }[provider];
-
-  if (!process.env[key]) throw new Error(`${key} is missing.`);
+function assertApiKey() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error(
+      "OPENAI_API_KEY is missing from the environment/.env file.",
+    );
+  }
 }
 
-async function loadGenerator(provider) {
-  const aiDir = process.env.AI_DIR || "../ai";
-  const mapping = {
-    gpt: ["generate-gpt-tweet.js", "generateGPTTweet"],
-    gemini: ["generate-gemini-tweet.js", "generateGeminiTweet"],
-    claude: ["generateClaudeTweet.js", "generateClaudeTweet"],
-  };
-
-  const [file, exportName] = mapping[provider];
-  const modulePath = path.resolve(__dirname, aiDir, file);
-  const module = await import(pathToFileURL(modulePath).href);
-  const generator = module[exportName];
-
-  if (typeof generator !== "function") {
-    throw new Error(`${exportName} is not exported from ${modulePath}`);
+function extractTweetText(result) {
+  if (typeof result === "string") {
+    return result.trim();
   }
 
-  return { generator, modulePath };
-}
+  if (result && typeof result.tweetText === "string") {
+    return result.tweetText.trim();
+  }
 
-function getTweetText(result) {
-  if (typeof result === "string") return result.trim();
-  return result?.tweetText?.trim() || "";
+  return "";
 }
 
 async function main() {
-  const [, , rawUrl, rawProvider = "claude"] = process.argv;
-  if (!rawUrl || ["-h", "--help"].includes(rawUrl)) {
+  const [, , rawUrl] = process.argv;
+
+  if (!rawUrl || rawUrl === "--help" || rawUrl === "-h") {
     printUsage();
+    process.exitCode = rawUrl ? 0 : 1;
     return;
   }
 
-  const provider = rawProvider.toLowerCase();
-  if (!SUPPORTED_PROVIDERS.has(provider)) {
-    throw new Error("Provider must be gpt, gemini, or claude.");
-  }
+  assertApiKey();
 
-  assertApiKey(provider);
-  const url = validateUrl(rawUrl);
-  const parsed = await parseSKArticle(url);
+  const articleUrl = validateUrl(rawUrl);
+
+  console.log("\nFetching Sportskeeda article...");
+  console.log(`URL: ${articleUrl}`);
+
+  const { parseSKArticle } = await import("./parseSKArticle.js");
+
+  const { classifyArticle, generateGPTTweetWithType } =
+    await import("../ai/generate-gpt-tweet.js");
+
+  const selectedItem = {
+    link: articleUrl,
+  };
+
+  const parsed = await parseSKArticle(selectedItem);
 
   if (!parsed?.headline || !parsed?.body) {
-    throw new Error("Could not extract the article headline/body.");
+    throw new Error(
+      "Could not extract Sportskeeda headline/body. The page may be blocked or its structure may have changed.",
+    );
   }
 
-  const articleText = `${parsed.headline}\n${parsed.body}`;
-  const { generator, modulePath } = await loadGenerator(provider);
-  const result = await generator(articleText);
-  const tweet = getTweetText(result);
+  //
+  // Same as skNewsPollingLoop.js
+  //
+  const fullText = `${parsed.headline}\n${parsed.body}`;
 
-  if (!tweet) throw new Error("The selected generator returned no tweet.");
+  if (fullText.length < 80) {
+    throw new Error(
+      `Sportskeeda article text is too short (${fullText.length} chars).`,
+    );
+  }
 
-  console.log(`\nProvider  : ${provider}`);
-  console.log(`Generator : ${modulePath}`);
-  console.log(`Headline  : ${parsed.headline}`);
-  console.log(`Paragraphs: ${parsed.paragraphCount}`);
+  console.log(`Headline   : ${parsed.headline}`);
+  console.log(`Text chars : ${fullText.length}`);
+
+  let articleType = "player_form";
+
+  try {
+    articleType = await classifyArticle(fullText);
+  } catch (error) {
+    console.warn(
+      "⚠️ classifyArticle failed, using default player_form:",
+      error?.message || error,
+    );
+  }
+
+  console.log(`Article type: ${articleType}`);
+  console.log("\nGenerating tweet...\n");
+
+  const result = await generateClaudeTweetWithType(fullText, articleType);
+
+  const tweet = extractTweetText(result);
+
+  if (!tweet) {
+    console.dir(result, { depth: 5 });
+
+    throw new Error("generateGPTTweetWithType returned an empty tweet.");
+  }
+  console.log("================== Full Article ==================\n");
+
+  console.log(fullText);
+
   console.log("\n================ GENERATED TWEET ================\n");
+
   console.log(tweet);
+
   console.log("\n=================================================");
-  console.log(`Characters: ${tweet.length}\n`);
+
+  console.log(`Characters: ${tweet.length}`);
+
+  if (result?.player) {
+    console.log(`Player    : ${result.player}`);
+  }
+
+  if (result?.articleType) {
+    console.log(`AI type   : ${result.articleType}`);
+  }
+
+  if (result?.card) {
+    console.log("\nCard data:");
+    console.dir(result.card, { depth: 5 });
+  }
+
+  console.log();
 }
 
 main().catch((error) => {
   console.error("\nTest failed:", error?.message || error);
+
   process.exitCode = 1;
 });
