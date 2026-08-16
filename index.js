@@ -25,12 +25,6 @@ global.STATE = null;
 global.LAST_CA_SUCCESS_AT = 0;
 global.CA_COOLDOWN_UNTIL = 0;
 
-// ─── SLEEP WINDOW (applies to every source, not source-specific) ──────────────
-// No polling loop fires between 1:00 AM - 5:00 AM IST — this skips the poll
-// call itself (saves API quota, e.g. Cricbuzz's free-tier request cap), not
-// just the tweet posting. Computed via Asia/Kolkata explicitly so this stays
-// correct no matter what timezone the server (Railway etc.) actually runs in.
-
 const SLEEP_WINDOW_START_HOUR = 1; // 1:00 AM IST
 const SLEEP_WINDOW_END_HOUR = 5; // 5:00 AM IST
 

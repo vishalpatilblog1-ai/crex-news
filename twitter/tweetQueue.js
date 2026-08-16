@@ -5,7 +5,10 @@ import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+// USE_WEB_TWEET=true  -> normal flow, actually posts to X
+// USE_WEB_TWEET=false -> console-only, logs what would have been posted
+const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
+
 const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 
 function randomTweetDelay(source) {
@@ -15,47 +18,16 @@ function randomTweetDelay(source) {
   return MIN + Math.random() * (MAX - MIN);
 }
 
-// Blocks CricketAddictor polling + tweeting from 11:30 PM to 6:00 AM IST.
-// Exported so caNewsPollingLoop can also skip fetching/queueing during this window.
-export function isCricketAddictorBlocked(source) {
-  if (source !== "CA") return false;
-
-  const now = new Date();
-
-  const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-  );
-
-  const hour = istTime.getHours();
-  const minutes = istTime.getMinutes();
-
-  // Block from 23:30 to 06:00
-  if (hour > 23 || hour < 6) return true;
-  if (hour === 23 && minutes >= 30) return true;
-
-  return false;
-}
-
-export function isQuietHoursBlocked(source) {
-  if (source === "CA") return false;
-
-  const now = new Date();
-
-  const istTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-  );
-
-  const hour = istTime.getHours();
-
-  return hour >= 1 && hour < 5;
-}
+// NOTE: the CA-specific 11:30PM-6AM block and the general 1-5AM
+// isQuietHoursBlocked check that used to live here have been removed.
+// index.js now applies a single global sleep window (1-5 AM IST, via
+// runIfAwake) at the polling level for every source, including CA — so
+// gating it again here was redundant, and CA's window no longer matching
+// the global one was actively conflicting. If caNewsPollingLoop.js still
+// imports isCricketAddictorBlocked from this file, that import needs to be
+// removed there too or the build will break.
 
 function canTweetNow(source) {
-  if (isCricketAddictorBlocked(source)) {
-    console.log("🚫 CA blocked (11:30 PM – 6 AM window)");
-    return false;
-  }
-
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
 
@@ -153,15 +125,15 @@ export async function tryFlushTweetQueue() {
   STATE.tweetQueue.shift();
 
   try {
-    if (CONSOLE_ONLY) {
-      console.log("🧪 CONSOLE_ONLY — tweet skipped");
+    if (!USE_WEB_TWEET) {
+      console.log("🧪 USE_WEB_TWEET=false — tweet skipped (console only)");
       console.log({
         source: next.source,
         text: next.text,
         imageUrl: next.imageUrl,
       });
 
-      markTweeted("CONSOLE_ONLY", next.source);
+      markTweeted("USE_WEB_TWEET=false", next.source);
       await saveState(STATE);
       return true;
     }
