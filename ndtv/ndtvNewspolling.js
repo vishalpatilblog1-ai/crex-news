@@ -1,11 +1,12 @@
 // ndtvnewsPollingLoop.js
 
+import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
+import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   classifyArticle,
-  generateGPTTweetWithType,
+  generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generate-gpt-tweet.js";
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
+} from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
@@ -69,7 +70,6 @@ export async function ndtvNewspolling() {
   let queuedCount = 0;
 
   try {
-    // ── Fetch + filter RSS ────────────────────────────────────────────────
     const items = await fetchNDTVCricketRSS();
     if (!Array.isArray(items) || items.length === 0) {
       console.log("ℹ️ No NDTV RSS items");
@@ -102,13 +102,6 @@ export async function ndtvNewspolling() {
 
       if (STATE.ndtv.seen[cleanLink]) continue;
 
-      // TODO: headline-level blocked-pattern check goes here once the
-      // NDTV/shared blocklist import above is wired in, e.g.:
-      // if (isBlockedNDTVHeadline(item.title)) {
-      //   STATE.ndtv.seen[cleanLink] = Date.now();
-      //   continue;
-      // }
-
       candidates.push(item);
     }
 
@@ -134,7 +127,6 @@ export async function ndtvNewspolling() {
       const cleanLink = normalizeNDTVLink(selected.link);
       const pubMs = getPubDate(selected);
 
-      // ── Fetch article body ──────────────────────────────────────────────
       let parsed = null;
 
       try {
@@ -162,15 +154,6 @@ export async function ndtvNewspolling() {
       }
 
       const fullText = `${parsed.headline}\n${parsed.body}`;
-
-      // TODO: full-body blocked-pattern check goes here too, mirroring CA's
-      // second filter pass (title-only isn't enough -- CA also screens the
-      // combined headline+body text before generating anything):
-      // if (isBlockedNDTVHeadline(fullText)) {
-      //   console.log(`⏭️ Skipping blocked-pattern article (body match): ${parsed.headline}`);
-      //   STATE.ndtv.seen[cleanLink] = Date.now();
-      //   continue;
-      // }
 
       let articleType = "player_form";
       try {
@@ -214,9 +197,13 @@ export async function ndtvNewspolling() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = contextDecision?.significanceScore ?? 10;
 
-        // temporary commented but very important and needed for future use
+        console.log("================ Full NDTV Article ===========");
+        console.log(selected.title);
+        console.log(selected.description?.trim());
+        console.log("================ Publish Article =============");
+        console.log(selected.pubDate);
+        console.log("==============================================");
         if (!isExempt && score < 7) {
-          // if (!isExempt) {
           console.log(
             `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
           );
@@ -234,6 +221,7 @@ export async function ndtvNewspolling() {
         } else {
           console.log(`✅ Significance: ${score}/10 — proceeding`);
         }
+        console.log("==============================================");
       } catch (err) {
         console.warn(
           "⚠️ NDTV context judge failed, proceeding without dedup:",
@@ -241,21 +229,20 @@ export async function ndtvNewspolling() {
         );
       }
 
-      // ── Step 3: Tweet generation ─────────────────────────────────────────
-      // GPT is primary here (Claude is not currently wired into the NDTV
-      // path), Gemini is the fallback.
       let tweetText = null;
       let generatedPath = null;
 
       try {
-        const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+        // const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+        //   fullText,
+        //   articleType,
+        // );
+        const { tweetText: gptTweet, card } = await generateClaudeTweetWithType(
           fullText,
           articleType,
         );
 
         tweetText = gptTweet;
-
-        console.log("tweetToPost NDTV (GPT):::", gptTweet, "card::", card);
 
         if (card) {
           try {

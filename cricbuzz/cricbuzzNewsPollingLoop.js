@@ -1,7 +1,4 @@
-import {
-  // classifyArticle,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
+import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
@@ -133,7 +130,7 @@ export async function cricbuzzNewsPollingLoop() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = decision?.significanceScore ?? 10;
 
-        console.log("================ Full Article ================");
+        console.log("================ Full CB Article =============");
         console.log(selected.hline);
         console.log(fullText);
         console.log("================ Publish Article =============");
