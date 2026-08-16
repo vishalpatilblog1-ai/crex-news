@@ -1164,7 +1164,7 @@ ${isRetry ? `\nSTRICT: your previous draft exceeded ${MAX_CHARS} characters. Rew
     );
   }
   console.log("================ Claude Tweet ================");
-  console.log("tweetText");
+  console.log(tweetText);
   console.log(" =============================================");
   // console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
 

@@ -17,7 +17,7 @@ Providers:
 Examples:
   node cricbuzz/testCricbuzzTweet.js 135082 claude
   node cricbuzz/testCricbuzzTweet.js 135082 gpt
-  node cricbuzz/testCricbuzzTweet.js "https://www.cricbuzz.com/cricket-news/135082/example-headline" claude
+  node cricbuzz/testCricbuzzTweet.js "https://www.cricbuzz.com/cricket-news/139857/icc-mulls-gandhi-jayanti-start-for-2027-world-cup" claude
 
 This test:
   - fetches only the requested Cricbuzz article
