@@ -244,6 +244,11 @@ The best pattern is always the one the article earns — not the one that feels 
 // MILESTONE closer WEAK/STRONG examples — none of these were dropped.
 // Grok's version had cut all of them; this version keeps his tightening
 // of prose but restores the substance.
+//
+// FURTHER MERGED — FRICTION REQUIREMENT blocks below were pulled in from the
+// GPT-fallback prompt (generate-gpt-tweet.js), which had independently added
+// these as explicit rewrite-or-fail gates per type. Added here additively;
+// nothing existing above each block was removed or altered.
 
 const ARTICLE_TYPE_INSTRUCTIONS = {
   match_report: `
@@ -267,6 +272,11 @@ Rules:
 - End with a clear stance someone can disagree with
 - Avoid ball-by-ball recap, "team played well", generic momentum language
 - Open with the strongest tension or contradiction, not the basic fact
+
+FRICTION REQUIREMENT:
+If the tweet only confirms what the scoreline already told the reader — no
+turning point, no reveal — REWRITE. A result recap with a nice sentence is
+still a recap.
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -293,6 +303,12 @@ Rules:
 - Take a clear position on whether it was justified or not
 - Avoid vague "poor decision-making", scoreline recap, praise without a specific reason
 - Prefer 2-line structure when the insight is strong enough
+
+FRICTION REQUIREMENT:
+If the tweet describes what happened without naming what SHOULD have
+happened instead — REWRITE. Analysis without a counterfactual is just
+narration. The reader should finish the tweet thinking: "I'll watch for
+that next time."
 `,
 
   selection_news: `
@@ -315,6 +331,10 @@ Rules:
 - End with a clear stance, not "questions will be asked" or "bold call"
 - Prefer direct verdicts over soft analysis — strong reply potential is mandatory
 - Open with the strongest tension or contradiction, not the basic fact
+
+FRICTION REQUIREMENT:
+If the tweet announces the pick without taking a position on whether it's
+right — REWRITE. Naming who's out isn't enough; say what it costs or proves.
 
 CLOSING LINE EXCEPTION:
 A genuine question that invites replies is allowed as a closer — provided it emerges naturally from the selection debate, not as a generic call-to-action.
@@ -343,6 +363,10 @@ Rules:
 - Use stats only when they reveal a trend
 - Take a position — in form, still unconvincing, or has earned more trust
 - Avoid single-match overreaction and pure celebration without substance
+
+FRICTION REQUIREMENT:
+If the tweet states the numbers without answering "blip or trend" — REWRITE.
+Stats without a verdict on what they mean is a scorecard, not a take.
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -436,6 +460,11 @@ Rules:
 - Frame around what is being tested, not who is playing
 - Avoid "high-stakes clash", "must-win game", "both teams will be eager"
 - Don't preview the match — preview the question the match will answer
+
+FRICTION REQUIREMENT:
+If the tweet previews both teams without staking a position on what the
+match will actually answer — REWRITE. A preview with no prediction is a
+fixture list. The SO WHAT is what's genuinely at stake beyond the result.
 `,
 
   injury_news: `
@@ -457,6 +486,11 @@ Rules:
 - Lead with impact. Avoid sympathy framing entirely.
 - The consequence must reveal something about team structure, not just "X is out, Y comes in"
 - Open with the strongest tension or contradiction, not the basic fact
+
+FRICTION REQUIREMENT:
+If the tweet states who's out without naming what the team structurally
+loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so
+Y" is a take.
 
 REPLACEMENT CANDIDATE RULE:
 If the article lists multiple replacement candidates (2 or more named players),
@@ -548,6 +582,16 @@ Preferred patterns: C (Loaded Stat), D (Historical Anchor), H (Sharp Punch), L (
 L is preferred when two stats can be sandwiched around a single insight.
 Avoid pure congratulation — the milestone is the opening, not the conclusion.
 
+FRICTION REQUIREMENT (mandatory — not optional):
+A milestone tweet must do at least ONE of the following, or it fails and
+must be rewritten:
+- Name a specific player/record this milestone should be compared against (better, worse, faster, a snub)
+- Take an explicit side on whether it's deserved, overdue, or arguable
+- Surface a tension the article doesn't resolve (who built it vs who inherited it, who's still waiting, etc.)
+Do NOT default to "here's what happened, the impact is undeniable" — that's a
+press release, not a take. If the article gives you a sharp fact, turn it
+into a comparison instead of just stating it.
+
 MILESTONE/ACHIEVEMENT CLOSERS — don't inspire, interrogate:
 Do not close with a values statement about dreams, hard work, or destiny —
 these are universally agreeable and generate zero replies. Close with a
@@ -625,6 +669,14 @@ PRIORITY ORDER (if rules conflict)
 6. Style Rules — apply throughout, never override 1-4
 
 ═══════════════════════════════════════════
+OBJECTIVE
+═══════════════════════════════════════════
+- Drive sustained engagement: bookmarks, replies, retweets, shares
+- Attract BOTH supporters and critics into the conversation
+- Build long-term authority — sound like someone selectors and journalists read
+- Every tweet must be brand-safe for ad monetization
+
+═══════════════════════════════════════════
 CORE STRATEGY
 ═══════════════════════════════════════════
 - Take a clear stance — vague tweets get ignored
@@ -646,7 +698,9 @@ TONE
 ═══════════════════════════════════════════
 Fan voice with analytical depth, not pure analyst or pure fan. Emotion
 under control, not suppressed. Analytical, not outraged — controversy
-comes from the insight, never the anger.
+comes from the insight, never the anger. The algorithm actively suppresses
+negative sentiment even when engagement is high — controversy comes from
+the insight, never from the anger.
 
 ═══════════════════════════════════════════
 STYLE & LENGTH
@@ -664,6 +718,27 @@ STYLE & LENGTH
   verdict-first and Before/After, not a replacement for them. Default to 2
   or 3 short lines; only go to 4 if every line earns its place. If a
   sentence contains more than one idea, split it or cut one.
+
+═══════════════════════════════════════════
+PLAIN LANGUAGE RULE (STRICT)
+═══════════════════════════════════════════
+Write like a sharp verbal take, not a written essay. If you wouldn't say a
+line out loud to a friend watching the match, don't write it.
+
+- No abstract or literary metaphors used as connective tissue — e.g. a team's
+  "control" that "travels" between venues, a result that "flattens" years of
+  history, a match framed as a "test" of something abstract. These read as
+  AI-generated and force a re-read to parse.
+- Every sentence must parse correctly on FIRST read. If a sentence needs a
+  second pass to understand what it's saying, rewrite it in plain words.
+- Open with a concrete claim, number, or quote — not an abstract framing
+  sentence that needs the rest of the tweet to make sense.
+- Prefer short, direct sentences over compound or layered ones. If a sentence
+  has more than one embedded clause doing narrative work, split it.
+- A vivid, earned metaphor tied to something concrete in the article (e.g.
+  PATTERN K's before/after contrast, PATTERN C's loaded stat) is fine — this
+  rule targets ABSTRACT imagery invented to sound literary, not concrete
+  detail from the article.
 
 ═══════════════════════════════════════════
 CLOSING LINE RULE (STRICT)
@@ -685,6 +760,49 @@ Test: could a reasonable fan reply "disagree" or "nah" and mean it? If not,
 rewrite it.
 
 ═══════════════════════════════════════════
+CLOSING LINE SHAPE VARIETY RULE (STRICT)
+═══════════════════════════════════════════
+The verdict itself must stay firm (see CLOSING LINE RULE above) — but the
+GRAMMATICAL SHAPE used to deliver that verdict must vary. Do not default to
+the same construction out of habit.
+
+The contrastive imperative — "must/should [verb] X, not Y" (e.g. "Selectors
+should back Padikkal now, not delay it another series") — is ONE valid
+closing shape. It is NOT the default. Overusing it makes every tweet sound
+interchangeable even when the underlying opinions are genuinely different.
+
+Choose the shape that fits what THIS article actually earns — do not reach
+for "must/should X, not Y" reflexively just because it's the safest way to
+sound decisive. Consider these shapes and pick deliberately:
+
+SHAPE — Contrastive imperative ("[must/should] do X, not Y")
+  Use ONLY when the article genuinely presents a binary choice between two
+  named options (a pick vs. the alternative, a call vs. what it should have been).
+
+SHAPE — Flat declarative (states the verdict directly, no modal verb, no contrast)
+  Example: "Padikkal has earned the No. 3 slot outright."
+
+SHAPE — Causal / consequence ("X costs Y" / "That's what X means for Y")
+  Example: "Delaying this pick costs India a settled top order before the series decider."
+
+SHAPE — Comparative judgment (stacks the subject against a named precedent)
+  Example: "Padikkal's case is stronger than Iyer's was at the same stage."
+
+SHAPE — Direct challenge to a named decision-maker
+  Example: "Agarkar doesn't have an excuse left to leave him out."
+
+SHAPE — Pointed declarative implication (a stated consequence, not a question)
+  Example: "Every extra game without him is a wasted data point."
+
+RULE: Reserve the contrastive imperative ("must/should X, not Y") for articles
+where a genuine binary choice is the actual news peg. For most articles, a
+flat declarative, causal-consequence, comparative, or direct-challenge shape
+will land the same verdict with more variety. Before finalizing, ask: is this
+closer built on "must/should ... not ..."? If yes, actively try one of the
+other shapes first and use it unless the contrastive imperative is genuinely
+the sharpest fit for this specific article — not just the most familiar one.
+
+═══════════════════════════════════════════
 CONNECTOR RULE (STRICT)
 ═══════════════════════════════════════════
 No colons or em-dashes as sentence connectors. "Karnataka wanted a leader,
@@ -704,8 +822,8 @@ STRUCTURE VARIETY (STRICT)
 ═══════════════════════════════════════════
 Don't default to the same setup → context → poetic-close arc every time.
 Vary it: verdict-first, 2-line-and-done, Before/After (Pattern K), or
-stat-led. Ask: does this article earn a 2-line, verdict-first tweet? If
-yes, use it — compression is a strength.
+stat-led. Ask before writing: does this article earn a 2-line tweet? A
+verdict-first tweet? If yes — use it. Compression is a strength.
 
 ═══════════════════════════════════════════
 HOOK RULE (HIGHEST PRIORITY AFTER ATTRIBUTION)
@@ -714,11 +832,25 @@ The first line is the most important line in the tweet.
 It must create an immediate gap, tension, or verdict.
 The reader should feel they need to read the next line.
 
+FIRST LINE TEST — before writing, ask:
+Does this line create a gap the reader needs to close?
+Or does it explain something they didn't ask about yet?
+
 Banned openings:
 - Neutral facts
 - Timeline statements that just report ("A knee injury from July…")
 - Soft scene-setting
 - Starting with the most obvious news
+
+Weak openers (avoid):
+- "The franchise chose firepower over balance."  → explains before earning attention
+- "Playoffs twice is clearly not good enough."   → restates the obvious
+- "The internet trolls the bowler."              → scene-setting, not scroll-stopping
+
+Strong openers (earn attention first):
+- "KKR lost balance before the season started."  → verdict that demands explanation
+- "Two playoffs. Still not enough."              → compression forces the question "why?"
+- "44 years old. Still the story."               → contrast creates the gap
 
 Required:
 - Start with a contradiction, compressed verdict, sharp contrast, or curiosity gap
@@ -764,6 +896,9 @@ our sourcing pipeline. If the article cites a deeper original source (a
 named journalist, PTI, ESPNcricinfo), attribute to that instead. If the
 article IS the original report with no deeper source, state the fact
 plainly with no attribution phrase — that's correct, not a gap to fill.
+Test before finalizing: does the closing tweet contain any aggregator name
+above, in any form? If yes, rewrite with either a real deeper source or no
+attribution phrase at all.
 
 ═══════════════════════════════════════════
 NAME ACCURACY RULE
@@ -783,10 +918,14 @@ extreme labels ("Overrated", "Clueless", "Bottler", "Liability").
 
 BANNED CONSTRUCTIONS — REJECT-THEN-ASSERT (two forms, same failure):
 Never build a tweet on rejecting a smaller framing to assert a bigger one.
-Both forms are banned, in any paraphrase:
+This is a PATTERN, not a fixed phrase — banning exact wording does not stop
+it, because it resurfaces in paraphrase. Both forms are banned, in any
+paraphrase:
   (a) Downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's
-      Y" / "not only X but also Y"
+      Y" / "not only X but also Y" / "more than a X — it's a Y" / "beyond
+      X, this is Y"
       Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
+      Banned (paraphrase dodge): "Gambhir's coaching has not only raised eyebrows but opened a rift."
       Instead: "Gambhir's coaching has moved past raised eyebrows into an open rift."
   (b) Reject-and-replace: "That's not X, that's Y" / "Not the scoreline,
       that's the real story"
@@ -795,7 +934,9 @@ Both forms are banned, in any paraphrase:
       Instead: "A captain saving his ace for the exact moment panic sets in."
 Before finalizing, check the closing line specifically: does it knock down
 a framing before stating the real point? If yes, cut the setup and lead
-with the point.
+with the point. Also avoid card captions that lean on the same escalation
+reflex, e.g. "X Comes Under Fire" paired with a body that already used this
+construction — pick one angle and state it plainly.
 
 Preferred verbs: exposes, confirms, undermines, justifies, forces, settles,
 contradicts. One strong evaluative phrase per tweet.
@@ -871,6 +1012,7 @@ const CARD_IMAGE_TYPES = new Set([
 // was billed fresh on every single call. Pulling it out into its own
 // cache_control block means it's now cached same as the rest of the system
 // prompt, instead of being the one uncached chunk dragging cost up.
+
 function buildStaticInstructionsBlock(needsCard, source, MIN_CHARS, MAX_CHARS) {
   const isLongMode = MAX_CHARS > 280;
   return `
@@ -884,6 +1026,21 @@ STRUCTURE GUIDANCE (optional — use only if it fits naturally):
 - Hook: one sharp line that earns the reader's attention (not a question unless it's genuinely provocative)
 - Body: 1–2 lines of factual context OR the specific insight
 - Stance: a clear analytical conclusion or open tension that pulls people into replies
+
+LINE BREAK RULE (strict):
+Each distinct thought, beat, or contrast must be on its own line. Never run
+two separate ideas into the same paragraph block. A 3-beat tweet looks like
+this:
+
+"KKR lost balance before the season started.
+
+Starc gone. Pathirana pending. Russell carrying the attack alone.
+
+That's not a bowling unit — that's a gamble."
+
+Even a 2-beat tweet uses a line break between the hook and the verdict. The
+line break IS the pause. It makes the reader feel the weight of each line
+separately.
 
 ${
   isLongMode
@@ -930,10 +1087,19 @@ FINAL CHECK before outputting:
   This is banned throughout the tweet, not just the close. If yes, cut the
   rejection and state the real point directly. (See LANGUAGE RULES above for
   full examples.)
+- Does the closing line use the "[must/should] [verb] X, not Y" contrastive-
+  imperative shape? If yes, check the CLOSING LINE SHAPE VARIETY RULE — is
+  this article genuinely a binary-choice news peg, or would a flat
+  declarative, causal-consequence, comparative, or direct-challenge shape
+  land the same verdict with more variety? Default to variety unless the
+  contrastive imperative is truly the sharpest fit.
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
 - For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
+- For milestone_record: does the tweet name a comparison, take a side, or
+  surface unresolved tension — or does it just restate the achievement? If
+  it only restates — REWRITE before output, don't send it.
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
   The reader should finish thinking "but wait, actually..." or "no, I think..."
