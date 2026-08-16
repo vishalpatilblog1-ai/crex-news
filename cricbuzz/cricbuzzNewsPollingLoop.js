@@ -136,6 +136,7 @@ export async function cricbuzzNewsPollingLoop() {
         console.log("================ Full Article ================");
         console.log(selected.hline);
         console.log(fullText);
+        console.log("==============================================");
 
         if (!isExempt && score < 7) {
           console.log(
