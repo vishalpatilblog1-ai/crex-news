@@ -4,12 +4,7 @@ import {
 } from "../ai/generate-gpt-tweet.js";
 
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import {
-  applySourceSignature,
-  enqueueTweet,
-  isCricketAddictorBlocked,
-  isQuietHoursBlocked,
-} from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { fetchSKCricketListing } from "./fetchSKCricketListing.js";
 import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
@@ -39,12 +34,10 @@ export async function skNewsPollingLoop() {
     return false;
   }
 
-  if (isQuietHoursBlocked("SK")) {
-    console.log(
-      "🚫 Sportskeeda polling paused during quiet hours (1-5 AM IST)",
-    );
-    return false;
-  }
+  // NOTE: the isQuietHoursBlocked("SK") gate that used to live here has
+  // been removed. index.js's global sleep window (1-5 AM IST, via
+  // runIfAwake) now covers every source including SK at the polling level,
+  // so this local gate was redundant.
 
   const STATE = global.STATE;
   STATE.sk ??= {};
@@ -189,10 +182,10 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       });
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 Cricbuzz skipped — already covered context");
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        await saveState(STATE);
-        return false;
+        console.log("🔴 Sportskeeda skipped — already covered context");
+        markSeen(STATE, selectedItem, cleanLink);
+        await saveState(STATE, "Sportskeeda duplicate context skipped");
+        return "skip";
       }
 
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
@@ -200,11 +193,11 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
 
       if (!isExempt && score < 7) {
         console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
+          `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
         );
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        await saveState(STATE);
-        return false;
+        markSeen(STATE, selectedItem, cleanLink);
+        await saveState(STATE, "Sportskeeda low significance skipped");
+        return "skip";
       }
 
       if (isExempt) {

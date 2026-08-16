@@ -13,11 +13,7 @@ import {
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
-import {
-  applySourceSignature,
-  enqueueTweet,
-  isCricketAddictorBlocked,
-} from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
@@ -31,7 +27,6 @@ import fs from "fs";
 import path from "path";
 
 const MAX_AGE_MIN = 660;
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
@@ -65,10 +60,11 @@ function saveTweetLocally(tweetText) {
 export async function caNewsPollingLoop() {
   if (!global.STATE) return false;
 
-  if (isCricketAddictorBlocked("CA")) {
-    console.log("🚫 CA polling paused (11:30 PM – 6:00 AM window)");
-    return false;
-  }
+  // NOTE: CA's dedicated 11:30PM-6AM block (isCricketAddictorBlocked) has
+  // been removed. index.js's global sleep window (1-5 AM IST, via
+  // runIfAwake) now covers every source including CA at the polling level,
+  // so this local gate was redundant and its window no longer matched the
+  // global one anyway.
 
   const STATE = global.STATE;
 

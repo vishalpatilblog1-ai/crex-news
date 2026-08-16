@@ -24,7 +24,7 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import {
   applySourceSignature,
   enqueueTweet,
-  isQuietHoursBlocked,
+  // isQuietHoursBlocked,
 } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { fetchXNewsCricket } from "./fetchXNewsCricket.js";
@@ -52,10 +52,10 @@ export async function xNewsPollingLoop() {
     return false;
   }
 
-  if (isQuietHoursBlocked("XN")) {
-    console.log("🚫 X News polling paused during quiet hours (1-5 AM IST)");
-    return false;
-  }
+  // if (isQuietHoursBlocked("XN")) {
+  //   console.log("🚫 X News polling paused during quiet hours (1-5 AM IST)");
+  //   return false;
+  // }
 
   const STATE = global.STATE;
   STATE.xnews ??= {};
