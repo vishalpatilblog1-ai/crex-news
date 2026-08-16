@@ -1214,11 +1214,11 @@ export async function generateClaudeTweetWithType(
     resolvedType = "player_form";
   }
 
-  console.log(
-    `🏷️ Article type (pre-classified): ${resolvedType}${
-      source ? ` | source: ${source}` : ""
-    }${isLongEligible ? " | long-tweet mode" : ""}`,
-  );
+  // console.log(
+  //   `🏷️ Article type (pre-classified): ${resolvedType}${
+  //     source ? ` | source: ${source}` : ""
+  //   }${isLongEligible ? " | long-tweet mode" : ""}`,
+  // );
 
   try {
     const { tweetText, card } = await _generateTweet(
