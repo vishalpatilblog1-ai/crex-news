@@ -15,7 +15,7 @@ import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 const SOURCE = "CB";
 
 const MAX_AGE_MIN = 120;
-const RETENTION_MS = 6 * 60 * 60 * 1000; // 4 hours
+const RETENTION_MS = 6 * 60 * 60 * 1000;
 
 export async function cricbuzzNewsPollingLoop() {
   if (!global.STATE) {
@@ -83,7 +83,7 @@ export async function cricbuzzNewsPollingLoop() {
       return false;
     }
 
-    console.log("detailNews>>>", detailNews);
+    // console.log("detailNews>>>", detailNews);
 
     const fullText = buildFullArticleText(detailNews);
     if (fullText.length < 80) {
@@ -117,6 +117,12 @@ export async function cricbuzzNewsPollingLoop() {
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
 
+      console.log("================ Full Article ================");
+      console.log(selected.hline);
+      console.log(fullText);
+      console.log("================ Score =======================");
+      console.log(score);
+
       if (!isExempt && score < 7) {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${selected.hline}`,
@@ -145,10 +151,6 @@ export async function cricbuzzNewsPollingLoop() {
 
     let tweetText = null;
     try {
-      console.log("================ Full Article ================");
-      console.log(fullText);
-      console.log(" =============================================");
-
       const result = await generateClaudeTweetWithType(
         fullText,
         articleType,

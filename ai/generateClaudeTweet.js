@@ -135,9 +135,9 @@ export async function classifyArticle(articleText) {
   const usage = response.usage;
   const inputCost = (usage.input_tokens / 1_000_000) * 1;
   const outputCost = (usage.output_tokens / 1_000_000) * 5;
-  console.log(
-    `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
-  );
+  // console.log(
+  //   `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
+  // );
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
