@@ -136,6 +136,8 @@ export async function cricbuzzNewsPollingLoop() {
         console.log("================ Full Article ================");
         console.log(selected.hline);
         console.log(fullText);
+        console.log("================ Publish Article =============");
+        console.log(selected.pubTime);
         console.log("==============================================");
 
         if (!isExempt && score < 7) {
@@ -153,6 +155,7 @@ export async function cricbuzzNewsPollingLoop() {
         } else {
           console.log(`✅ Significance: ${score}/10 — proceeding`);
         }
+        console.log("==============================================");
       } catch (err) {
         console.warn(
           "⚠️ Cricbuzz judgeNewsContext failed:",
