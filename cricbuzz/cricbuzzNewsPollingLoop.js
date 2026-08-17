@@ -130,11 +130,14 @@ export async function cricbuzzNewsPollingLoop() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = decision?.significanceScore ?? 10;
 
+        // console.log("Article Type::", articleType);
+        // console.log("Headline::", selected.title);
+        // console.log("Article::", parsed.body);
+
         console.log("================ Full CB Article =============");
-        console.log(selected.hline);
-        console.log(fullText);
-        console.log("================ Publish Article =============");
-        console.log(selected.pubTime);
+        console.log("Article Type::", articleType);
+        console.log("Headline::", selected.hline);
+        console.log("Article::", fullText);
         console.log("==============================================");
 
         if (!isExempt && score < 7) {

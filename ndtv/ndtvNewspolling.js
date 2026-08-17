@@ -198,10 +198,10 @@ export async function ndtvNewspolling() {
         const score = contextDecision?.significanceScore ?? 10;
 
         console.log("================ Full NDTV Article ===========");
-        console.log(selected.title);
-        console.log(selected.description?.trim());
-        console.log("================ Publish Article =============");
-        console.log(selected.pubDate);
+        console.log("Article Type::", articleType);
+        console.log("Headline::", selected.title);
+        console.log("Article::", parsed.body);
+
         console.log("==============================================");
         if (!isExempt && score < 7) {
           console.log(
@@ -308,7 +308,8 @@ export async function ndtvNewspolling() {
         id: tweetId,
         source: SOURCE,
         text: tweetText,
-        imageUrl: generatedPath || null,
+        // imageUrl: generatedPath || null,
+        imageUrl: null,
         seenKey: cleanLink,
         publishedAt: pubMs || Date.now(),
       });
