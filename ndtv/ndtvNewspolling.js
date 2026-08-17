@@ -105,12 +105,8 @@ export async function ndtvNewspolling() {
       candidates.push(item);
     }
 
-    console.log(
-      `📰 NDTV RSS: ${sorted.length} items, ${candidates.length} unseen candidates`,
-    );
-
     if (candidates.length === 0) {
-      console.log("🟡 No eligible NDTV articles (age + dedupe)");
+      // console.log("🟡 No eligible NDTV articles (age + dedupe)");
       await saveState(STATE, "no eligible candidates");
       return false;
     }
