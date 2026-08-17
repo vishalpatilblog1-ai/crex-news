@@ -134,7 +134,7 @@ export async function cricbuzzNewsPollingLoop() {
         console.log("🏷️ Article Type::", articleType);
         console.log("📰 Headline::", selected.hline);
         console.log("📄 Article::", fullText);
-        console.log("==============================================");
+        console.log("============================================");
 
         if (!isExempt && score < 7) {
           console.log(`⬇️ Low significance (${score}/10) — skipping`);
