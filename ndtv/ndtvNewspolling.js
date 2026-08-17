@@ -198,15 +198,12 @@ export async function ndtvNewspolling() {
         const score = contextDecision?.significanceScore ?? 10;
 
         console.log("================ Full NDTV Article ===========");
-        console.log("Article Type::", articleType);
-        console.log("Headline::", selected.title);
-        console.log("Article::", parsed.body);
-
+        console.log("🏷️ Article Type::", articleType);
+        console.log("📰 Headline::", selected.title);
+        console.log("📄 Article::", parsed.body);
         console.log("==============================================");
         if (!isExempt && score < 7) {
-          console.log(
-            `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
-          );
+          console.log(`⬇️ Low significance (${score}/10) — skipping`);
           STATE.ndtv.seen[cleanLink] = Date.now();
           STATE.ndtv.lastLink = cleanLink;
           STATE.ndtv.lastTitle = selected.title;
@@ -220,8 +217,8 @@ export async function ndtvNewspolling() {
           );
         } else {
           console.log(`✅ Significance: ${score}/10 — proceeding`);
+          console.log("==============================================");
         }
-        console.log("==============================================");
       } catch (err) {
         console.warn(
           "⚠️ NDTV context judge failed, proceeding without dedup:",
