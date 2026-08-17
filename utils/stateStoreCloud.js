@@ -19,7 +19,7 @@ export async function loadState() {
 }
 
 export async function saveState(stateObj, reason = "no-reason-provided") {
-  console.log(`💾 Saving state to disk | Reason: ${reason}`);
+  // console.log(`💾 Saving state to disk | Reason: ${reason}`);
   try {
     await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
     const tmpFile = `${STATE_FILE}.tmp`;
