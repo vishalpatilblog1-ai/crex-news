@@ -88,9 +88,9 @@ export async function ndtvNewspolling() {
       if (pubMs) {
         const ageMin = (Date.now() - pubMs) / 60000;
         if (ageMin > MAX_AGE_MIN) {
-          console.log(
-            `⏳ NDTV aged out (${Math.round(ageMin)}m): ${item.title}`,
-          );
+          // console.log(
+          //   `⏳ NDTV aged out (${Math.round(ageMin)}m): ${item.title}`,
+          // );
           const cleanLinkAged = normalizeNDTVLink(item.link);
           if (cleanLinkAged) STATE.ndtv.seen[cleanLinkAged] = Date.now();
           continue;
