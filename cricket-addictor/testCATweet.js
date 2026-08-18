@@ -189,25 +189,3 @@ main().catch((error) => {
 });
 
 // node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/bcci-yet-to-hold-uk-tour-review-meeting-gautam-gambhir-likely-to-join-online-report-462194/" gemini
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/bcci-yet-to-hold-uk-tour-review-meeting-gautam-gambhir-likely-to-join-online-report-462194/" gpt
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/bcci-yet-to-hold-uk-tour-review-meeting-gautam-gambhir-likely-to-join-online-report-462194/" claude
-
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/bcci-selectors-fear-india-will-lose-2027-world-cup-if-rohit-sharma-plays-report-462193/#google_vignette" gemini
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/bcci-selectors-fear-india-will-lose-2027-world-cup-if-rohit-sharma-plays-report-462193/#google_vignette" gpt
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/bcci-selectors-fear-india-will-lose-2027-world-cup-if-rohit-sharma-plays-report-462193/#google_vignette" claude
-
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/shubman-gills-india-train-under-unprecedented-security-in-colombo-fans-barred-462200/" gemini
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/shubman-gills-india-train-under-unprecedented-security-in-colombo-fans-barred-462200/" gpt
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/shubman-gills-india-train-under-unprecedented-security-in-colombo-fans-barred-462200/" claude
-
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/mohammad-amir-in-ipl-2027-the-truth-after-his-british-citizenship-462201/" gemini
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/mohammad-amir-in-ipl-2027-the-truth-after-his-british-citizenship-462201/" gpt
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/mohammad-amir-in-ipl-2027-the-truth-after-his-british-citizenship-462201/" claude
-
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/vvs-laxman-in-contention-to-replace-ajit-agarkar-as-bcci-chief-selector-report-462192/" gemini
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/vvs-laxman-in-contention-to-replace-ajit-agarkar-as-bcci-chief-selector-report-462192/" gpt
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/vvs-laxman-in-contention-to-replace-ajit-agarkar-as-bcci-chief-selector-report-462192/" claude
-
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/im-not-too-fussed-former-england-pacer-questions-stephen-flemings-appointment-as-new-head-coach-462180/" claude
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/sunil-gavaskar-reveals-what-indian-cricket-got-wrong-with-ajinkya-rahane-462175/" claude
-// node cricket-addictor/testCATweet.js "https://cricketaddictor.com/cricket-news/ben-stokes-rules-out-2027-ashes-comeback-says-playing-without-captaincy-was-impossible-462171/" claude

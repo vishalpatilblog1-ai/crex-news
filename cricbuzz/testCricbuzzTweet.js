@@ -134,6 +134,8 @@ async function main() {
 
   const detailNews = await getNewsDetailsByNewsId(newsId);
 
+  console.log(detailNews?.content);
+
   if (!detailNews?.content) {
     throw new Error(`No Cricbuzz article content found for news ID ${newsId}.`);
   }
