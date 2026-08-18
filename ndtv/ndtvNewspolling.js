@@ -167,13 +167,13 @@ export async function ndtvNewspolling() {
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
 
-        console.log(
-          `📊 Scores — significance: ${
-            contextDecision?.significanceScore ?? "n/a"
-          }, virality: ${contextDecision?.viralityScore ?? "n/a"} — "${
-            parsed.headline
-          }"`,
-        );
+        // console.log(
+        //   `📊 Scores — significance: ${
+        //     contextDecision?.significanceScore ?? "n/a"
+        //   }, virality: ${contextDecision?.viralityScore ?? "n/a"} — "${
+        //     parsed.headline
+        //   }"`,
+        // );
 
         if (
           contextDecision?.isAlreadyCovered === true &&
@@ -198,7 +198,7 @@ export async function ndtvNewspolling() {
         // console.log("📰 Headline::", selected.title);
         // console.log("📄 Article::", parsed.body);
         // console.log("==============================================");
-        if (!isExempt && score < 7) {
+        if (!isExempt && score < 8) {
           console.log(`⬇️ Low significance (${score}/10) — skipping`);
           STATE.ndtv.seen[cleanLink] = Date.now();
           STATE.ndtv.lastLink = cleanLink;
