@@ -19,6 +19,7 @@ Examples:
   node cricbuzz/testCricbuzzTweet.js 135082 gpt
   node cricbuzz/testCricbuzzTweet.js "https://www.cricbuzz.com/cricket-news/139857/icc-mulls-gandhi-jayanti-start-for-2027-world-cup" claude
 
+
 This test:
   - fetches only the requested Cricbuzz article
   - builds article text exactly like cricbuzzNewsPollingLoop.js
@@ -128,13 +129,13 @@ async function main() {
 
   const { getNewsDetailsByNewsId } = await import("./cricbuzzApi.js");
 
-  console.log("\nFetching Cricbuzz article...");
-  console.log(`News ID  : ${newsId}`);
-  console.log(`Provider : ${provider}`);
+  // console.log("\nFetching Cricbuzz article...");
+  // console.log(`News ID  : ${newsId}`);
+  // console.log(`Provider : ${provider}`);
 
   const detailNews = await getNewsDetailsByNewsId(newsId);
 
-  console.log(detailNews?.content);
+  // console.log(detailNews?.content);
 
   if (!detailNews?.content) {
     throw new Error(`No Cricbuzz article content found for news ID ${newsId}.`);
@@ -147,6 +148,9 @@ async function main() {
       `Article text is missing or too short (${fullText?.length || 0} chars).`,
     );
   }
+
+  // const { classifyArticle, generateClaudeTweetWithType } =
+  //   await import("../ai/generateClaudeTweet.js");
 
   const { classifyArticle, generateClaudeTweetWithType } =
     await import("../ai/generateClaudeTweet.js");
@@ -200,11 +204,11 @@ async function main() {
     throw new Error("The selected generator returned an empty tweet.");
   }
 
-  console.log("================ GENERATED TWEET ================\n");
+  // console.log("================ GENERATED TWEET ================\n");
 
-  console.log(tweet);
+  // console.log(tweet);
 
-  console.log("\n=================================================");
+  // console.log("\n=================================================");
 
   console.log(`Characters: ${tweet.length}`);
 

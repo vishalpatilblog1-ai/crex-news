@@ -1231,7 +1231,8 @@ DRAFT A SINGLE ORIGINAL TWEET.
   const response = await client.messages.create({
     model: "claude-sonnet-5",
     max_tokens: 3000,
-    thinking: { type: "enabled", budget_tokens: 2000 },
+    thinking: { type: "adaptive" },
+    output_config: { effort: "medium" },
     system: [
       {
         // Universal rules -- identical on every call regardless of article
