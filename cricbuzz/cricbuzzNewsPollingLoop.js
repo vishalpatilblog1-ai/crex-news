@@ -130,11 +130,11 @@ export async function cricbuzzNewsPollingLoop() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = decision?.significanceScore ?? 10;
 
-        console.log("================ Full CB Article =============");
-        console.log("🏷️ Article Type::", articleType);
-        console.log("📰 Headline::", selected.hline);
-        console.log("📄 Article::", fullText);
-        console.log("============================================");
+        // console.log("================ Full CB Article =============");
+        // console.log("🏷️ Article Type::", articleType);
+        // console.log("📰 Headline::", selected.hline);
+        // console.log("📄 Article::", fullText);
+        // console.log("============================================");
 
         if (!isExempt && score < 7) {
           console.log(`⬇️ Low significance (${score}/10) — skipping`);
@@ -149,7 +149,7 @@ export async function cricbuzzNewsPollingLoop() {
           );
         } else {
           console.log(`✅ Significance: ${score}/10 — proceeding`);
-          console.log("============================================");
+          // console.log("============================================");
         }
       } catch (err) {
         console.warn(

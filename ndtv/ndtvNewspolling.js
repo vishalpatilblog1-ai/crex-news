@@ -193,11 +193,11 @@ export async function ndtvNewspolling() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = contextDecision?.significanceScore ?? 10;
 
-        console.log("================ Full NDTV Article ===========");
-        console.log("🏷️ Article Type::", articleType);
-        console.log("📰 Headline::", selected.title);
-        console.log("📄 Article::", parsed.body);
-        console.log("==============================================");
+        // console.log("================ Full NDTV Article ===========");
+        // console.log("🏷️ Article Type::", articleType);
+        // console.log("📰 Headline::", selected.title);
+        // console.log("📄 Article::", parsed.body);
+        // console.log("==============================================");
         if (!isExempt && score < 7) {
           console.log(`⬇️ Low significance (${score}/10) — skipping`);
           STATE.ndtv.seen[cleanLink] = Date.now();
@@ -213,7 +213,6 @@ export async function ndtvNewspolling() {
           );
         } else {
           console.log(`✅ Significance: ${score}/10 — proceeding`);
-          console.log("==============================================");
         }
       } catch (err) {
         console.warn(
@@ -233,6 +232,7 @@ export async function ndtvNewspolling() {
         const { tweetText: gptTweet, card } = await generateClaudeTweetWithType(
           fullText,
           articleType,
+          "NDTV",
         );
 
         tweetText = gptTweet;

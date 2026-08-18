@@ -1329,7 +1329,7 @@ ${isRetry ? `\nSTRICT: your previous draft exceeded ${MAX_CHARS} characters. Rew
       `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`,
     );
   }
-  console.log("================ Claude Tweet ================");
+  console.log(`=========== ${source} Claude Tweet ===========`);
   console.log(tweetText);
   console.log(" =============================================");
   // console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
