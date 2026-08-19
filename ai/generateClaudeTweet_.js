@@ -661,7 +661,8 @@ or Voice Rule. Those stay strict regardless of reach mode.
 ═══════════════════════════════════════════
 PRIORITY ORDER (if rules conflict)
 ═══════════════════════════════════════════
-1. Attribution Rule — naming the source is never optional
+1. Attribution Rule — attribute claims to the person or original source
+   whenever attribution is required. Never expose aggregator sourcing.
 2. Hook Rule — the first line must earn attention before anything else applies
 3. Language Rules — banned phrases and constructions are absolute, no exceptions
 4. Article Type Instruction — defines the angle and engagement target
@@ -682,9 +683,13 @@ CORE STRATEGY
 - Take a clear stance — vague tweets get ignored
 - Earn the opinion with one concrete fact or observation
 - Criticize decisions and tactics, never personal character
-- THIRD ANGLE RULE (STRICT): say something the article does NOT say. Ask
-  "what does this reveal that the journalist didn't write?" — that's the
-  tweet. If it could pass as the source's headline, rewrite it.
+- THIRD ANGLE RULE (STRICT): derive a conclusion the article does not
+  explicitly state, but which follows directly from facts the article
+  contains. The conclusion may be original. The evidence behind it may NOT
+  be invented — every fact it rests on must be traceable to the article.
+  Ask "what does this reveal that the journalist didn't write?" If
+  answering requires outside information or an assumption, don't use it.
+  If it could pass as the source's headline, rewrite it.
 
 ═══════════════════════════════════════════
 ONE MAIN IDEA RULE (STRICT)
@@ -1193,7 +1198,6 @@ No card needed for this article type. Output tweet text only.
 async function _generateTweet(
   articleText,
   articleType,
-  isRetry = false,
   source = null,
   isLongEligible = false,
 ) {
@@ -1206,12 +1210,15 @@ async function _generateTweet(
     isLongEligible,
   );
 
+  // Only the article text is genuinely different call to call --
+  // everything else (output rules, checklist, card format) lives in
+  // cached system blocks below instead of being rebuilt into this
+  // message and billed fresh every time.
   const userPrompt = `
 [NEWS CONTEXT]
 ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
-${isRetry ? `\nSTRICT: your previous draft exceeded ${MAX_CHARS} characters. Rewrite to fit ${MIN_CHARS}-${MAX_CHARS} characters WITHOUT dropping the closing verdict -- compress the setup, not the payoff.` : ""}
 `;
 
   const staticInstructionsBlock = buildStaticInstructionsBlock(
@@ -1223,20 +1230,30 @@ ${isRetry ? `\nSTRICT: your previous draft exceeded ${MAX_CHARS} characters. Rew
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 1500,
-    thinking: { type: "disabled" },
+    max_tokens: 3000,
+    thinking: { type: "adaptive" },
+    output_config: { effort: "medium" },
     system: [
       {
+        // Universal rules -- identical on every call regardless of article
+        // type, so this stays cached even when the type below changes.
         type: "text",
         text: systemPrompt,
         cache_control: { type: "ephemeral" },
       },
       {
+        // Type-specific instruction -- only ~12 possible values, so this
+        // still caches well across consecutive same-type calls without
+        // invalidating the (much larger) universal block above when the
+        // type changes.
         type: "text",
         text: articleTypeInstruction,
         cache_control: { type: "ephemeral" },
       },
       {
+        // Output rules / final-check audit / card-field spec -- only two
+        // possible variants (needsCard true/false), previously lived
+        // uncached inside userPrompt on every single call.
         type: "text",
         text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
@@ -1250,9 +1267,9 @@ ${isRetry ? `\nSTRICT: your previous draft exceeded ${MAX_CHARS} characters. Rew
   const outputCost = (usage.output_tokens / 1_000_000) * 10;
   const totalCost = inputCost + outputCost;
 
-  // console.log(
-  //   `💰 Sonnet call${isRetry ? " (retry)" : ""} — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
-  // );
+  console.log(
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  );
 
   const textBlock = response.content.find((block) => block.type === "text");
   const rawText = textBlock?.text;
@@ -1373,7 +1390,6 @@ export async function generateClaudeTweetWithType(
     const { tweetText, card } = await _generateTweet(
       articleText,
       resolvedType,
-      false,
       source,
       isLongEligible,
     );

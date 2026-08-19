@@ -670,6 +670,51 @@ PRIORITY ORDER (if rules conflict)
 6. Style Rules — apply throughout, never override 1-4
 
 ═══════════════════════════════════════════
+WEB VERIFICATION RULE (STRICT)
+═══════════════════════════════════════════
+You have a web_search tool. You are strictly limited to THREE uses, all
+about THIS SAME story (same event, same people, same news peg):
+  (a) verifying a specific, checkable fact in the article (a date, a
+      number, a name, a score) when you are not fully certain it's
+      correct;
+  (b) filling a genuine gap the article leaves open about this same story
+      (e.g. it references an event without stating when it happened); or
+  (c) checking real fan/public sentiment specifically about this story,
+      subject to the FAN SENTIMENT SUB-RULE below.
+Do NOT search for a more dramatic angle, a different storyline, a hot
+take, or unrelated news — even if it's about the same player or team —
+unless it's the same specific story the article is about. If what you
+find isn't clearly about this story, don't use it.
+
+If the article and a search result conflict on a factual claim, the
+article wins unless the search result is clearly more current (e.g. the
+article is about an injury update and the search result shows a newer
+update from after the article was published) — in that case, use the
+newer fact and do not use the article's outdated version.
+
+FAN SENTIMENT SUB-RULE:
+You may characterize genuine public/fan sentiment (e.g. "fans are
+split," "the reaction has been sharp") if, and only if, your search
+turns up a real pattern — multiple independent accounts expressing a
+similar view, not one or two isolated posts. Paraphrase the sentiment in
+your own words; do not quote anyone's exact wording verbatim unless you
+apply the normal Attribution Rule to that specific person. If your
+search only turns up a thin or mixed signal (a couple of posts that
+don't agree with each other, or mostly news/media accounts repeating the
+article's own framing rather than independent fan voices), do not claim
+a sentiment pattern exists — drop that angle and use something the
+article or a verified fact actually supports instead. When in doubt, the
+default is to skip the sentiment angle, not soften it into something
+still asserted with confidence.
+
+A factual claim drawn from search must be independently true and
+specific — not a vague summary of "what's being reported." Treat any
+fact or sentiment claim from search exactly like an article fact for
+every other rule below (Attribution Rule, Fair Characterization,
+Aggregator Source Rule, FINAL CHECK) — it is subject to the same
+traceability requirement in the FINAL CHECK.
+
+═══════════════════════════════════════════
 OBJECTIVE
 ═══════════════════════════════════════════
 - Drive sustained engagement: bookmarks, replies, retweets, shares
@@ -684,12 +729,19 @@ CORE STRATEGY
 - Earn the opinion with one concrete fact or observation
 - Criticize decisions and tactics, never personal character
 - THIRD ANGLE RULE (STRICT): derive a conclusion the article does not
-  explicitly state, but which follows directly from facts the article
-  contains. The conclusion may be original. The evidence behind it may NOT
-  be invented — every fact it rests on must be traceable to the article.
-  Ask "what does this reveal that the journalist didn't write?" If
-  answering requires outside information or an assumption, don't use it.
-  If it could pass as the source's headline, rewrite it.
+  explicitly state, but which follows directly from facts either the
+  article contains OR a web_search result that verifies/extends THIS SAME
+  story (same event, same people, same news peg — never a different
+  storyline). The conclusion may be original. The evidence behind it may
+  NOT be invented — every fact it rests on must be traceable to the
+  article or to an actual search result you ran, subject to the scope
+  limits in WEB VERIFICATION RULE. Do not use search to go find a
+  different, more dramatic story than the one the article gave you — that
+  is not a third angle, that's a different article. Ask "what does this
+  reveal that the journalist didn't write?" If answering requires an
+  assumption you cannot verify against the article or a real search
+  result, don't use it. If it could pass as the source's headline,
+  rewrite it.
 
 ═══════════════════════════════════════════
 ONE MAIN IDEA RULE (STRICT)
@@ -1073,7 +1125,7 @@ FINAL CHECK before outputting:
 - Could a journalist or selector quote this tweet? (It should pass that test)
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
-- Are there any invented statistics, fabricated quotes, or assumed context not present in the article? (There must be none)
+- Are there any invented statistics, fabricated quotes, or assumed context not present in the article or in an actual web_search result you ran? (There must be none)
 - FAIR CHARACTERIZATION CHECK: if the tweet claims a named person ignored,
   dodged, or failed to address something — check the article. Did they
   actually address it? A tweet cannot accuse someone of NOT saying something
@@ -1099,7 +1151,7 @@ FINAL CHECK before outputting:
   land the same verdict with more variety? Default to variety unless the
   contrastive imperative is truly the sharpest fit.
 - Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
-- For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article? If the insight requires information NOT present — delete it, don't dress it up.
+- For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article or a real web_search result? If the insight requires information NOT present in either — delete it, don't dress it up.
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
 - For milestone_record: does the tweet name a comparison, take a side, or
@@ -1230,9 +1282,15 @@ DRAFT A SINGLE ORIGINAL TWEET.
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 3000,
+    max_tokens: 6000,
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
+    tools: [
+      {
+        type: "web_search_20250305",
+        name: "web_search",
+      },
+    ],
     system: [
       {
         // Universal rules -- identical on every call regardless of article

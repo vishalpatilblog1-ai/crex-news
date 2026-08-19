@@ -87,7 +87,7 @@ async function importFromAi(fileName) {
 }
 
 async function classifyNDTVArticle(articleText) {
-  const { module, modulePath } = await importFromAi("generateClaudeTweet.js");
+  const { module, modulePath } = await importFromAi("generateClaudeTweet_.js");
 
   const classifyArticle = module.classifyArticle;
 
