@@ -183,7 +183,7 @@ export async function caNewsPollingLoop() {
       console.log("📄 Article::", parsed.body);
       console.log("==============================================");
 
-      if (!isExempt && score < 7) {
+      if (!isExempt && score < 8) {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
         );
