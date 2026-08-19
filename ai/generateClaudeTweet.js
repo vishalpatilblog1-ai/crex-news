@@ -1138,7 +1138,27 @@ FINAL CHECK before outputting:
   Before finalizing, re-read what the tweet claims the person did or didn't
   do/say, and confirm it against what the article actually shows them
   doing/saying — not against what would make a sharper premise.
-- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed)
+- HEDGING PRESERVATION CHECK (distinct from the rule below — read both):
+  if the article itself frames a claim as unconfirmed, disputed, single-
+  sourced, or speculative (words like "reportedly," "claims," "if the
+  report is to be believed," "according to a source," or an article that
+  explicitly says the full picture isn't confirmed) — and the claim is
+  about a real, named person's motives, relationships, or reputation —
+  the tweet must preserve that uncertainty. Do NOT launder a hedged,
+  single-source claim into a confidently-stated fact just because it
+  reads sharper. This applies to the factual claim itself, not to your
+  own editorial verdict — you can still state your opinion on what the
+  (hedged) situation means with full confidence; what you cannot do is
+  strip the source's own uncertainty markers from the underlying claim.
+  Example of the failure: an article about a rumored rift says "if the
+  claims made in the report are to be believed" and ends by stating
+  nobody involved has confirmed anything — a tweet that states the rift
+  and its cause as settled fact, with no attribution to the single report
+  it came from, has misrepresented an unconfirmed claim as established
+  reporting. Fix: attribute the claim to its actual source explicitly
+  (name the outlet/report), and don't extend the claim's certainty
+  beyond what the article itself commits to.
+- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed on YOUR verdict — this is separate from the Hedging Preservation Check above, which governs uncertain source claims, not your own stated opinion.)
 - Does the closing line (or any line) reject one framing to assert another —
   "isn't just X, it's Y" or "That's not X, that's Y" in any order or paraphrase?
   This is banned throughout the tweet, not just the close. If yes, cut the

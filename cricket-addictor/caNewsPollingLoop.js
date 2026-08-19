@@ -214,7 +214,7 @@ export async function caNewsPollingLoop() {
       // );
 
       const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType);
+        await generateClaudeTweetWithType(fullText, articleType, "CA");
 
       tweetText = tweetToPost;
 
