@@ -29,7 +29,7 @@ import { parseNDTVArticle } from "./parseNDTVArticle.js";
 
 const SOURCE = "NDTV";
 
-const MAX_AGE_MIN = 60;
+const MAX_AGE_MIN = 120;
 // Bumped from 6h to match CA's 24h retention -- CA's comment notes this
 // exists specifically so a same-day pubDate bump on an already-tweeted
 // article can't slip past dedup. Confirm whether NDTV republishes/bumps
@@ -167,14 +167,6 @@ export async function ndtvNewspolling() {
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
 
-        // console.log(
-        //   `📊 Scores — significance: ${
-        //     contextDecision?.significanceScore ?? "n/a"
-        //   }, virality: ${contextDecision?.viralityScore ?? "n/a"} — "${
-        //     parsed.headline
-        //   }"`,
-        // );
-
         if (
           contextDecision?.isAlreadyCovered === true &&
           contextDecision?.confidence >= 0.8
@@ -193,11 +185,13 @@ export async function ndtvNewspolling() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = contextDecision?.significanceScore ?? 10;
 
-        // console.log("================ Full NDTV Article ===========");
-        // console.log("🏷️ Article Type::", articleType);
-        // console.log("📰 Headline::", selected.title);
-        // console.log("📄 Article::", parsed.body);
-        // console.log("==============================================");
+        console.log("================ Full NDTV Article ===========");
+        console.log("🏷️ Article Type::", articleType);
+        console.log("📰 Headline::", selected.title);
+        console.log("📄 Article::", parsed.body);
+        console.log("🔗 cleanLink::", cleanLink);
+
+        console.log("==============================================");
         if (!isExempt && score < 8) {
           console.log(`⬇️ Low significance (${score}/10) — skipping`);
           STATE.ndtv.seen[cleanLink] = Date.now();
