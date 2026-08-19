@@ -298,7 +298,8 @@ export async function caNewsPollingLoop() {
         id: tweetId,
         source: "CA",
         text: tweetText,
-        imageUrl: generatedPath || null,
+        // imageUrl: generatedPath || null,
+        imageUrl: null,
         seenKey: cleanLink,
         publishedAt: pubMs || Date.now(),
       });
