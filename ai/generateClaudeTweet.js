@@ -1170,7 +1170,26 @@ FINAL CHECK before outputting:
   declarative, causal-consequence, comparative, or direct-challenge shape
   land the same verdict with more variety? Default to variety unless the
   contrastive imperative is truly the sharpest fit.
-- Is the structure the best fit for this article — or did you default to the 3-line arc out of habit? (Consider 2-line, verdict-first, or contrast structures)
+- STRUCTURE LENGTH RULE (STRICT): the 3-paragraph WHAT/WHY/SO-WHAT arc is a
+  DEFAULT TO AVOID, not a safe default to reach for. Before using it, name
+  which specific thing in THIS article needs three distinct beats — a setup
+  fact, an escalation/complication, and a verdict that couldn't land without
+  both. If you can't name that third beat, you don't have one — compress to
+  2 paragraphs (or, rarely, 1 sharp paragraph for a single-fact story with
+  an obvious verdict).
+  Guide (not a rigid formula — judge by what the story actually needs):
+  - A single sharp fact with an obvious verdict (a milestone, a short
+    quote-reaction, a debunk) → 1-2 paragraphs. Don't manufacture a middle
+    beat just to hit three.
+  - A story with real complication (a decision plus its consequence plus a
+    verdict on both, multiple named facts that build on each other) → 2-3
+    paragraphs, only if each paragraph earns its place.
+  - A dense multi-fact story (several stats, several named people, a
+    genuine before/after) → 3 paragraphs may be justified, but check every
+    paragraph could not be merged with its neighbor first.
+  Is the structure the best fit for this article — or did you default to
+  the 3-line arc out of habit? Also consider verdict-first, or contrast
+  structures where they fit better than a linear arc.
 - For rankings and statistics articles: does every editorial claim trace back to a specific fact in the article or a real web_search result? If the insight requires information NOT present in either — delete it, don't dress it up.
 - Does the tweet introduce any religious, ethnic, or identity framing not present in the article? (If yes — remove it entirely. This is a fabrication, not an insight.)
 - Is every editorial angle directly traceable to a sentence in the article? If the angle requires assuming something about a person's background, belief, or identity that the article doesn't state — delete it.
