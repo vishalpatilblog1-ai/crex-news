@@ -116,7 +116,7 @@ async function bootstrap() {
     console.log("The cricker addictore news polling enabled");
     setInterval(
       runIfAwake(caNewsPollingLoop, "CricketAddictor"),
-      1000 * 60 * 2,
+      1000 * 60 * 3,
     );
   }
 
