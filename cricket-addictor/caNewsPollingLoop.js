@@ -25,7 +25,7 @@ import { parseCAArticleRss } from "./parseCAArticleRss.js";
 import fs from "fs";
 import path from "path";
 
-const MAX_AGE_MIN = 660;
+const MAX_AGE_MIN = 60;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
