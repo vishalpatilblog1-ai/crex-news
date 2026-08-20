@@ -90,7 +90,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
-    console.log("📰 Ndtv news polling enabled");
+    console.log("📰 Ndtv news polling is enabled");
     setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
   }
 
@@ -113,7 +113,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-    console.log("The cricker addictore news polling enabled");
+    console.log("📰 Cricket Addictor news polling is enabled");
     setInterval(
       runIfAwake(caNewsPollingLoop, "CricketAddictor"),
       1000 * 60 * 3,
@@ -135,7 +135,7 @@ async function bootstrap() {
     setInterval(runIfAwake(xNewsPollingLoop, "X News"), 1000 * 60 * 15);
   }
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
-    console.log("📰 Cricbuzz news polling enabled");
+    console.log("📰 Cricbuzz news polling is enabled");
     setInterval(
       runIfAwake(cricbuzzNewsPollingLoop, "Cricbuzz"),
       1000 * 60 * 15,

@@ -192,7 +192,7 @@ export async function ndtvNewspolling() {
         console.log("🔗 cleanLink::", cleanLink);
 
         console.log("==============================================");
-        if (!isExempt && score < 8) {
+        if (!isExempt && score < 7) {
           console.log(`⬇️ Low significance (${score}/10) — skipping`);
           STATE.ndtv.seen[cleanLink] = Date.now();
           STATE.ndtv.lastLink = cleanLink;
