@@ -89,14 +89,23 @@ async function bootstrap() {
     setInterval(runIfAwake(ieNewsPollingLoop, "Indian Express"), 1000 * 60 * 3);
   }
 
-  if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
-    console.log("📰 Ndtv news polling is enabled");
-    setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
-  }
-
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
     console.log("The Hindu news polling enabled");
     setInterval(runIfAwake(hinduNewsPollingLoop, "The Hindu"), 1000 * 60 * 2);
+  }
+  if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
+    console.log("📺 YouTube transcript polling enabled");
+    setInterval(runIfAwake(youtubeNewsPollingLoop, "YouTube"), 1000 * 60 * 15); // every 15 min
+  }
+
+  if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
+    console.log("The sportskeeda news polling enabled");
+    setInterval(runIfAwake(skNewsPollingLoop, "SportsKeeda"), 1000 * 60 * 5);
+  }
+
+  if (process.env.ENABLE_XNEWS_NEWS_POLLING === "true") {
+    console.log("The xNewsPollingLoop news polling enabled");
+    setInterval(runIfAwake(xNewsPollingLoop, "X News"), 1000 * 60 * 15);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
@@ -112,6 +121,11 @@ async function bootstrap() {
     );
   }
 
+  if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
+    console.log("📰 Ndtv news polling is enabled");
+    setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
+  }
+
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("📰 Cricket Addictor news polling is enabled");
     setInterval(
@@ -120,20 +134,6 @@ async function bootstrap() {
     );
   }
 
-  if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {
-    console.log("📺 YouTube transcript polling enabled");
-    setInterval(runIfAwake(youtubeNewsPollingLoop, "YouTube"), 1000 * 60 * 15); // every 15 min
-  }
-
-  if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
-    console.log("The sportskeeda news polling enabled");
-    setInterval(runIfAwake(skNewsPollingLoop, "SportsKeeda"), 1000 * 60 * 5);
-  }
-
-  if (process.env.ENABLE_XNEWS_NEWS_POLLING === "true") {
-    console.log("The xNewsPollingLoop news polling enabled");
-    setInterval(runIfAwake(xNewsPollingLoop, "X News"), 1000 * 60 * 15);
-  }
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 Cricbuzz news polling is enabled");
     setInterval(

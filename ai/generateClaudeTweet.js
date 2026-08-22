@@ -1239,12 +1239,13 @@ FINAL CHECK before outputting:
   STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
   WEAK: "...but will it be enough against Sri Lanka's batting depth?"
   STRONG: "It won't be enough if Sri Lanka's top order gets set early."
-Exceptions to this rule:
-- human_interest tweets may end on a genuine question ONLY if it emerges
-  naturally from the emotional tension of the story, not as a generic
-  call-to-action or a stand-in for a missing point of view.
-- selection_news tweets may end on a genuine question ONLY if it emerges
-  naturally from the selection debate itself, not as a generic call-to-action.
+  Exceptions to this rule:
+  - human_interest tweets may end on a genuine question ONLY if it emerges
+    naturally from the emotional tension of the story, not as a generic
+    call-to-action or a stand-in for a missing point of view.
+  - selection_news tweets may end on a genuine question ONLY if it emerges
+    naturally from the selection debate itself, not as a generic
+    call-to-action.
   "reveals their true priorities", "raises questions about", "highlights the
   selectors'/selectors priorities", "shows the challenge ahead", "hints at a
   promising future". If your closer uses any of these constructions or their
@@ -1325,6 +1326,7 @@ async function _generateTweet(
   articleType,
   source = null,
   isLongEligible = false,
+  correctionNote = null,
 ) {
   const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
@@ -1344,7 +1346,7 @@ async function _generateTweet(
 ${articleText}
 
 DRAFT A SINGLE ORIGINAL TWEET.
-`;
+${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
 
   const staticInstructionsBlock = buildStaticInstructionsBlock(
     needsCard,
@@ -1355,7 +1357,7 @@ DRAFT A SINGLE ORIGINAL TWEET.
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 12000,
+    max_tokens: 6000,
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
     tools: [
@@ -1366,16 +1368,26 @@ DRAFT A SINGLE ORIGINAL TWEET.
     ],
     system: [
       {
+        // Universal rules -- identical on every call regardless of article
+        // type, so this stays cached even when the type below changes.
         type: "text",
         text: systemPrompt,
         cache_control: { type: "ephemeral" },
       },
       {
+        // Output rules / final-check audit / card-field spec -- only two
+        // possible variants (needsCard true/false), previously lived
+        // uncached inside userPrompt on every single call. Placed BEFORE
+        // articleTypeInstruction so its cache hit rate isn't coupled to
+        // which of the 12 article types just ran (prefix-match caching).
         type: "text",
         text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
       },
       {
+        // Type-specific instruction -- ~12 possible values, so this is the
+        // most cache-volatile block. Placed LAST so reshuffling it on type
+        // change never invalidates the cache for the blocks above it.
         type: "text",
         text: articleTypeInstruction,
         cache_control: { type: "ephemeral" },
@@ -1459,6 +1471,104 @@ DRAFT A SINGLE ORIGINAL TWEET.
   return { tweetText, card };
 }
 
+// ─── REJECT-THEN-ASSERT GUARD ──────────────────────────────────────────────
+// Backstop for the LANGUAGE RULES ban on "isn't X, it's Y" / "not X, that's
+// Y" constructions. The prompt-level ban (PREFERRED MOVE + BANNED
+// CONSTRUCTIONS + FINAL CHECK) catches most of these, but it's a self-audit,
+// not an enforcement mechanism -- this is the mechanical net for what slips
+// through. Flow: generate -> if flagged, retry once with an explicit
+// correction -> if still flagged, strip the offending sentence(s) and ship
+// the remainder -> if stripping guts the tweet below a usable length, drop.
+
+const REJECT_THEN_ASSERT_PATTERNS = [
+  // (a) downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's Y"
+  /\bisn'?t\s+(?:just\s+|merely\s+|only\s+)?[^.!?]{1,60}?,?\s+it'?s\s+[^.!?]*[.!?]/i,
+  // (a) paraphrase dodge: "not only X but also Y"
+  /\bnot\s+only\s+[^.!?]{1,60}?\s+but\s+(?:also\s+)?[^.!?]*[.!?]/i,
+  // (a) "more than a X — it's a Y" / "beyond X, this is Y"
+  /\bmore\s+than\s+(?:a|an)\s+[^.!?]{1,40}?\s*[—-]\s*it'?s\s+[^.!?]*[.!?]/i,
+  /\bbeyond\s+[^.!?]{1,40}?,\s+this\s+is\s+[^.!?]*[.!?]/i,
+  // (b) reject-and-replace, spans the sentence boundary: "That's not X. That's Y."
+  /\bthat'?s\s+not\s+[^.!?]*[.!?]\s*that'?s\s+[^.!?]*[.!?]/i,
+  // (b) "Not X, that's Y" (same sentence)
+  /\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
+];
+
+function hasRejectThenAssert(text) {
+  if (!text) return false;
+  return REJECT_THEN_ASSERT_PATTERNS.some((re) => re.test(text));
+}
+
+const MIN_STRIPPED_LENGTH = 60;
+
+function stripRejectThenAssertSentences(text) {
+  const blocks = text.split(/\n{2,}/); // split into beats first
+
+  const cleanedBlocks = blocks
+    .map((block) => {
+      // Test the whole beat first -- pattern (b) spans across a period, so
+      // splitting into sentences before matching would miss it entirely.
+      let cleanedBlock = block;
+      for (const re of REJECT_THEN_ASSERT_PATTERNS) {
+        cleanedBlock = cleanedBlock.replace(re, "").trim();
+      }
+      return cleanedBlock;
+    })
+    .filter((block) => block.length > 0); // drop beats emptied entirely
+
+  return cleanedBlocks.join("\n\n").trim();
+}
+
+async function generateWithRetry(
+  articleText,
+  articleType,
+  source = null,
+  isLongEligible = false,
+) {
+  let result = await _generateTweet(
+    articleText,
+    articleType,
+    source,
+    isLongEligible,
+  );
+
+  if (!result.tweetText || !hasRejectThenAssert(result.tweetText)) {
+    return result; // clean on first try -- the common case
+  }
+
+  console.warn(
+    "⚠️ Reject-then-assert pattern detected, retrying once:",
+    result.tweetText,
+  );
+  const retryResult = await _generateTweet(
+    articleText,
+    articleType,
+    source,
+    isLongEligible,
+    "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
+  );
+
+  if (!retryResult.tweetText || !hasRejectThenAssert(retryResult.tweetText)) {
+    return retryResult; // fixed on retry
+  }
+
+  // Failed twice -- last resort: strip the offending sentence(s) and ship
+  // the remainder, unless stripping leaves too little to post.
+  console.warn(
+    "⚠️ Still failing after retry, stripping offending sentence(s):",
+    retryResult.tweetText,
+  );
+  const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
+
+  if (!stripped || stripped.length < MIN_STRIPPED_LENGTH) {
+    console.warn("⚠️ Strip left too little to post, discarding:", stripped);
+    return { tweetText: null, card: null };
+  }
+
+  console.warn("✂️ Shipping stripped version:", stripped);
+  return { tweetText: stripped, card: retryResult.card };
+}
+
 export async function generateClaudeTweet(articleText) {
   console.log("Prompt generated by Claude ....");
   let articleType = "player_form";
@@ -1480,7 +1590,7 @@ export async function generateClaudeTweet(articleText) {
   console.log(`🏷️ Article classified as: ${articleType}`);
 
   try {
-    return await _generateTweet(articleText, articleType);
+    return await generateWithRetry(articleText, articleType);
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
     return { tweetText: null, card: null };
@@ -1509,7 +1619,7 @@ export async function generateClaudeTweetWithType(
   // );
 
   try {
-    const { tweetText, card } = await _generateTweet(
+    const { tweetText, card } = await generateWithRetry(
       articleText,
       resolvedType,
       source,
