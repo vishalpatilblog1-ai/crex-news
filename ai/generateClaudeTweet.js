@@ -1355,7 +1355,7 @@ DRAFT A SINGLE ORIGINAL TWEET.
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 6000,
+    max_tokens: 12000,
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
     tools: [
