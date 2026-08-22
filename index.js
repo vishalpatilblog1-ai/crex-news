@@ -20,13 +20,15 @@ import { xNewsPollingLoop } from "./x-news-cricket/xNewsPollingLoop.js";
 
 const log = createLogger("prod");
 
-//https://app.scrappey.com/#/
 global.STATE = null;
 global.LAST_CA_SUCCESS_AT = 0;
 global.CA_COOLDOWN_UNTIL = 0;
 
-const SLEEP_WINDOW_START_HOUR = 1; // 1:00 AM IST
-const SLEEP_WINDOW_END_HOUR = 5; // 5:00 AM IST
+const SLEEP_WINDOW_START_HOUR = 1; // 1:00 AM IST (default)
+const SLEEP_WINDOW_END_HOUR = 5; // 5:00 AM IST (default)
+
+const CA_SLEEP_WINDOW_START_HOUR = 23; // 11:00 PM IST
+const CA_SLEEP_WINDOW_END_HOUR = 5; // 5:00 AM IST
 
 function getISTHour() {
   const istHourStr = new Date().toLocaleString("en-US", {
@@ -37,17 +39,29 @@ function getISTHour() {
   return parseInt(istHourStr, 10) % 24;
 }
 
-function isSleepWindow() {
+function isSleepWindow(
+  startHour = SLEEP_WINDOW_START_HOUR,
+  endHour = SLEEP_WINDOW_END_HOUR,
+) {
   const hour = getISTHour();
-  return hour >= SLEEP_WINDOW_START_HOUR && hour < SLEEP_WINDOW_END_HOUR;
+
+  if (startHour > endHour) {
+    return hour >= startHour || hour < endHour;
+  }
+  return hour >= startHour && hour < endHour;
 }
 
-// Wraps a polling loop fn so setInterval calls this instead of the loop
-// directly — every source gets the same gate, added in exactly one place.
-function runIfAwake(pollFn, label) {
+function runIfAwake(
+  pollFn,
+  label,
+  startHour = SLEEP_WINDOW_START_HOUR,
+  endHour = SLEEP_WINDOW_END_HOUR,
+) {
   return async () => {
-    if (isSleepWindow()) {
-      console.log(`😴 Sleep window (1-5 AM IST) — skipping ${label} poll`);
+    if (isSleepWindow(startHour, endHour)) {
+      console.log(
+        `😴 Sleep window (${startHour}:00-${endHour}:00 IST) — skipping ${label} poll`,
+      );
       return;
     }
     try {
@@ -129,7 +143,12 @@ async function bootstrap() {
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("📰 Cricket Addictor news polling is enabled");
     setInterval(
-      runIfAwake(caNewsPollingLoop, "CricketAddictor"),
+      runIfAwake(
+        caNewsPollingLoop,
+        "CricketAddictor",
+        CA_SLEEP_WINDOW_START_HOUR,
+        CA_SLEEP_WINDOW_END_HOUR,
+      ),
       1000 * 60 * 3,
     );
   }
