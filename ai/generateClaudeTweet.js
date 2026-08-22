@@ -707,6 +707,17 @@ article or a verified fact actually supports instead. When in doubt, the
 default is to skip the sentiment angle, not soften it into something
 still asserted with confidence.
 
+BANGER REACTION ALLOWANCE:
+When your search under the FAN SENTIMENT SUB-RULE turns up one
+specific, vivid, individually-attributable reaction (a named account,
+a public figure, a journalist) that captures the sentiment sharper
+than paraphrase would — you may use it as a short direct quote under
+the normal Attribution Rule and 15-word-equivalent brevity, instead of
+paraphrasing it away. This is an exception to "paraphrase the
+sentiment," not to the pattern requirement — a single banger quote
+still needs the surrounding pattern (multiple independent accounts
+agreeing) to justify using it at all. One such quote per tweet, max.
+
 A factual claim drawn from search must be independently true and
 specific — not a vague summary of "what's being reported." Treat any
 fact or sentiment claim from search exactly like an article fact for
@@ -973,6 +984,19 @@ threat", "bold call", "surprise pick", "high-stakes clash", "must-win
 game", "suggests/indicates/signals", "reveals/sends a strong signal",
 extreme labels ("Overrated", "Clueless", "Bottler", "Liability").
 
+═══════════════════════════════════════════
+PREFERRED MOVE — LEAD WITH THE VERDICT:
+═══════════════════════════════════════════
+State the real insight as your first move. Don't set up a smaller claim
+just to knock it down. If you catch yourself writing "isn't/not [smaller
+claim]," delete the smaller claim entirely and start the sentence at
+your actual point.
+Weak instinct: "Tamim's answer isn't a fix, it's a pause."
+Correct instinct: "Tamim's answer is a pause, not a fix." — still
+banned if reordered as reject-and-replace, so go further: "Tamim is
+pausing the BPL, not fixing it." → state what he did, then the
+implication, no rejection frame at all.
+
 BANNED CONSTRUCTIONS — REJECT-THEN-ASSERT (two forms, same failure):
 Never build a tweet on rejecting a smaller framing to assert a bigger one.
 This is a PATTERN, not a fixed phrase — banning exact wording does not stop
@@ -1083,6 +1107,14 @@ STRUCTURE GUIDANCE (optional — use only if it fits naturally):
 - Hook: one sharp line that earns the reader's attention (not a question unless it's genuinely provocative)
 - Body: 1–2 lines of factual context OR the specific insight
 - Stance: a clear analytical conclusion or open tension that pulls people into replies
+
+LINE BREAK MECHANICAL CHECK:
+Before output, scan each paragraph block. If any single block contains
+two sentences that each make a separate claim (not one sentence
+elaborating the other), split them onto separate lines with a blank
+line between. Test: could you delete either sentence and the other
+still stand alone as a complete thought? If yes, they're two beats —
+break them apart.
 
 LINE BREAK RULE (strict):
 Each distinct thought, beat, or contrast must be on its own line. Never run
@@ -1207,10 +1239,12 @@ FINAL CHECK before outputting:
   STRONG: "This is a gamble the selectors will regret if Bumrah breaks down again."
   WEAK: "...but will it be enough against Sri Lanka's batting depth?"
   STRONG: "It won't be enough if Sri Lanka's top order gets set early."
-  Exception to this rule:
-  - human_interest tweets may end on a genuine question ONLY if it emerges
-    naturally from the emotional tension of the story, not as a generic
-    call-to-action or a stand-in for a missing point of view.
+Exceptions to this rule:
+- human_interest tweets may end on a genuine question ONLY if it emerges
+  naturally from the emotional tension of the story, not as a generic
+  call-to-action or a stand-in for a missing point of view.
+- selection_news tweets may end on a genuine question ONLY if it emerges
+  naturally from the selection debate itself, not as a generic call-to-action.
   "reveals their true priorities", "raises questions about", "highlights the
   selectors'/selectors priorities", "shows the challenge ahead", "hints at a
   promising future". If your closer uses any of these constructions or their
@@ -1332,27 +1366,18 @@ DRAFT A SINGLE ORIGINAL TWEET.
     ],
     system: [
       {
-        // Universal rules -- identical on every call regardless of article
-        // type, so this stays cached even when the type below changes.
         type: "text",
         text: systemPrompt,
         cache_control: { type: "ephemeral" },
       },
       {
-        // Type-specific instruction -- only ~12 possible values, so this
-        // still caches well across consecutive same-type calls without
-        // invalidating the (much larger) universal block above when the
-        // type changes.
         type: "text",
-        text: articleTypeInstruction,
+        text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
       },
       {
-        // Output rules / final-check audit / card-field spec -- only two
-        // possible variants (needsCard true/false), previously lived
-        // uncached inside userPrompt on every single call.
         type: "text",
-        text: staticInstructionsBlock,
+        text: articleTypeInstruction,
         cache_control: { type: "ephemeral" },
       },
     ],
