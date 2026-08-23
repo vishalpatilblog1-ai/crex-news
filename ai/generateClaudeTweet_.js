@@ -615,7 +615,7 @@ Speed and clarity over analysis. This is the first take, not the final word.
 ENGAGEMENT TARGET: Retweets + replies (information sharing)
 
 FORMAT (mandatory):
-⚡️ [SHORT HEADLINE IN CAPS — max 6 words] -
+🚨 [SHORT HEADLINE IN CAPS — max 6 words]
 
 Then 1-2 lines of the key fact — who, what, and the immediate consequence.
 Lead with the consequence, not the act. If the news reveals something
