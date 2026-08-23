@@ -1,55 +1,15 @@
 import "dotenv/config";
+
 import { getBattingStats } from "./cricbuzzStatsApi.js";
 
-// import { getBattingStats } from "./cricbuzzStatsApi.js";
-
-function printUsage() {
-  console.log(`
-Usage:
-
-  node cricbuzz/testCricbuzzStats.js [options]
-
-Options:
-
-  --format test|odi|t20
-  --team IND
-  --opponent all
-  --year all
-
-  --stat runs|sr
-
-  --min-matches 70
-  --max-matches 100
-
-  --min-avg 40
-  --max-avg 50
-
-  --min-runs 4000
-  --max-runs 10000
-
-  --min-sr 50
-  --max-sr 80
-
-  --sort average|matches|runs|sr
-  --order asc|desc
-
-Examples:
-
-  node cricbuzz/testCricbuzzStats.js --format test --team IND --min-matches 70
-
-  node cricbuzz/testCricbuzzStats.js --format test --team IND --min-matches 70 --max-avg 40
-
-  node cricbuzz/testCricbuzzStats.js --format test --team IND --opponent AUS
-
-  node cricbuzz/testCricbuzzStats.js --format odi --team IND --min-matches 100
-
-  node cricbuzz/testCricbuzzStats.js --format test --team IND --stat sr --min-matches 50 --sort sr
-`);
-}
+/*
+|--------------------------------------------------------------------------
+| ARGUMENT PARSING
+|--------------------------------------------------------------------------
+*/
 
 function parseArgs() {
   const input = process.argv.slice(2);
-
   const args = {};
 
   for (let i = 0; i < input.length; i++) {
@@ -73,6 +33,12 @@ function parseArgs() {
   return args;
 }
 
+/*
+|--------------------------------------------------------------------------
+| HELPERS
+|--------------------------------------------------------------------------
+*/
+
 function numberOrNull(value) {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -80,15 +46,11 @@ function numberOrNull(value) {
 
   const number = Number(value);
 
-  if (Number.isNaN(number)) {
-    return null;
-  }
-
-  return number;
+  return Number.isNaN(number) ? null : number;
 }
 
 function pad(value, width, align = "left") {
-  const text = String(value);
+  const text = String(value ?? "");
 
   if (text.length >= width) {
     return text.slice(0, width);
@@ -97,11 +59,17 @@ function pad(value, width, align = "left") {
   return align === "right" ? text.padStart(width) : text.padEnd(width);
 }
 
-function formatRuns(value) {
-  return Number(value).toLocaleString("en-IN");
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("en-IN");
 }
 
-function buildQueryDescription(filters) {
+/*
+|--------------------------------------------------------------------------
+| FILTER DESCRIPTION
+|--------------------------------------------------------------------------
+*/
+
+function buildQueryDescription(filters, type) {
   const conditions = [];
 
   if (filters.minMatches !== null) {
@@ -120,26 +88,36 @@ function buildQueryDescription(filters) {
     conditions.push(`Average <= ${filters.maxAvg}`);
   }
 
-  if (filters.minRuns !== null) {
-    conditions.push(`Runs >= ${filters.minRuns}`);
+  if (type === "batting") {
+    if (filters.minRuns !== null) {
+      conditions.push(`Runs >= ${filters.minRuns}`);
+    }
+
+    if (filters.maxRuns !== null) {
+      conditions.push(`Runs <= ${filters.maxRuns}`);
+    }
   }
 
-  if (filters.maxRuns !== null) {
-    conditions.push(`Runs <= ${filters.maxRuns}`);
-  }
+  if (type === "bowling") {
+    if (filters.minWickets !== null) {
+      conditions.push(`Wickets >= ${filters.minWickets}`);
+    }
 
-  if (filters.minSr !== null) {
-    conditions.push(`SR >= ${filters.minSr}`);
-  }
-
-  if (filters.maxSr !== null) {
-    conditions.push(`SR <= ${filters.maxSr}`);
+    if (filters.maxWickets !== null) {
+      conditions.push(`Wickets <= ${filters.maxWickets}`);
+    }
   }
 
   return conditions.length ? conditions.join(" AND ") : "No additional filters";
 }
 
-function filterPlayers(players, filters) {
+/*
+|--------------------------------------------------------------------------
+| FILTER PLAYERS
+|--------------------------------------------------------------------------
+*/
+
+function filterPlayers(players, filters, type) {
   return players.filter((player) => {
     if (filters.minMatches !== null && player.matches < filters.minMatches) {
       return false;
@@ -157,80 +135,97 @@ function filterPlayers(players, filters) {
       return false;
     }
 
-    if (filters.minRuns !== null && player.runs < filters.minRuns) {
-      return false;
+    if (type === "batting") {
+      if (filters.minRuns !== null && player.runs < filters.minRuns) {
+        return false;
+      }
+
+      if (filters.maxRuns !== null && player.runs > filters.maxRuns) {
+        return false;
+      }
     }
 
-    if (filters.maxRuns !== null && player.runs > filters.maxRuns) {
-      return false;
-    }
+    if (type === "bowling") {
+      if (filters.minWickets !== null && player.wickets < filters.minWickets) {
+        return false;
+      }
 
-    if (filters.minSr !== null && player.strikeRate < filters.minSr) {
-      return false;
-    }
-
-    if (filters.maxSr !== null && player.strikeRate > filters.maxSr) {
-      return false;
+      if (filters.maxWickets !== null && player.wickets > filters.maxWickets) {
+        return false;
+      }
     }
 
     return true;
   });
 }
 
-function sortPlayers(players, sort = "average", order = "desc") {
-  const fieldMap = {
+/*
+|--------------------------------------------------------------------------
+| SORTING
+|--------------------------------------------------------------------------
+*/
+
+function sortPlayers(players, sort, order, type) {
+  const battingFields = {
     average: "average",
     avg: "average",
 
     matches: "matches",
     match: "matches",
+    m: "matches",
+
+    runs: "runs",
+  };
+
+  const bowlingFields = {
+    average: "average",
+    avg: "average",
+
+    matches: "matches",
+    match: "matches",
+    m: "matches",
+
+    wickets: "wickets",
+    wicket: "wickets",
+    wkts: "wickets",
+    w: "wickets",
 
     runs: "runs",
 
-    sr: "strikeRate",
-    strikerate: "strikeRate",
+    balls: "balls",
 
-    innings: "innings",
-    fours: "fours",
-    sixes: "sixes",
+    "4fers": "fourFers",
+    fourfers: "fourFers",
+
+    "5fers": "fiveFers",
+    fivefers: "fiveFers",
   };
 
-  const field = fieldMap[String(sort).toLowerCase()] || "average";
+  const fieldMap = type === "bowling" ? bowlingFields : battingFields;
+
+  const defaultField = type === "bowling" ? "wickets" : "average";
+
+  const normalizedSort = String(sort || defaultField).toLowerCase();
+
+  const field = fieldMap[normalizedSort] || defaultField;
 
   return [...players].sort((a, b) => {
-    const difference = Number(a[field]) - Number(b[field]);
+    const aValue = Number(a[field]) || 0;
+    const bValue = Number(b[field]) || 0;
+
+    const difference = aValue - bValue;
 
     return order === "asc" ? difference : -difference;
   });
 }
 
-function printTable(players, meta) {
-  const WIDTH = 70;
+/*
+|--------------------------------------------------------------------------
+| TIMESTAMP
+|--------------------------------------------------------------------------
+*/
 
-  console.log("");
-  console.log("=".repeat(WIDTH));
-
-  console.log("GULLY POINT CRICKET STATS".padStart(47));
-
-  console.log("=".repeat(WIDTH));
-
-  console.log("");
-
-  console.log(
-    `${meta.team.toUpperCase()} | ${meta.format.toUpperCase()} | BATTING`,
-  );
-
-  if (meta.opponent && meta.opponent.toLowerCase() !== "all") {
-    console.log(`Opponent: ${meta.opponent.toUpperCase()}`);
-  }
-
-  if (meta.year && String(meta.year).toLowerCase() !== "all") {
-    console.log(`Year: ${meta.year}`);
-  }
-
-  console.log("");
-  console.log(`Filter: ${meta.query}`);
-
+function getFetchedTimestamp() {
   const fetchedAt = new Date();
 
   const date = fetchedAt.toLocaleDateString("en-GB", {
@@ -248,34 +243,117 @@ function printTable(players, meta) {
     timeZone: "Asia/Kolkata",
   });
 
-  console.log(`Fetched: ${date} at ${time}`);
+  return `${date} at ${time}`;
+}
+
+/*
+|--------------------------------------------------------------------------
+| PRINT TABLE
+|--------------------------------------------------------------------------
+*/
+
+function printTable(players, meta) {
+  const WIDTH = 76;
 
   console.log("");
+  // console.log("=".repeat(WIDTH));
 
+  // console.log("GULLY POINT CRICKET STATS".padStart(47));
+
+  // console.log("=".repeat(WIDTH));
   console.log("");
 
   console.log(
-    pad("PLAYER", 25) +
-      " " +
-      pad("M", 6, "right") +
-      " " +
-      pad("RUNS", 10, "right") +
-      " " +
-      pad("AVG", 8, "right"),
+    `${meta.team.toUpperCase()} | ${meta.format.toUpperCase()} | ${meta.type.toUpperCase()}`,
   );
 
-  console.log("-".repeat(WIDTH));
+  if (meta.opponent && String(meta.opponent).toLowerCase() !== "all") {
+    console.log(`Opponent: ${meta.opponent.toUpperCase()}`);
+  }
 
-  for (const player of players) {
+  if (meta.year && String(meta.year).toLowerCase() !== "all") {
+    console.log(`Year: ${meta.year}`);
+  }
+
+  console.log("");
+
+  console.log(`Filter: ${meta.query}`);
+
+  console.log(`Fetched: ${getFetchedTimestamp()}`);
+
+  console.log("");
+
+  /*
+  |--------------------------------------------------------------------------
+  | BOWLING TABLE
+  |--------------------------------------------------------------------------
+  */
+
+  if (meta.type === "bowling") {
     console.log(
-      pad(player.name, 25) +
+      pad("# ", 3, "right") +
         " " +
-        pad(player.matches, 6, "right") +
+        pad("PLAYER", 25) +
         " " +
-        pad(formatRuns(player.runs), 10, "right") +
+        pad("M", 6, "right") +
         " " +
-        pad(player.average.toFixed(2), 8, "right"),
+        pad("WKTS", 8, "right") +
+        " " +
+        pad("AVG", 8, "right") +
+        " " +
+        pad("5W", 6, "right"),
     );
+
+    console.log("-".repeat(WIDTH));
+
+    players.forEach((player, index) => {
+      console.log(
+        pad(index + 1 + ".", 3, "right") +
+          " " +
+          pad(player.name, 25) +
+          " " +
+          pad(player.matches, 6, "right") +
+          " " +
+          pad(player.wickets, 8, "right") +
+          " " +
+          pad(Number(player.average || 0).toFixed(2), 8, "right") +
+          " " +
+          pad(player.fiveFers ?? 0, 6, "right"),
+      );
+    });
+  } else {
+    /*
+  |--------------------------------------------------------------------------
+  | BATTING TABLE
+  |--------------------------------------------------------------------------
+  */
+    console.log(
+      pad("#", 3, "right") +
+        " " +
+        pad("PLAYER", 25) +
+        " " +
+        pad("M", 6, "right") +
+        " " +
+        pad("RUNS", 10, "right") +
+        " " +
+        pad("AVG", 8, "right"),
+    );
+
+    console.log("-".repeat(WIDTH));
+
+    players.forEach((player, index) => {
+      console.log(
+        pad(index + 1, 3, "right") +
+          " " +
+          pad(player.name, 25) +
+          " " +
+          pad(player.matches, 6, "right") +
+          " " +
+          pad(formatNumber(player.runs), 10, "right") +
+          " " +
+          pad(Number(player.average || 0).toFixed(2), 8, "right"),
+      );
+    });
   }
 
   console.log("-".repeat(WIDTH));
@@ -283,6 +361,90 @@ function printTable(players, meta) {
   console.log("Analysis: Gully Point");
   console.log("");
 }
+
+/*
+|--------------------------------------------------------------------------
+| USAGE
+|--------------------------------------------------------------------------
+*/
+
+function printUsage() {
+  console.log(`
+GULLY POINT CRICKET STATS
+
+BATTING:
+
+node gullypoint-stats/cricketStats.js \\
+  --type batting \\
+  --format test \\
+  --team IND \\
+  --min-matches 70 \\
+  --sort avg \\
+  --order desc
+
+
+BOWLING:
+
+node gullypoint-stats/cricketStats.js \\
+  --type bowling \\
+  --format test \\
+  --team IND \\
+  --sort wickets \\
+  --order desc
+
+
+OPTIONS:
+
+--type batting|bowling
+
+--format test|odi|t20
+
+--team IND
+--opponent AUS
+--year 2026
+
+--min-matches 20
+--max-matches 100
+
+--min-avg 20
+--max-avg 40
+
+BATTING:
+
+--min-runs 1000
+--max-runs 10000
+
+BOWLING:
+
+--min-wickets 50
+--max-wickets 500
+
+SORT:
+
+Batting:
+--sort avg
+--sort runs
+--sort matches
+
+Bowling:
+--sort wickets
+--sort avg
+--sort matches
+--sort runs
+--sort fivefers
+
+ORDER:
+
+--order asc
+--order desc
+`);
+}
+
+/*
+|--------------------------------------------------------------------------
+| MAIN
+|--------------------------------------------------------------------------
+*/
 
 async function main() {
   const args = parseArgs();
@@ -292,11 +454,45 @@ async function main() {
     return;
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | TYPE
+  |--------------------------------------------------------------------------
+  */
+
+  const type = String(args.type || "batting").toLowerCase();
+
+  if (type !== "batting" && type !== "bowling") {
+    throw new Error(`Invalid type "${type}". Use batting or bowling.`);
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | BASIC QUERY
+  |--------------------------------------------------------------------------
+  */
+
   const format = args.format || "test";
+
   const team = args.team || "IND";
+
   const opponent = args.opponent || "all";
+
   const year = args.year || "all";
-  const stat = args.stat || "runs";
+
+  /*
+  |--------------------------------------------------------------------------
+  | CRICBUZZ STAT TABLE
+  |--------------------------------------------------------------------------
+  */
+
+  const stat = args.stat || (type === "bowling" ? "wickets" : "runs");
+
+  /*
+  |--------------------------------------------------------------------------
+  | FILTERS
+  |--------------------------------------------------------------------------
+  */
 
   const filters = {
     minMatches: numberOrNull(args["min-matches"]),
@@ -311,13 +507,16 @@ async function main() {
 
     maxRuns: numberOrNull(args["max-runs"]),
 
-    minSr: numberOrNull(args["min-sr"]),
+    minWickets: numberOrNull(args["min-wickets"]),
 
-    maxSr: numberOrNull(args["max-sr"]),
+    maxWickets: numberOrNull(args["max-wickets"]),
   };
 
-  console.log("");
-  //   console.log("Fetching Cricbuzz stats...");
+  /*
+  |--------------------------------------------------------------------------
+  | FETCH
+  |--------------------------------------------------------------------------
+  */
 
   const result = await getBattingStats({
     stat,
@@ -327,17 +526,45 @@ async function main() {
     opponent,
   });
 
-  let players = filterPlayers(result.players, filters);
+  /*
+  |--------------------------------------------------------------------------
+  | FILTER
+  |--------------------------------------------------------------------------
+  */
+
+  let players = filterPlayers(result.players, filters, type);
+
+  /*
+  |--------------------------------------------------------------------------
+  | SORT
+  |--------------------------------------------------------------------------
+  */
+
+  const defaultSort = type === "bowling" ? "wickets" : "average";
 
   players = sortPlayers(
     players,
-    args.sort || "average",
+    args.sort || defaultSort,
     String(args.order || "desc").toLowerCase(),
+    type,
   );
 
-  const query = buildQueryDescription(filters);
+  /*
+  |--------------------------------------------------------------------------
+  | DISPLAY QUERY
+  |--------------------------------------------------------------------------
+  */
+
+  const query = buildQueryDescription(filters, type);
+
+  /*
+  |--------------------------------------------------------------------------
+  | OUTPUT
+  |--------------------------------------------------------------------------
+  */
 
   printTable(players, {
+    type,
     format,
     team,
     opponent,
@@ -345,6 +572,12 @@ async function main() {
     query,
   });
 }
+
+/*
+|--------------------------------------------------------------------------
+| RUN
+|--------------------------------------------------------------------------
+*/
 
 main().catch((error) => {
   console.error("");
