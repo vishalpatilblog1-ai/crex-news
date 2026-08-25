@@ -70,7 +70,6 @@ Classify this cricket article into ONE of these types:
 - milestone_record    (record broken, landmark achieved)
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
-- rivalry_bait        (the article itself stages a two-sided friction — player-vs-player, team-vs-team, era-vs-era, an on-field clash, a snub framed against a rival's selection. The tension must exist IN the article, not be invented.)
 - breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
 
 Classification Rules (apply in order):
@@ -95,14 +94,6 @@ Classification Rules (apply in order):
    news peg: a comparison driven by a selection/lineup decision → selection_news; a comparison
    built on stats/performance trend → player_form; a comparison that's fundamentally a column or
    personal take → opinion_piece.
-
-0c. Choose rivalry_bait ONLY if the article's own reporting stages a real two-sided
-   tension — an actual on-field clash between named individuals, a direct rivalry
-   angle the article itself frames (not one you'd have to construct), or a snub
-   explicitly framed against who got picked instead. Do NOT use rivalry_bait for
-   a plain selection decision (→ selection_news), a plain form comparison (→
-   player_form), or a plain opinion column (→ opinion_piece) just because two
-   names appear — the article must present them IN TENSION, not just together.
 
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
@@ -238,21 +229,10 @@ Rules:
 - The insight between them must connect the two, not just list them
 - Works best for milestone_record and player_form types
 
-PATTERN M — THE DIVIDING LINE
-Name the two sides of a real tension the article stages, then plant a flag —
-don't just describe the clash, take a position on who's right or what it costs.
-Examples (structure only — NEVER repeat these lines):
-"Kohli walked off to a standing ovation. Gambhir didn't clap once."
-"One team is building a dynasty. The other is still arguing about who's captain."
-Rules:
-- The tension must exist in the article's own reporting — never manufacture a rivalry
-- Land on a stance, not just a description of the clash (avoid pure "both sides have a point")
-- Works best for rivalry_bait; also usable for selection_news and player_form when a real two-sided comparison is the actual news peg
-
 PATTERN DIVERSITY RULE (important):
 Do not default to the same pattern repeatedly.
 Rotate across patterns based on what the article genuinely supports.
-If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, or M this time.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
@@ -625,40 +605,6 @@ early. Can Vaibhav back this up against senior bowling attacks?"
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
-`,
-
-  rivalry_bait: `
-ARTICLE TYPE: Rivalry / Dividing Line
-
-The article stages a real two-sided tension. Your job is to sharpen the line, not blur it.
-
-ENGAGEMENT TARGET: Replies + quote-tweets (pick-a-side debate)
-Force the reader to feel like they have to pick a side.
-
-Focus on:
-- The two named sides of the tension — both must come from the article, never invented
-- What one side has that the other doesn't (form, numbers, standing, a specific decision)
-- Why this specific moment sharpens the divide, not just that it exists
-
-Preferred patterns: M (Dividing Line), B (Specific Contradiction), H (Sharp Punch)
-
-Rules:
-- Name both sides clearly — a rivalry tweet with only one side named is a hot take, not rivalry_bait
-- Take a position on who has the stronger case — do not present it as neutrally "both valid"
-- Ground every comparison point in something the article actually states — no inventing a rivalry the article doesn't stage
-- Avoid manufactured outrage — the friction must be real, not exaggerated for engagement
-
-FRICTION REQUIREMENT:
-If the tweet describes the two sides without landing on who's ahead or what
-the gap actually costs — REWRITE. Naming a rivalry isn't enough; take a stance
-on it.
-
-MANUFACTURED TENSION GUARD:
-If, while writing, the "rivalry" only holds together by exaggerating one side's
-position or ignoring context the article gives for the other side — stop. This
-is a Fair Characterization failure just like press_conference misquoting. Either
-find the genuine tension the article supports, or this article should have been
-classified selection_news, player_form, or opinion_piece instead.
 `,
 
   breaking_news: `
@@ -1282,10 +1228,6 @@ FINAL CHECK before outputting:
 - For milestone_record: does the tweet name a comparison, take a side, or
   surface unresolved tension — or does it just restate the achievement? If
   it only restates — REWRITE before output, don't send it.
-- For rivalry_bait: does the tweet name both sides AND take a position on
-  who's ahead or what the gap costs — or does it just describe two people/teams
-  existing near each other? If it doesn't land on a side, or if either side's
-  position is exaggerated beyond what the article shows — REWRITE.
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
   The reader should finish thinking "but wait, actually..." or "no, I think..."
@@ -1577,32 +1519,6 @@ function stripRejectThenAssertSentences(text) {
   return cleanedBlocks.join("\n\n").trim();
 }
 
-// ─── CLOSING LINE SHAPE VARIETY GUARD ──────────────────────────────────────
-// Backstop for CLOSING LINE SHAPE VARIETY RULE. The prompt bans defaulting
-// to the contrastive-imperative closer ("[must/should] do X, not Y") but
-// that's a self-audit (FINAL CHECK), not an enforcement mechanism — same
-// root cause as the reject-then-assert bug. Observed: 7 tweets in a row
-// closed on this exact shape despite the rule existing in the prompt body.
-// Fix: track consecutive uses across calls (in-memory, resets on deploy)
-// and force a reroll once the shape has repeated back-to-back, rather than
-// banning the shape outright — it's a valid shape, just not a default.
-
-const CONTRASTIVE_IMPERATIVE_PATTERN =
-  /\b(?:must|should|needs? to|has to)\b[^.!?\n]{1,90}?,\s*not\b[^.!?\n]*[.!?]?\s*$/i;
-
-let consecutiveContrastiveImperativeCloses = 0;
-const CONTRASTIVE_IMPERATIVE_STREAK_LIMIT = 2; // allow 2 in a row, force variety on the 3rd
-
-function getClosingLine(text) {
-  if (!text) return "";
-  const beats = text.trim().split(/\n{2,}/);
-  return (beats[beats.length - 1] || "").trim();
-}
-
-function usesContrastiveImperativeCloser(text) {
-  return CONTRASTIVE_IMPERATIVE_PATTERN.test(getClosingLine(text));
-}
-
 async function generateWithRetry(
   articleText,
   articleType,
@@ -1616,85 +1532,41 @@ async function generateWithRetry(
     isLongEligible,
   );
 
-  if (result.tweetText && hasRejectThenAssert(result.tweetText)) {
-    console.warn(
-      "⚠️ Reject-then-assert pattern detected, retrying once:",
-      result.tweetText,
-    );
-    const retryResult = await _generateTweet(
-      articleText,
-      articleType,
-      source,
-      isLongEligible,
-      "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
-    );
-
-    if (retryResult.tweetText && hasRejectThenAssert(retryResult.tweetText)) {
-      // Failed twice -- last resort: strip the offending sentence(s) and ship
-      // the remainder, unless stripping leaves too little to post.
-      console.warn(
-        "⚠️ Still failing after retry, stripping offending sentence(s):",
-        retryResult.tweetText,
-      );
-      const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
-
-      if (!stripped || stripped.length < MIN_STRIPPED_LENGTH) {
-        console.warn("⚠️ Strip left too little to post, discarding:", stripped);
-        return { tweetText: null, card: null };
-      }
-
-      console.warn("✂️ Shipping stripped version:", stripped);
-      result = { tweetText: stripped, card: retryResult.card };
-    } else {
-      result = retryResult; // fixed on retry, or came back empty
-    }
+  if (!result.tweetText || !hasRejectThenAssert(result.tweetText)) {
+    return result; // clean on first try -- the common case
   }
 
-  // Closing-line shape variety check runs AFTER reject-then-assert resolves,
-  // on whatever text is about to ship.
-  if (!result.tweetText) return result;
+  console.warn(
+    "⚠️ Reject-then-assert pattern detected, retrying once:",
+    result.tweetText,
+  );
+  const retryResult = await _generateTweet(
+    articleText,
+    articleType,
+    source,
+    isLongEligible,
+    "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
+  );
 
-  if (usesContrastiveImperativeCloser(result.tweetText)) {
-    if (
-      consecutiveContrastiveImperativeCloses <
-      CONTRASTIVE_IMPERATIVE_STREAK_LIMIT
-    ) {
-      consecutiveContrastiveImperativeCloses += 1;
-      return result; // shape allowed this time, streak not yet at the limit
-    }
-
-    console.warn(
-      `⚠️ Contrastive-imperative closer used ${CONTRASTIVE_IMPERATIVE_STREAK_LIMIT + 1}x in a row, forcing variety retry:`,
-      getClosingLine(result.tweetText),
-    );
-    const varietyRetry = await _generateTweet(
-      articleText,
-      articleType,
-      source,
-      isLongEligible,
-      `Your closing line used the "[must/should] do X, not Y" contrastive-imperative shape, which has now repeated ${CONTRASTIVE_IMPERATIVE_STREAK_LIMIT + 1} tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence.`,
-    );
-
-    if (
-      varietyRetry.tweetText &&
-      !hasRejectThenAssert(varietyRetry.tweetText)
-    ) {
-      consecutiveContrastiveImperativeCloses = usesContrastiveImperativeCloser(
-        varietyRetry.tweetText,
-      )
-        ? consecutiveContrastiveImperativeCloses + 1 // model still defaulted to it despite the ask
-        : 0; // reset — variety achieved
-      return varietyRetry;
-    }
-
-    // Retry failed or came back empty -- ship the original rather than lose the tweet.
-    console.warn("⚠️ Variety retry failed or empty, shipping original closer.");
-    consecutiveContrastiveImperativeCloses += 1;
-    return result;
+  if (!retryResult.tweetText || !hasRejectThenAssert(retryResult.tweetText)) {
+    return retryResult; // fixed on retry
   }
 
-  consecutiveContrastiveImperativeCloses = 0; // different shape used, reset the streak
-  return result;
+  // Failed twice -- last resort: strip the offending sentence(s) and ship
+  // the remainder, unless stripping leaves too little to post.
+  console.warn(
+    "⚠️ Still failing after retry, stripping offending sentence(s):",
+    retryResult.tweetText,
+  );
+  const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
+
+  if (!stripped || stripped.length < MIN_STRIPPED_LENGTH) {
+    console.warn("⚠️ Strip left too little to post, discarding:", stripped);
+    return { tweetText: null, card: null };
+  }
+
+  console.warn("✂️ Shipping stripped version:", stripped);
+  return { tweetText: stripped, card: retryResult.card };
 }
 
 export async function generateClaudeTweet(articleText) {
