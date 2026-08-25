@@ -615,7 +615,7 @@ Speed and clarity over analysis. This is the first take, not the final word.
 ENGAGEMENT TARGET: Retweets + replies (information sharing)
 
 FORMAT (mandatory):
-⚡️ [SHORT HEADLINE IN CAPS — max 6 words] -
+🚨 [SHORT HEADLINE IN CAPS — max 6 words] -
 
 Then 1-2 lines of the key fact — who, what, and the immediate consequence.
 Lead with the consequence, not the act. If the news reveals something
@@ -773,7 +773,7 @@ the insight, never from the anger.
 ═══════════════════════════════════════════
 STYLE & LENGTH
 ═══════════════════════════════════════════
-- Plain text, no markdown, no emoji (except ⚡️ for breaking_news)
+- Plain text, no markdown, no emoji (except 🚨 for breaking_news)
 - No hashtags unless directly about IPL 2026 (#IPL2026, max 1)
 - Short paragraphs, 1-2 lines. Short declarative sentences beat compound ones.
 - Sentence fragments (3-6 words) are fine for emphasis — not every line needs
@@ -1278,7 +1278,7 @@ SPECIFICITY AUDIT (press_conference and opinion_piece articles only):
   If the closing line could have been written without reading the article — delete it and rewrite with one concrete detail from the article.
 
 RULES:
-- No Emoji at all — EXCEPTION: breaking_news type uses ⚡️ as specified in its format
+- No Emoji at all — EXCEPTION: breaking_news type uses 🚨 as specified in its format
 - Plain text only
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
