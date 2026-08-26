@@ -166,6 +166,16 @@ function filterPlayers(players, filters, type) {
 */
 
 function sortPlayers(players, sort, order, type) {
+  // const battingFields = {
+  //   average: "average",
+  //   avg: "average",
+
+  //   matches: "matches",
+  //   match: "matches",
+  //   m: "matches",
+
+  //   runs: "runs",
+  // };
   const battingFields = {
     average: "average",
     avg: "average",
@@ -175,6 +185,10 @@ function sortPlayers(players, sort, order, type) {
     m: "matches",
 
     runs: "runs",
+
+    sr: "strikeRate",
+    strikerate: "strikeRate",
+    "strike-rate": "strikeRate",
   };
 
   const bowlingFields = {
@@ -337,6 +351,7 @@ function printTable(players, meta) {
         pad("RUNS", 10, "right") +
         " " +
         pad("AVG", 8, "right"),
+      " " + pad("SR", 8, "right"),
     );
 
     console.log("-".repeat(WIDTH));
@@ -351,7 +366,9 @@ function printTable(players, meta) {
           " " +
           pad(formatNumber(player.runs), 10, "right") +
           " " +
-          pad(Number(player.average || 0).toFixed(2), 8, "right"),
+          pad(Number(player.average || 0).toFixed(2), 8, "right") +
+          " " +
+          pad(Number(player.strikeRate || 0).toFixed(2), 8, "right"),
       );
     });
   }

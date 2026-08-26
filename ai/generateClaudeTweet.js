@@ -31,13 +31,6 @@ function resolveCharLimit(source, isLongEligible) {
   return CHAR_LIMITS.DEFAULT;
 }
 
-// ─── LONG-TWEET ELIGIBILITY (Cricbuzz only) ───────────────────────────────────
-// Cheap, deterministic, no-API-call gate — runs in the polling loop BEFORE
-// generation so we only pay for a longer completion when the source article
-// actually has enough material to fill it. Duplicated from generate-gpt-tweet.js
-// intentionally (both generators need the same gate, no shared import between
-// the two standalone files).
-
 export function isLongTweetEligible(articleText) {
   if (!articleText || typeof articleText !== "string") return false;
 
@@ -255,20 +248,6 @@ Rotate across patterns based on what the article genuinely supports.
 If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, or M this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
-
-// MERGED VERSION — Grok's tighter phrasing/formatting applied throughout,
-// but every rule that was fixing a real observed problem is kept intact:
-// CARD CAPTION RULE, REPLACEMENT CANDIDATE RULE, STAT SELECTION RULE,
-// CHARACTER BOUNDARY RULE, STAT SUPPRESSION RULE, NON-CRICKET READER TEST,
-// ATTRIBUTION STAYS TO THE END, SO WHAT RULE, MULTI-SPEAKER RULE,
-// MILESTONE closer WEAK/STRONG examples — none of these were dropped.
-// Grok's version had cut all of them; this version keeps his tightening
-// of prose but restores the substance.
-//
-// FURTHER MERGED — FRICTION REQUIREMENT blocks below were pulled in from the
-// GPT-fallback prompt (generate-gpt-tweet.js), which had independently added
-// these as explicit rewrite-or-fail gates per type. Added here additively;
-// nothing existing above each block was removed or altered.
 
 const ARTICLE_TYPE_INSTRUCTIONS = {
   match_report: `

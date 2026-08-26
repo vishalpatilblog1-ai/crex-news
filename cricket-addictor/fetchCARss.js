@@ -18,7 +18,7 @@ function pickUA() {
 
 const RETRY_DELAYS_MS = [2000, 5000, 12000]; // 3 attempts with backoff
 
-async function fetchWithRetry(attempt = 0) {
+async function fetchWithRetry(ua, attempt = 0) {
   await delay(Math.floor(Math.random() * 1000) + 500); // 500–1500ms jitter
 
   const controller = new AbortController();
@@ -29,7 +29,7 @@ async function fetchWithRetry(attempt = 0) {
     res = await fetch(CA_RSS, {
       signal: controller.signal,
       headers: {
-        "User-Agent": pickUA(),
+        "User-Agent": ua,
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
@@ -45,22 +45,21 @@ async function fetchWithRetry(attempt = 0) {
     });
   } catch (err) {
     clearTimeout(timeout);
-    const isAbort = err.name === "AbortError";
 
     if (attempt < RETRY_DELAYS_MS.length) {
       console.warn(
         `⚠️ CA RSS attempt ${attempt + 1} failed (${err.name}), retrying in ${
           RETRY_DELAYS_MS[attempt]
-        }ms...`
+        }ms...`,
       );
       await delay(RETRY_DELAYS_MS[attempt]);
-      return fetchWithRetry(attempt + 1);
+      return fetchWithRetry(ua, attempt + 1);
     }
 
     throw new Error(
       `CA RSS network error after ${attempt + 1} attempts: ${err.name} ${
         err.message
-      }`
+      }`,
     );
   }
 
@@ -78,10 +77,10 @@ async function fetchWithRetry(attempt = 0) {
     console.warn(
       `⚠️ CA RSS attempt ${attempt + 1} got HTTP ${res.status}, retrying in ${
         RETRY_DELAYS_MS[attempt]
-      }ms...`
+      }ms...`,
     );
     await delay(RETRY_DELAYS_MS[attempt]);
-    return fetchWithRetry(attempt + 1);
+    return fetchWithRetry(ua, attempt + 1);
   }
 
   if (!res.ok) {
@@ -92,7 +91,8 @@ async function fetchWithRetry(attempt = 0) {
 }
 
 export async function fetchCARSS() {
-  const res = await fetchWithRetry();
+  const ua = pickUA(); // pick once per poll cycle so retries look like the same client
+  const res = await fetchWithRetry(ua);
   const xml = await res.text();
 
   try {
