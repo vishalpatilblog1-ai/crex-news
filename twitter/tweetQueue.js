@@ -5,8 +5,6 @@ import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
 global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
-// USE_WEB_TWEET=true  -> normal flow, actually posts to X
-// USE_WEB_TWEET=false -> console-only, logs what would have been posted
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
 const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min

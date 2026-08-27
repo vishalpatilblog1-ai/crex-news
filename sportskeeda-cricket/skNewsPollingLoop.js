@@ -1,5 +1,5 @@
 import {
-  classifyArticle,
+  // classifyArticle,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
 
@@ -13,7 +13,11 @@ import { parseSKArticle } from "./parseSKArticle.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
-import { SIGNIFICANCE_EXEMPT_TYPES } from "../ai/generateClaudeTweet.js";
+import {
+  classifyArticle,
+  generateClaudeTweetWithType,
+  SIGNIFICANCE_EXEMPT_TYPES,
+} from "../ai/generateClaudeTweet.js";
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
@@ -214,38 +218,11 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       );
     }
 
-    // let decision = null;
-
-    // try {
-    //   decision = await judgeNewsContext({
-    //     articleText: fullText,
-    //     existingContexts: STATE.dailyContext.contexts.map(
-    //       (context) => context.summary,
-    //     ),
-    //   });
-
-    //   console.log(
-    //     `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
-    //   );
-
-    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-    //     console.log("🔴 Sportskeeda article already covered");
-    //     markSeen(STATE, selectedItem, cleanLink);
-    //     await saveState(STATE, "Sportskeeda duplicate context");
-    //     return "skip";
-    //   }
-    // } catch (error) {
-    //   console.log(
-    //     "⚠️ Sportskeeda context check failed:",
-    //     error?.message || error,
-    //   );
-    // }
-
     let tweetText = null;
     let player = "";
 
     try {
-      const claudeResult = await generateGPTTweetWithType(
+      const claudeResult = await generateClaudeTweetWithType(
         fullText,
         articleType,
       );
