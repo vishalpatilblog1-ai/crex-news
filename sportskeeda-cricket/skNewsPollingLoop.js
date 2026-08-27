@@ -1,8 +1,3 @@
-import {
-  // classifyArticle,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
-
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -237,7 +232,10 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
 
     if (!tweetText) {
       try {
-        const gptResult = await generateGPTTweetWithType(fullText, articleType);
+        const gptResult = await generateClaudeTweetWithType(
+          fullText,
+          articleType,
+        );
         tweetText = gptResult?.tweetText || null;
         player = gptResult?.player || "";
         console.log(

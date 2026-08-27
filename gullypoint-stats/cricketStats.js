@@ -550,6 +550,44 @@ async function main() {
   */
 
   let players = filterPlayers(result.players, filters, type);
+  const includedPlayers = args.include
+    ? String(args.include)
+        .split(",")
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+
+  const excludedPlayers = args.exclude
+    ? String(args.exclude)
+        .split(",")
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+
+  if (includedPlayers.length > 0) {
+    players = players.filter((player) =>
+      includedPlayers.includes(String(player.name).toLowerCase()),
+    );
+  }
+
+  if (excludedPlayers.length > 0) {
+    players = players.filter(
+      (player) => !excludedPlayers.includes(String(player.name).toLowerCase()),
+    );
+  }
+
+  // const excludedPlayers = args.exclude
+  //   ? String(args.exclude)
+  //       .split(",")
+  //       .map((name) => name.trim().toLowerCase())
+  //       .filter(Boolean)
+  //   : [];
+
+  // if (excludedPlayers.length > 0) {
+  //   players = players.filter(
+  //     (player) => !excludedPlayers.includes(String(player.name).toLowerCase()),
+  //   );
+  // }
 
   /*
   |--------------------------------------------------------------------------

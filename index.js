@@ -113,7 +113,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_SPORTSKEEDA_NEWS_POLLING === "true") {
-    console.log("The sportskeeda news polling enabled");
+    console.log("📰 sportskeeda news polling is enabled");
     setInterval(runIfAwake(skNewsPollingLoop, "SportsKeeda"), 1000 * 60 * 5);
   }
 
