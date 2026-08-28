@@ -190,6 +190,13 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
 
+      console.log("================ Full SK Article ===========");
+      console.log("🏷️ Article Type::", articleType);
+      console.log("📰 Headline::", parsed.headline);
+      console.log("📄 Article::", fullText);
+      console.log("🔗 cleanLink::", cleanLink);
+      console.log("==============================================");
+
       if (!isExempt && score < 7) {
         console.log(
           `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
