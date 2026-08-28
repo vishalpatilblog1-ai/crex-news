@@ -16,19 +16,21 @@ import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweet,
+  generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
 import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
-import {
-  generateGPTTweet,
-  generateGPTTweetWithType,
-} from "../ai/generate-gpt-tweet.js";
+// import {
+//   generateGPTTweet,
+//   generateGPTTweetWithType,
+// } from "../ai/generate-gpt-tweet.js";
 
-const MAX_AGE_MIN = 60;
+const MAX_AGE_MIN = 120;
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000;
+const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
 
 export async function ctNewsPollingLoop() {
   console.log("ctNewsPollingLoop..");
@@ -67,14 +69,17 @@ export async function ctNewsPollingLoop() {
     .filter(isCTArticle)
     .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-  let selected = null;
-
+  // ---- Collect ALL unseen, non-aged-out candidates (not just the first) ----
+  const candidates = [];
   for (const item of sorted) {
     const pubMs = getPubDate(item);
     if (!pubMs) continue;
 
     const ageMin = (Date.now() - pubMs) / 60000;
-    if (ageMin > MAX_AGE_MIN) continue;
+    if (ageMin > MAX_AGE_MIN) {
+      console.log(`⏳ CT aged out (${Math.round(ageMin)}m): ${item.title}`);
+      continue;
+    }
 
     const cleanLink = normalizeCTLink(item.link);
     if (!cleanLink) continue;
@@ -86,158 +91,175 @@ export async function ctNewsPollingLoop() {
       continue;
     }
 
-    selected = item;
-    break;
+    candidates.push({ item, cleanLink });
   }
 
-  if (!selected) return false;
+  console.log(
+    `📰 CT list: ${sorted.length} articles, ${candidates.length} unseen candidates`,
+  );
 
-  const cleanLink = normalizeCTLink(selected.link);
-
-  // ── Parse ─────────────────────────────────────────────────────────────────
-  const parsed = parseCTArticle(selected);
-  if (!parsed?.body || parsed.body.length < 80) {
-    STATE.cricktracker.seen[cleanLink] = Date.now();
+  if (candidates.length === 0) {
     await saveState(STATE);
-    return true;
+    return false;
   }
 
-  const fullText = `${parsed.headline}\n${parsed.body} ${JSON.stringify(
-    parsed.table,
-  )}`;
+  let queuedCount = 0;
 
-  // ── Step 1: Classify article type first ──────────────────────────────────
-  let articleType = "player_form";
-  try {
-    articleType = await classifyArticle(fullText);
-    // console.log(`🏷️ Classified as: ${articleType}`);
-  } catch (err) {
-    console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-  }
-
-  // ── Step 2: Deduplication + significance gate ─────────────────────────────
-  let decision = null;
-  try {
-    decision = await judgeNewsContext({
-      articleText: fullText,
-      existingContexts:
-        STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-    });
-
-    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      console.log("🔴 CT skipped — already covered context");
-      STATE.cricktracker.seen[cleanLink] = Date.now();
-      await saveState(STATE);
-      return true;
-    }
-
-    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-    const score = decision?.significanceScore ?? 10;
-    // if (!isExempt) {
-    if (!isExempt && score < 7) {
+  // ---- Process every candidate (up to MAX_PER_POLL) ----
+  for (const { item: selected, cleanLink } of candidates) {
+    if (queuedCount >= MAX_PER_POLL) {
       console.log(
-        `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+        `⏸️ CT hit MAX_PER_POLL (${MAX_PER_POLL}) — remaining stay unseen for next poll`,
       );
+      break;
+    }
+
+    // ── Parse ─────────────────────────────────────────────────────────────
+    const parsed = parseCTArticle(selected);
+    if (!parsed?.body || parsed.body.length < 80) {
       STATE.cricktracker.seen[cleanLink] = Date.now();
-      await saveState(STATE);
-      return true;
+      continue;
     }
 
-    if (isExempt) {
-      console.log(
-        `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-      );
-    } else {
-      console.log(`✅ Significance: ${score}/10 — proceeding`);
-    }
-  } catch (err) {
-    console.warn("⚠️ CT judgeNewsContext failed:", err?.message || err);
-  }
+    const fullText = `${parsed.headline}\n${parsed.body} ${JSON.stringify(
+      parsed.table,
+    )}`;
 
-  // ── Step 3: Tweet generation ──────────────────────────────────────────────
-  const imageUrl = getCACTImageUrl(selected);
-  const { useImage } = await decideImageUsage({
-    imageUrl,
-    usedImages: STATE.usedImages,
-  });
-
-  let tweetText = null;
-  let generatedPath = null;
-  try {
-    // const { tweetText: claudeTweet, card } =
-    //   await generateClaudeTweet(fullText);
-    const { tweetText: claudeTweet, card } = await generateGPTTweetWithType(
-      fullText,
-      articleType,
-    );
-    tweetText = claudeTweet;
-    if (card) {
-      try {
-        generatedPath = await generateCardImage(
-          CREX_BASE_IMAGE_TEMPLATE_NEW,
-          card,
-        );
-      } catch (err) {
-        console.error("❌ Image generation failed:", err);
-      }
-    } else {
-      console.log("📝 Text-only tweet (no card)");
-    }
-    console.log("Prompt generated by claude ....");
-  } catch (err) {
-    console.warn("⚠️ Claude failed:", err?.message || err);
-  }
-
-  if (!tweetText || tweetText.trim().length < 30) {
+    // ── Step 1: Classify article type first ──────────────────────────────
+    let articleType = "player_form";
     try {
-      tweetText = await generateGeminiTweet(fullText);
-      console.log("Prompt generated by Gemini ....");
+      articleType = await classifyArticle(fullText);
     } catch (err) {
-      console.warn("⚠️ Gemini failed:", err?.message || err);
+      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
-  }
 
-  console.log("Actua tweetText by CT:::", tweetText);
+    // ── Step 2: Deduplication + significance gate ──────────────────────────
+    let decision = null;
+    try {
+      decision = await judgeNewsContext({
+        articleText: fullText,
+        existingContexts:
+          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+      });
 
-  if (!tweetText || tweetText.length < 30) {
-    STATE.cricktracker.seen[cleanLink] = Date.now();
-    await saveState(STATE);
-    return true;
-  }
+      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+        console.log(
+          "🔴 CT skipped — already covered context:",
+          parsed.headline,
+        );
+        STATE.cricktracker.seen[cleanLink] = Date.now();
+        continue;
+      }
 
-  // ── Enqueue ───────────────────────────────────────────────────────────────
-  tweetText = applySourceSignature(tweetText, "CT");
+      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      const score = decision?.significanceScore ?? 10;
 
-  const tweetId = `CT:${cleanLink}`;
+      console.log("================ Full CT Article ===========");
+      console.log("🏷️ Article Type::", articleType);
+      console.log("📰 Headline::", parsed.headline);
+      console.log("📄 Article::", fullText);
+      console.log("🔗 cleanLink::", cleanLink);
+      console.log("==============================================");
 
-  enqueueTweet({
-    id: tweetId,
-    source: "CT",
-    text: tweetText,
-    // imageUrl: useImage ? imageUrl : null,
-    imageUrl: generatedPath || null,
-    seenKey: cleanLink,
-  });
+      if (!isExempt && score < 7) {
+        console.log(
+          `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+        );
+        STATE.cricktracker.seen[cleanLink] = Date.now();
+        continue;
+      }
 
-  console.log(`📥 Queued CT tweet: ${parsed.headline}`);
+      if (isExempt) {
+        console.log(
+          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+        );
+      } else {
+        console.log(`✅ Significance: ${score}/10 — proceeding`);
+      }
+    } catch (err) {
+      console.warn("⚠️ CT judgeNewsContext failed:", err?.message || err);
+    }
 
-  if (useImage && imageUrl) {
-    STATE.usedImages[imageUrl] = Date.now();
-  }
-
-  STATE.cricktracker.seen[cleanLink] = Date.now();
-
-  if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
-    STATE.dailyContext.contexts.push({
-      summary: decision.newContext,
-      source: "CT",
-      link: cleanLink,
-      createdAt: new Date().toISOString(),
+    // ── Step 3: Tweet generation ────────────────────────────────────────────
+    const imageUrl = getCACTImageUrl(selected);
+    const { useImage } = await decideImageUsage({
+      imageUrl,
+      usedImages: STATE.usedImages,
     });
+
+    let tweetText = null;
+    let generatedPath = null;
+    try {
+      const { tweetText: claudeTweet, card } =
+        await generateClaudeTweetWithType(fullText, articleType, "CT");
+      tweetText = claudeTweet;
+      if (card) {
+        try {
+          generatedPath = await generateCardImage(
+            CREX_BASE_IMAGE_TEMPLATE_NEW,
+            card,
+          );
+        } catch (err) {
+          console.error("❌ Image generation failed:", err);
+        }
+      } else {
+        console.log("📝 Text-only tweet (no card)");
+      }
+      console.log("Prompt generated by claude ....");
+    } catch (err) {
+      console.warn("⚠️ Claude failed:", err?.message || err);
+    }
+
+    if (!tweetText || tweetText.trim().length < 30) {
+      try {
+        tweetText = await generateGeminiTweet(fullText);
+        console.log("Prompt generated by Gemini ....");
+      } catch (err) {
+        console.warn("⚠️ Gemini failed:", err?.message || err);
+      }
+    }
+
+    console.log("Actua tweetText by CT:::", tweetText);
+
+    if (!tweetText || tweetText.length < 30) {
+      STATE.cricktracker.seen[cleanLink] = Date.now();
+      continue;
+    }
+
+    // ── Enqueue ──────────────────────────────────────────────────────────────
+    tweetText = applySourceSignature(tweetText, "CT");
+
+    const tweetId = `CT:${cleanLink}`;
+
+    enqueueTweet({
+      id: tweetId,
+      source: "CT",
+      text: tweetText,
+      imageUrl: generatedPath || null,
+      seenKey: cleanLink,
+    });
+
+    console.log(`📥 Queued CT tweet: ${parsed.headline}`);
+
+    if (useImage && imageUrl) {
+      STATE.usedImages[imageUrl] = Date.now();
+    }
+
+    STATE.cricktracker.seen[cleanLink] = Date.now();
+    queuedCount++;
+
+    if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+      STATE.dailyContext.contexts.push({
+        summary: decision.newContext,
+        source: "CT",
+        link: cleanLink,
+        createdAt: new Date().toISOString(),
+      });
+    }
   }
 
   await saveState(STATE);
-  return true;
+  return queuedCount > 0;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

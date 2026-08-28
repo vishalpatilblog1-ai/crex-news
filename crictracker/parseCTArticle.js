@@ -5,9 +5,7 @@ export function parseCTArticle(item) {
   const html = item["content:encoded"];
   if (!html) return null;
 
-  const { result } = stripHtml(html, {
-    ignoreTags: ["img", "figure", "figcaption"],
-  });
+  const { result } = stripHtml(html);
 
   return {
     headline: decode(item.title),

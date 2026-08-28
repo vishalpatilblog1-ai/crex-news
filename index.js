@@ -123,7 +123,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
-    console.log("The Crictracker news polling enabled");
+    console.log("📰 Crictracker news polling is enabled");
     setInterval(runIfAwake(ctNewsPollingLoop, "CricTracker"), 1000 * 60 * 3);
   }
 
