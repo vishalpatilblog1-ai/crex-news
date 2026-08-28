@@ -19,7 +19,7 @@ const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 const IGNORE_SEEN = process.env.SK_IGNORE_SEEN === "true";
 const MAX_CANDIDATES_PER_CYCLE = 5;
-const MAX_AGE_MIN = Number(process.env.SK_MAX_AGE_MIN || 60);
+const MAX_AGE_MIN = 120;
 
 export async function skNewsPollingLoop() {
   if (IGNORE_SEEN && USE_WEB_TWEET) {
@@ -220,6 +220,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       const claudeResult = await generateClaudeTweetWithType(
         fullText,
         articleType,
+        "SK",
       );
       tweetText = claudeResult?.tweetText || null;
       player = claudeResult?.player || "";
