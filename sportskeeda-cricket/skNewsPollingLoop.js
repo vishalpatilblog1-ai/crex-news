@@ -8,6 +8,7 @@ import { parseSKArticle } from "./parseSKArticle.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
+import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
@@ -32,11 +33,6 @@ export async function skNewsPollingLoop() {
     console.log("⚠️ global.STATE is not available");
     return false;
   }
-
-  // NOTE: the isQuietHoursBlocked("SK") gate that used to live here has
-  // been removed. index.js's global sleep window (1-5 AM IST, via
-  // runIfAwake) now covers every source including SK at the polling level,
-  // so this local gate was redundant.
 
   const STATE = global.STATE;
   STATE.sk ??= {};
@@ -87,6 +83,7 @@ export async function skNewsPollingLoop() {
   console.log(`📰 Sportskeeda candidates found: ${candidates.length}`);
 
   let attemptsUsed = 0;
+  let queuedCount = 0;
 
   for (const candidate of candidates) {
     if (attemptsUsed >= MAX_CANDIDATES_PER_CYCLE) {
@@ -97,14 +94,9 @@ export async function skNewsPollingLoop() {
     }
 
     if (isBlockedSKHeadline(candidate.headline || "")) {
-      // console.log("⏭️ SK headline blocked:", candidate.headline);
       continue;
     }
     if (candidate.ageMinutes !== null && candidate.ageMinutes > MAX_AGE_MIN) {
-      // console.log(
-      //   `⏭️ SK candidate too old (${candidate.ageMinutes}min > ${MAX_AGE_MIN}min):`,
-      //   candidate.headline,
-      // );
       continue;
     }
 
@@ -135,11 +127,19 @@ export async function skNewsPollingLoop() {
       cleanLink,
     );
 
-    if (result === "success") return true;
+    if (result === "success") {
+      queuedCount += 1;
+      console.log(
+        `📥 SK queued ${queuedCount} tweet(s) this cycle so far (attempt ${attemptsUsed}/${MAX_CANDIDATES_PER_CYCLE})`,
+      );
+    }
   }
 
-  console.log("ℹ️ No Sportskeeda tweet produced this cycle");
-  return false;
+  if (queuedCount === 0) {
+    console.log("ℹ️ No Sportskeeda tweet produced this cycle");
+  }
+
+  return queuedCount > 0;
 }
 
 async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
@@ -238,17 +238,18 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       );
     }
 
-    if (!tweetText) {
+    if (!tweetText || tweetText.trim().length < 30) {
       try {
-        const gptResult = await generateClaudeTweetWithType(
+        const gptResult = await generateGPTTweetWithType(
           fullText,
           articleType,
+          "SK",
         );
         tweetText = gptResult?.tweetText || null;
-        player = gptResult?.player || "";
+        player = player || gptResult?.player || "";
         console.log(
           tweetText
-            ? "📝 GPT generated tweet"
+            ? "📝 GPT generated tweet (fallback)"
             : "📝 GPT generation returned no tweet",
         );
       } catch (error) {

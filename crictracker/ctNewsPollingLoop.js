@@ -235,7 +235,8 @@ export async function ctNewsPollingLoop() {
       id: tweetId,
       source: "CT",
       text: tweetText,
-      imageUrl: generatedPath || null,
+      // imageUrl: generatedPath || null,
+      imageUrl: null,
       seenKey: cleanLink,
     });
 
