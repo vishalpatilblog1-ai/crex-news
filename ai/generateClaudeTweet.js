@@ -895,13 +895,28 @@ SHAPE — Direct challenge to a named decision-maker
 SHAPE — Pointed declarative implication (a stated consequence, not a question)
   Example: "Every extra game without him is a wasted data point."
 
-RULE: Reserve the contrastive imperative ("must/should X, not Y") for articles
-where a genuine binary choice is the actual news peg. For most articles, a
-flat declarative, causal-consequence, comparative, or direct-challenge shape
-will land the same verdict with more variety. Before finalizing, ask: is this
-closer built on "must/should ... not ..."? If yes, actively try one of the
-other shapes first and use it unless the contrastive imperative is genuinely
-the sharpest fit for this specific article — not just the most familiar one.
+SHAPE — Negative-space / absence callout ("notice what X didn't say", or a bare
+  "X, not Y" contrast with no modal verb)
+  Example: "Notice what he didn't deny." / "Pointing at the boardroom, not the
+  dressing room."
+  Use ONLY when the omission itself is the actual news — a denial that
+  conspicuously avoids one specific claim, a statement that pointedly skips
+  something the article flags. This is the SAME overused family as the
+  contrastive imperative below, just without the modal verb — it is not a
+  loophole around that rule. If either shape closed either of your last two
+  tweets, this one is off the table too.
+
+RULE: Reserve the contrastive imperative ("must/should X, not Y") and the
+negative-space/absence callout ("notice what's missing", bare "X, not Y")
+for articles where a genuine binary choice or a genuine reportable omission
+is the actual news peg. Treat these two as ONE family for variety purposes —
+back-to-back use of either counts as a repeat. For most articles, a flat
+declarative, causal-consequence, comparative, or direct-challenge shape will
+land the same verdict with more variety. Before finalizing, ask: is this
+closer built on "must/should ... not ...", a bare "..., not ...", or "notice
+what ... didn't/doesn't"? If yes, actively try one of the other shapes first
+and use it unless this family is genuinely the sharpest fit for this specific
+article — not just the most familiar one.
 
 ═══════════════════════════════════════════
 CONNECTOR RULE (STRICT)
@@ -1230,11 +1245,13 @@ FINAL CHECK before outputting:
   rejection and state the real point directly. (See LANGUAGE RULES above for
   full examples.)
 - Does the closing line use the "[must/should] [verb] X, not Y" contrastive-
-  imperative shape? If yes, check the CLOSING LINE SHAPE VARIETY RULE — is
-  this article genuinely a binary-choice news peg, or would a flat
-  declarative, causal-consequence, comparative, or direct-challenge shape
-  land the same verdict with more variety? Default to variety unless the
-  contrastive imperative is truly the sharpest fit.
+  imperative shape — OR a bare "X, not Y" contrast with no modal verb — OR a
+  "notice what X didn't say/deny/confirm" absence callout? These three are
+  ONE family. If yes, check the CLOSING LINE SHAPE VARIETY RULE — is this
+  article genuinely a binary-choice or a genuinely reportable omission, or
+  would a flat declarative, causal-consequence, comparative, or direct-
+  challenge shape land the same verdict with more variety? Default to variety
+  unless this family is truly the sharpest fit.
 - STRUCTURE LENGTH RULE (STRICT): the 3-paragraph WHAT/WHY/SO-WHAT arc is a
   DEFAULT TO AVOID, not a safe default to reach for. Before using it, name
   which specific thing in THIS article needs three distinct beats — a setup
@@ -1565,12 +1582,21 @@ function stripRejectThenAssertSentences(text) {
 // Fix: track consecutive uses across calls (in-memory, resets on deploy)
 // and force a reroll once the shape has repeated back-to-back, rather than
 // banning the shape outright — it's a valid shape, just not a default.
+//
+// Widened: the modal contrastive imperative, a bare "X, not Y" contrast with
+// no modal verb, and "notice what X didn't say/deny" negative-space callouts
+// are the SAME underlying tic (imply the insight via contrast/absence).
+// Tracked as one family under one shared streak counter — using any one of
+// the three resets/extends the same streak as using another.
 
 const CONTRASTIVE_IMPERATIVE_PATTERN =
   /\b(?:must|should|needs? to|has to)\b[^.!?\n]{1,90}?,\s*not\b[^.!?\n]*[.!?]?\s*$/i;
+const BARE_CONTRAST_PATTERN = /,\s*not\b[^.!?\n]*[.!?]?\s*$/i;
+const NEGATIVE_SPACE_PATTERN =
+  /\b(notice what|didn't (deny|say|confirm)|doesn't deny|conspicuously (isn't|absent|missing)|what('s| is)\s+missing)\b/i;
 
-let consecutiveContrastiveImperativeCloses = 0;
-const CONTRASTIVE_IMPERATIVE_STREAK_LIMIT = 2; // allow 2 in a row, force variety on the 3rd
+let consecutiveImpliedContrastCloses = 0;
+const IMPLIED_CONTRAST_STREAK_LIMIT = 2; // allow 2 in a row, force variety on the 3rd
 
 function getClosingLine(text) {
   if (!text) return "";
@@ -1578,8 +1604,13 @@ function getClosingLine(text) {
   return (beats[beats.length - 1] || "").trim();
 }
 
-function usesContrastiveImperativeCloser(text) {
-  return CONTRASTIVE_IMPERATIVE_PATTERN.test(getClosingLine(text));
+function usesImpliedContrastFamily(text) {
+  const closer = getClosingLine(text);
+  return (
+    CONTRASTIVE_IMPERATIVE_PATTERN.test(closer) ||
+    BARE_CONTRAST_PATTERN.test(closer) ||
+    NEGATIVE_SPACE_PATTERN.test(closer)
+  );
 }
 
 async function generateWithRetry(
@@ -1633,17 +1664,14 @@ async function generateWithRetry(
   // on whatever text is about to ship.
   if (!result.tweetText) return result;
 
-  if (usesContrastiveImperativeCloser(result.tweetText)) {
-    if (
-      consecutiveContrastiveImperativeCloses <
-      CONTRASTIVE_IMPERATIVE_STREAK_LIMIT
-    ) {
-      consecutiveContrastiveImperativeCloses += 1;
+  if (usesImpliedContrastFamily(result.tweetText)) {
+    if (consecutiveImpliedContrastCloses < IMPLIED_CONTRAST_STREAK_LIMIT) {
+      consecutiveImpliedContrastCloses += 1;
       return result; // shape allowed this time, streak not yet at the limit
     }
 
     console.warn(
-      `⚠️ Contrastive-imperative closer used ${CONTRASTIVE_IMPERATIVE_STREAK_LIMIT + 1}x in a row, forcing variety retry:`,
+      `⚠️ Implied-contrast/negative-space closer used ${IMPLIED_CONTRAST_STREAK_LIMIT + 1}x in a row, forcing variety retry:`,
       getClosingLine(result.tweetText),
     );
     const varietyRetry = await _generateTweet(
@@ -1651,28 +1679,28 @@ async function generateWithRetry(
       articleType,
       source,
       isLongEligible,
-      `Your closing line used the "[must/should] do X, not Y" contrastive-imperative shape, which has now repeated ${CONTRASTIVE_IMPERATIVE_STREAK_LIMIT + 1} tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence.`,
+      `Your closing line used the implied-contrast family — either "[must/should] do X, not Y", a bare "X, not Y" with no modal verb, or a "notice what X didn't say/deny" negative-space callout — which has now repeated ${IMPLIED_CONTRAST_STREAK_LIMIT + 1} tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence, and do not frame the insight as something the subject "didn't say/deny/confirm."`,
     );
 
     if (
       varietyRetry.tweetText &&
       !hasRejectThenAssert(varietyRetry.tweetText)
     ) {
-      consecutiveContrastiveImperativeCloses = usesContrastiveImperativeCloser(
+      consecutiveImpliedContrastCloses = usesImpliedContrastFamily(
         varietyRetry.tweetText,
       )
-        ? consecutiveContrastiveImperativeCloses + 1 // model still defaulted to it despite the ask
+        ? consecutiveImpliedContrastCloses + 1 // model still defaulted to it despite the ask
         : 0; // reset — variety achieved
       return varietyRetry;
     }
 
     // Retry failed or came back empty -- ship the original rather than lose the tweet.
     console.warn("⚠️ Variety retry failed or empty, shipping original closer.");
-    consecutiveContrastiveImperativeCloses += 1;
+    consecutiveImpliedContrastCloses += 1;
     return result;
   }
 
-  consecutiveContrastiveImperativeCloses = 0; // different shape used, reset the streak
+  consecutiveImpliedContrastCloses = 0; // different shape used, reset the streak
   return result;
 }
 
