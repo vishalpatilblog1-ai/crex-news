@@ -77,7 +77,7 @@ export async function ctNewsPollingLoop() {
 
     const ageMin = (Date.now() - pubMs) / 60000;
     if (ageMin > MAX_AGE_MIN) {
-      console.log(`⏳ CT aged out (${Math.round(ageMin)}m): ${item.title}`);
+      // console.log(`⏳ CT aged out (${Math.round(ageMin)}m): ${item.title}`);
       continue;
     }
 
