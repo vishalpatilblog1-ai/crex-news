@@ -128,7 +128,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
-    console.log("The ESPN news polling enabled");
+    console.log("📰 ESPN news polling is enabled");
     setInterval(
       runIfAwake(espnNewsPollingLoop, "ESPN Cricinfo"),
       1000 * 60 * 4,
