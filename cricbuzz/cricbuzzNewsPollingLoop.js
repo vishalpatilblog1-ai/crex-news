@@ -53,9 +53,9 @@ export async function cricbuzzNewsPollingLoop() {
         const ageMin = (Date.now() - pubMs) / 60000;
 
         if (ageMin > MAX_AGE_MIN) {
-          console.log(
-            `⏳ Cricbuzz aged out (${Math.round(ageMin)}m): ${story.hline}`,
-          );
+          // console.log(
+          //   `⏳ Cricbuzz aged out (${Math.round(ageMin)}m): ${story.hline}`,
+          // );
           STATE.cricbuzz.seen[newsKey] = Date.now();
           continue;
         }
