@@ -57,7 +57,7 @@ export async function parseESPNArticle({ storyId, title }) {
         redirect: "follow",
       });
 
-      console.log("ESPN fetch status:", res.status, `(attempt ${attempt})`);
+      // console.log("ESPN fetch status:", res.status, `(attempt ${attempt})`);
 
       if (res.status === 403) {
         console.warn(`⚠️ ESPN 403 on attempt ${attempt}/${maxRetries}`);

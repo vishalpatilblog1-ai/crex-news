@@ -70,9 +70,9 @@ export async function cricbuzzNewsPollingLoop() {
       candidates.push(story);
     }
 
-    console.log(
-      `📰 Cricbuzz list: ${storyList.length} stories, ${candidates.length} unseen candidates`,
-    );
+    // console.log(
+    //   `📰 Cricbuzz list: ${storyList.length} stories, ${candidates.length} unseen candidates`,
+    // );
 
     if (candidates.length === 0) {
       await saveState(STATE);

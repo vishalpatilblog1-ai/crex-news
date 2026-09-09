@@ -331,7 +331,7 @@ function pruneUsedImages(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old usedImages entries`);
+      // console.log(`🧹 Pruned ${pruned} old usedImages entries`);
       return true;
     }
   } catch (err) {
