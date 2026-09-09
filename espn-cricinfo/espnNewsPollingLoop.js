@@ -194,7 +194,8 @@ export async function espnNewsPollingLoop() {
       id: `ESPN:${cleanUrl}`,
       source: "ESPN",
       text: tweetText,
-      imageUrl: useImage ? imageUrl : null,
+      // imageUrl: useImage ? imageUrl : null,
+      imageUrl: null,
       seenKey: cleanUrl,
     });
 
