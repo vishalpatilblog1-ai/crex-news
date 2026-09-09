@@ -24,7 +24,7 @@ const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
 
 export async function espnNewsPollingLoop() {
-  console.log("espnNewsPollingLoop started ...");
+  // console.log("espnNewsPollingLoop started ...");
   if (!global.STATE) return false;
 
   const STATE = global.STATE;
@@ -81,9 +81,9 @@ export async function espnNewsPollingLoop() {
     candidates.push({ item, cleanUrl });
   }
 
-  console.log(
-    `📰 ESPN list: ${items.length} articles, ${candidates.length} unseen candidates`,
-  );
+  // console.log(
+  //   `📰 ESPN list: ${items.length} articles, ${candidates.length} unseen candidates`,
+  // );
 
   if (candidates.length === 0) {
     await saveState(STATE);
@@ -141,7 +141,9 @@ export async function espnNewsPollingLoop() {
       const score = decision?.significanceScore ?? 10;
 
       if (!isExempt && score < 7) {
-        console.log(`⬇️ ESPN low significance (${score}/10) — skipping: ${selected.headline}`);
+        console.log(
+          `⬇️ ESPN low significance (${score}/10) — skipping: ${selected.headline}`,
+        );
         STATE.espn.seen[cleanUrl] = Date.now();
         continue;
       }
@@ -165,7 +167,11 @@ export async function espnNewsPollingLoop() {
     // ── Step 4: Tweet generation ────────────────────
     let tweetText = null;
     try {
-      const result = await generateClaudeTweetWithType(fullText, articleType, "ESPN");
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        "ESPN",
+      );
       tweetText = result?.tweetText;
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
@@ -258,7 +264,9 @@ function pruneDailyContext(STATE, retentionMs) {
     });
 
     if (before !== STATE.dailyContext.contexts.length) {
-      console.log(`🧹 Pruned ${before - STATE.dailyContext.contexts.length} old dailyContext entries`);
+      console.log(
+        `🧹 Pruned ${before - STATE.dailyContext.contexts.length} old dailyContext entries`,
+      );
       return true;
     }
   } catch (err) {
@@ -288,10 +296,14 @@ function pruneUsedImages(STATE, retentionMs) {
 }
 
 async function decideImageUsage({ imageUrl, usedImages }) {
-  if (!imageUrl) return { useImage: false, reason: "🖼️ No imageUrl — text-only" };
+  if (!imageUrl)
+    return { useImage: false, reason: "🖼️ No imageUrl — text-only" };
 
   if (usedImages?.[imageUrl]) {
-    return { useImage: false, reason: "🖼️ Image already used — forcing text-only" };
+    return {
+      useImage: false,
+      reason: "🖼️ Image already used — forcing text-only",
+    };
   }
 
   try {
@@ -315,9 +327,15 @@ async function decideImageUsage({ imageUrl, usedImages }) {
 function contextExists(STATE, summary) {
   if (!STATE.dailyContext?.contexts?.length) return false;
   const norm = normalizeSummary(summary);
-  return STATE.dailyContext.contexts.some((c) => normalizeSummary(c.summary) === norm);
+  return STATE.dailyContext.contexts.some(
+    (c) => normalizeSummary(c.summary) === norm,
+  );
 }
 
 function normalizeSummary(text = "") {
-  return text.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

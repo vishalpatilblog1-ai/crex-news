@@ -33,7 +33,7 @@ const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
 
 export async function ctNewsPollingLoop() {
-  console.log("ctNewsPollingLoop..");
+  // console.log("ctNewsPollingLoop..");
   if (!global.STATE) return false;
 
   const STATE = global.STATE;
@@ -94,9 +94,9 @@ export async function ctNewsPollingLoop() {
     candidates.push({ item, cleanLink });
   }
 
-  console.log(
-    `📰 CT list: ${sorted.length} articles, ${candidates.length} unseen candidates`,
-  );
+  // console.log(
+  //   `📰 CT list: ${sorted.length} articles, ${candidates.length} unseen candidates`,
+  // );
 
   if (candidates.length === 0) {
     await saveState(STATE);
@@ -154,12 +154,12 @@ export async function ctNewsPollingLoop() {
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
 
-      console.log("================ Full CT Article ===========");
-      console.log("🏷️ Article Type::", articleType);
-      console.log("📰 Headline::", parsed.headline);
-      console.log("📄 Article::", fullText);
-      console.log("🔗 cleanLink::", cleanLink);
-      console.log("==============================================");
+      // console.log("================ Full CT Article ===========");
+      // console.log("🏷️ Article Type::", articleType);
+      // console.log("📰 Headline::", parsed.headline);
+      // console.log("📄 Article::", fullText);
+      // console.log("🔗 cleanLink::", cleanLink);
+      // console.log("==============================================");
 
       if (!isExempt && score < 7) {
         console.log(

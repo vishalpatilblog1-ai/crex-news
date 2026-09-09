@@ -19,13 +19,12 @@ export async function loadState() {
 }
 
 export async function saveState(stateObj, reason = "no-reason-provided") {
-  // console.log(`💾 Saving state to disk | Reason: ${reason}`);
   try {
     await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
     const tmpFile = `${STATE_FILE}.tmp`;
     await fs.writeFile(tmpFile, JSON.stringify(stateObj), "utf-8");
     await fs.rename(tmpFile, STATE_FILE); // atomic swap, avoids corrupt file if crash mid-write
-    console.log("✅ State saved to disk");
+    // console.log("✅ State saved to disk");
   } catch (err) {
     console.log("⚠️ State save error:", err);
   }
