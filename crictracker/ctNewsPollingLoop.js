@@ -50,7 +50,7 @@ export async function ctNewsPollingLoop() {
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
   if (stateDirty) {
-    console.log("💾 Persisting pruned CT state");
+    // console.log("💾 Persisting pruned CT state");
     await saveState(STATE);
   }
 
@@ -305,11 +305,11 @@ function pruneDailyContext(STATE, retentionMs) {
     });
 
     if (before !== STATE.dailyContext.contexts.length) {
-      console.log(
-        `🧹 Pruned ${
-          before - STATE.dailyContext.contexts.length
-        } old dailyContext entries`,
-      );
+      // console.log(
+      //   `🧹 Pruned ${
+      //     before - STATE.dailyContext.contexts.length
+      //   } old dailyContext entries`,
+      // );
       return true;
     }
   } catch (err) {

@@ -46,7 +46,7 @@ export async function espnNewsPollingLoop() {
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
   if (stateDirty) {
-    console.log("💾 Persisting pruned ESPN state");
+    // console.log("💾 Persisting pruned ESPN state");
     await saveState(STATE);
   }
 
@@ -264,9 +264,9 @@ function pruneDailyContext(STATE, retentionMs) {
     });
 
     if (before !== STATE.dailyContext.contexts.length) {
-      console.log(
-        `🧹 Pruned ${before - STATE.dailyContext.contexts.length} old dailyContext entries`,
-      );
+      // console.log(
+      //   `🧹 Pruned ${before - STATE.dailyContext.contexts.length} old dailyContext entries`,
+      // );
       return true;
     }
   } catch (err) {
