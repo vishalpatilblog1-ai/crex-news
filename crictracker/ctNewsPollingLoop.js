@@ -144,7 +144,7 @@ export async function ctNewsPollingLoop() {
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         console.log(
-          "🔴 CT skipped — already covered context:",
+          "🔴 CT skipped — already covered context::",
           parsed.headline,
         );
         STATE.cricktracker.seen[cleanLink] = Date.now();

@@ -78,7 +78,7 @@ export function enqueueTweet({
   });
 
   // console.log(`📥 Queued tweet from ${source}: ${id}`);
-  console.log(`📥 Queued tweet from ${source}:`);
+  console.log(`📥 Queued tweet from source :: ${source}`);
 }
 
 // Removes anything sitting in the queue that's now older than MAX_TWEET_AGE_MS.
