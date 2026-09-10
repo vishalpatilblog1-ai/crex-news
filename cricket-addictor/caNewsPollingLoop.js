@@ -349,7 +349,7 @@ function pruneSeen(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old CA seen entries`);
+      // console.log(`🧹 Pruned ${pruned} old CA seen entries`);
       return true;
     }
   } catch (err) {

@@ -122,24 +122,6 @@ async function bootstrap() {
     setInterval(runIfAwake(xNewsPollingLoop, "X News"), 1000 * 60 * 15);
   }
 
-  if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
-    console.log("📰 Crictracker news polling is enabled");
-    setInterval(runIfAwake(ctNewsPollingLoop, "CricTracker"), 1000 * 60 * 3);
-  }
-
-  if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
-    console.log("📰 ESPN news polling is enabled");
-    setInterval(
-      runIfAwake(espnNewsPollingLoop, "ESPN Cricinfo"),
-      1000 * 60 * 4,
-    );
-  }
-
-  if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
-    console.log("📰 Ndtv news polling is enabled");
-    setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
-  }
-
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
     console.log("📰 Cricket Addictor news polling is enabled");
     setInterval(
@@ -153,8 +135,26 @@ async function bootstrap() {
     );
   }
 
+  if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
+    console.log("📰 Ndtv news polling is enabled");
+    setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
+  }
+
+  if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
+    console.log("📰 CRICTRACKER NEWS POLLING IS ENABLED");
+    setInterval(runIfAwake(ctNewsPollingLoop, "CricTracker"), 1000 * 60 * 3);
+  }
+
+  if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
+    console.log("📰 ESPN NEWS POLLING IS ENABLED");
+    setInterval(
+      runIfAwake(espnNewsPollingLoop, "ESPN Cricinfo"),
+      1000 * 60 * 4,
+    );
+  }
+
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
-    console.log("📰 Cricbuzz news polling is enabled");
+    console.log("📰 CRICBUZZ NEWS POLLING IS ENABLED");
     setInterval(
       runIfAwake(cricbuzzNewsPollingLoop, "Cricbuzz"),
       1000 * 60 * 15,

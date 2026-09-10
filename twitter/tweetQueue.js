@@ -152,7 +152,7 @@ export async function tryFlushTweetQueue() {
     markTweeted("QUEUE", next.source);
     await saveState(STATE);
 
-    console.log(`🚀 Flushed queued tweet: ${next.id}`);
+    console.log(`🔵 Tweet source: ${next.id}`);
     return true;
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);
