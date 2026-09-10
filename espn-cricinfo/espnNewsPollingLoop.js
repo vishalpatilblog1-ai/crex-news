@@ -241,7 +241,7 @@ function pruneESPNSeen(STATE, retentionMs) {
       }
     }
     if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old ESPN seen entries`);
+      // console.log(`🧹 Pruned ${pruned} old ESPN seen entries`);
       return true;
     }
   } catch (err) {

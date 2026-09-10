@@ -282,7 +282,7 @@ function pruneCTSeen(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old CT seen entries`);
+      // console.log(`🧹 Pruned ${pruned} old CT seen entries`);
       return true;
     }
   } catch (err) {
