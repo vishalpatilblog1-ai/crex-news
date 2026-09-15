@@ -136,7 +136,7 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
-    console.log("📰 Ndtv news polling is enabled");
+    console.log("📰 NDTV NEWS POLLING IS ENABLED");
     setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
   }
 

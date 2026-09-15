@@ -242,7 +242,7 @@ export async function ndtvNewspolling() {
             console.error("❌ Image generation failed:", err);
           }
         } else {
-          console.log("📝 Text-only tweet (no card)");
+          // console.log("📝 Text-only tweet (no card)");
         }
       } catch (err) {
         console.warn("⚠️ GPT failed:", err?.message || err);
@@ -301,7 +301,7 @@ export async function ndtvNewspolling() {
         publishedAt: pubMs || Date.now(),
       });
 
-      console.log(`📥 Queued NDTV tweet: ${selected.title}`);
+      console.log(`📥 TWEET HEADLINE: ${selected.title}`);
 
       STATE.ndtv.seen[cleanLink] = Date.now();
       STATE.ndtv.lastLink = cleanLink;
@@ -349,7 +349,7 @@ function pruneSeen(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      console.log(`🧹 Pruned ${pruned} old NDTV seen entries`);
+      // console.log(`🧹 Pruned ${pruned} old NDTV seen entries`);
       return true;
     }
   } catch (err) {

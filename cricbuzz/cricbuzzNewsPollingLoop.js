@@ -236,7 +236,7 @@ export async function cricbuzzNewsPollingLoop() {
         });
       }
 
-      console.log(`📥 Queued Cricbuzz tweet: ${selected.hline}`);
+      console.log(`📥 TWEET HEADLINE: ${selected.hline}`);
     }
 
     await saveState(STATE);

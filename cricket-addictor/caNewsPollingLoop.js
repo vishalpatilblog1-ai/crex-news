@@ -304,7 +304,7 @@ export async function caNewsPollingLoop() {
         publishedAt: pubMs || Date.now(),
       });
 
-      console.log(`📥 Queued CA tweet: ${parsed.headline}`);
+      console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
 
       if (useImage && imageUrl) {
         STATE.usedImages[imageUrl] = Date.now();

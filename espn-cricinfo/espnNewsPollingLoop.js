@@ -205,7 +205,7 @@ export async function espnNewsPollingLoop() {
       seenKey: cleanUrl,
     });
 
-    console.log("📥 Queued ESPN article:", selected.headline);
+    console.log("📥 TWEET HEADLINE:", selected.headline);
 
     if (useImage && imageUrl) {
       STATE.usedImages[imageUrl] = Date.now();

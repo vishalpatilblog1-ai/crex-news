@@ -240,7 +240,7 @@ export async function ctNewsPollingLoop() {
       seenKey: cleanLink,
     });
 
-    console.log(`📥 Queued CT tweet: ${parsed.headline}`);
+    console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
 
     if (useImage && imageUrl) {
       STATE.usedImages[imageUrl] = Date.now();
