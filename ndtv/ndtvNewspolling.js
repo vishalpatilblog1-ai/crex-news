@@ -185,11 +185,11 @@ export async function ndtvNewspolling() {
         const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
         const score = contextDecision?.significanceScore ?? 10;
 
-        console.log("================ Full NDTV Article ===========");
-        console.log("🏷️ Article Type::", articleType);
-        console.log("📰 Headline::", selected.title);
-        console.log("📄 Article::", parsed.body);
-        console.log("🔗 cleanLink::", cleanLink);
+        // console.log("================ Full NDTV Article ===========");
+        // console.log("🏷️ Article Type::", articleType);
+        // console.log("📰 Headline::", selected.title);
+        // console.log("📄 Article::", parsed.body);
+        // console.log("🔗 cleanLink::", cleanLink);
 
         console.log("==============================================");
         if (!isExempt && score < 7) {
