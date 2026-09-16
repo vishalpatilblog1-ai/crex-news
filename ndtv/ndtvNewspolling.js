@@ -202,9 +202,9 @@ export async function ndtvNewspolling() {
         }
 
         if (isExempt) {
-          console.log(
-            `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-          );
+          // console.log(
+          //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+          // );
         } else {
           console.log(`✅ Significance: ${score}/10 — proceeding`);
         }
@@ -237,7 +237,7 @@ export async function ndtvNewspolling() {
               CREX_BASE_IMAGE_TEMPLATE,
               card,
             );
-            console.log("GPT generatedPath:::", generatedPath);
+            // console.log("GPT generatedPath:::", generatedPath);
           } catch (err) {
             console.error("❌ Image generation failed:", err);
           }
@@ -292,7 +292,7 @@ export async function ndtvNewspolling() {
       // same as CB does, and the queue decides whether to actually post
       // or log-only.
       enqueueTweet({
-        id: tweetId,
+        id: cleanLink,
         source: SOURCE,
         text: tweetText,
         // imageUrl: generatedPath || null,

@@ -1401,9 +1401,9 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   const outputCost = (usage.output_tokens / 1_000_000) * 10;
   const totalCost = inputCost + outputCost;
 
-  console.log(
-    `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
-  );
+  // console.log(
+  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // );
 
   const textBlock = response.content.find((block) => block.type === "text");
   const rawText = textBlock?.text;

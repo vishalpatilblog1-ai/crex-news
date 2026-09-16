@@ -207,9 +207,9 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       }
 
       if (isExempt) {
-        console.log(
-          `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        );
+        // console.log(
+        //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+        // );
       } else {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
       }

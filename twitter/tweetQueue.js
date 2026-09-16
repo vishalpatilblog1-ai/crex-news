@@ -49,9 +49,7 @@ function markTweeted(trigger, source) {
 
   const seconds = Math.round(delay / 1000);
 
-  console.log(
-    `🟢 Tweet sent by ${trigger} (source: ${source}). Next tweet in ~${seconds}s`,
-  );
+  console.log(`🟢 TWEET SENT BY QUEUE ${trigger}.. Next tweet in ~${seconds}s`);
 }
 
 export function enqueueTweet({
@@ -151,7 +149,7 @@ export async function tryFlushTweetQueue() {
     markTweeted("QUEUE", next.source);
     await saveState(STATE);
 
-    console.log(`🔵 Tweet source: ${next.id}`);
+    console.log(`🔵 TWEET LINK: ${next.id}`);
     return true;
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);

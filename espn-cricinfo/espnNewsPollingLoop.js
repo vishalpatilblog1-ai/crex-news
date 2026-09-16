@@ -197,7 +197,7 @@ export async function espnNewsPollingLoop() {
 
     // ── Enqueue ──────────────────────────────────────
     enqueueTweet({
-      id: `ESPN:${cleanUrl}`,
+      id: `${cleanUrl}`,
       source: "ESPN",
       text: tweetText,
       // imageUrl: useImage ? imageUrl : null,
