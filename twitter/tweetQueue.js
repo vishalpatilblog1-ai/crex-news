@@ -10,20 +10,11 @@ const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 
 function randomTweetDelay(source) {
-  const MIN = 2 * 60 * 1000;
-  const MAX = 4 * 60 * 1000;
+  const MIN = 5 * 60 * 1000;
+  const MAX = 15 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
-
-// NOTE: the CA-specific 11:30PM-6AM block and the general 1-5AM
-// isQuietHoursBlocked check that used to live here have been removed.
-// index.js now applies a single global sleep window (1-5 AM IST, via
-// runIfAwake) at the polling level for every source, including CA — so
-// gating it again here was redundant, and CA's window no longer matching
-// the global one was actively conflicting. If caNewsPollingLoop.js still
-// imports isCricketAddictorBlocked from this file, that import needs to be
-// removed there too or the build will break.
 
 function canTweetNow(source) {
   const now = Date.now();
