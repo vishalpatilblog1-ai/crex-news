@@ -177,11 +177,11 @@ export async function caNewsPollingLoop() {
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
 
-      console.log("================ Full CA Article ===========");
-      console.log("🏷️ Article Type::", articleType);
-      console.log("📰 Headline::", selected.title);
-      console.log("📄 Article::", parsed.body);
-      console.log("==============================================");
+      // console.log("================ Full CA Article ===========");
+      // console.log("🏷️ Article Type::", articleType);
+      // console.log("📰 Headline::", selected.title);
+      // console.log("📄 Article::", parsed.body);
+      // console.log("==============================================");
 
       if (!isExempt && score < 7) {
         console.log(
