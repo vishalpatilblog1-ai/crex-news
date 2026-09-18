@@ -191,9 +191,9 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         ),
       });
 
-      console.log(
-        `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
-      );
+      // console.log(
+      //   `📊 Scores — significance: ${decision?.significanceScore ?? "n/a"}, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
+      // );
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         console.log("🔴 Sportskeeda article already covered");

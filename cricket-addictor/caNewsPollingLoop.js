@@ -136,9 +136,9 @@ export async function caNewsPollingLoop() {
     const fullText = `${parsed.headline}\n${parsed.body}`;
 
     if (isBlockedCAHeadline(fullText)) {
-      console.log(
-        `⏭️ Skipping blocked-pattern article (body match): ${parsed.headline}`,
-      );
+      // console.log(
+      //   `⏭️ Skipping blocked-pattern article (body match): ${parsed.headline}`,
+      // );
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "blocked content pattern found in body");
       return false;
@@ -159,13 +159,13 @@ export async function caNewsPollingLoop() {
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
 
-      console.log(
-        `📊 Scores — significance: ${
-          decision?.significanceScore ?? "n/a"
-        }, virality: ${decision?.viralityScore ?? "n/a"} — "${
-          parsed.headline
-        }"`,
-      );
+      // console.log(
+      //   `📊 Scores — significance: ${
+      //     decision?.significanceScore ?? "n/a"
+      //   }, virality: ${decision?.viralityScore ?? "n/a"} — "${
+      //     parsed.headline
+      //   }"`,
+      // );
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         console.log("🔴 CA skipped — already covered context");
@@ -374,7 +374,7 @@ function pruneDailyContext(STATE, retentionMs) {
     const after = STATE.dailyContext.contexts.length;
 
     if (before !== after) {
-      console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
+      // console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
       return true;
     }
   } catch (err) {

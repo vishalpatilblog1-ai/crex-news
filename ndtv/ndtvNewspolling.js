@@ -374,7 +374,7 @@ function pruneDailyContext(STATE, retentionMs) {
     const after = STATE.dailyContext.contexts.length;
 
     if (before !== after) {
-      console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
+      // console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
       return true;
     }
   } catch (err) {
