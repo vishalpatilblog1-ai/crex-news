@@ -8,6 +8,7 @@ import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 
@@ -114,6 +115,7 @@ export async function espnNewsPollingLoop() {
     const selected = { ...parsed, link: item.link, pubDate: item.pubDate };
     const fullText = `${selected.headline}\n${selected.body}`;
 
+    const longEligible = isLongTweetEligible(fullText);
     // ── Step 1: Classify ───────────────────────────
     let articleType = "general_news";
     try {
@@ -171,6 +173,7 @@ export async function espnNewsPollingLoop() {
         fullText,
         articleType,
         "ESPN",
+        longEligible
       );
       tweetText = result?.tweetText;
     } catch (err) {
