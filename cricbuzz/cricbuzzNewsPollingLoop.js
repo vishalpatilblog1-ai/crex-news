@@ -2,6 +2,7 @@ import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
@@ -158,8 +159,8 @@ export async function cricbuzzNewsPollingLoop() {
         );
       }
 
-      // const longEligible = isLongTweetEligible(fullText);
-      const longEligible = false;
+      const longEligible = isLongTweetEligible(fullText);
+      //const longEligible = false;
       if (longEligible) {
         console.log("📏 Cricbuzz article qualifies for long-tweet mode");
       }
