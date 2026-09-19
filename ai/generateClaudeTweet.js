@@ -26,7 +26,7 @@ const CHAR_LIMITS = {
 };
 
 function resolveCharLimit(source, isLongEligible) {
-  if (source === "CB" && isLongEligible) return CHAR_LIMITS.CB.long;
+  if (isLongEligible) return CHAR_LIMITS.CB.long;
   if (source === "CB") return CHAR_LIMITS.CB.default;
   return CHAR_LIMITS.DEFAULT;
 }
@@ -672,6 +672,41 @@ it must not get cut off by the image preview on mobile.
 `,
 };
 
+// Non-CB breaking_news variant — same substance and rules as the caps-header
+// version above, but opens plainly instead of with "🚨 [CAPS HEADLINE]".
+// CB keeps the caps header (it's a reliable, always-on API source where the
+// visual "breaking" signal earns its keep); every other source uses this
+// instead, so the account's tweets don't all carry the same structural
+// signature regardless of which source fired.
+const BREAKING_NEWS_PLAIN = `
+ARTICLE TYPE: Breaking News
+
+Speed and clarity over analysis. This is the first take, not the final word.
+
+ENGAGEMENT TARGET: Retweets + replies (information sharing)
+
+FORMAT (mandatory):
+Open directly with the key fact as a sharp first line — no emoji, no
+caps headline. Then 1-2 more lines: who, what, and the immediate
+consequence. Lead with the consequence, not the act. If the news
+reveals something non-obvious about the team, tournament, or system —
+state that instead of repeating the first line. No rage, no opinion —
+but if there's a SO WHAT, say it in one clean line.
+
+Use this type for:
+- Player ruled out / availability confirmed
+- Squad announced unexpectedly
+- Board decisions with immediate impact
+- Transfer/trade confirmed
+
+The opening line must be factual, never sensationalized. The body must
+answer: what does this mean RIGHT NOW for the team or tournament?
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
+`;
+
 function buildSystemPrompt(articleTypeInstruction) {
   return `
 You are "Gully Point – MONEY MODE": a punchy, authoritative cricket analyst
@@ -1143,7 +1178,13 @@ const CARD_IMAGE_TYPES = new Set([
 // cache_control block means it's now cached same as the rest of the system
 // prompt, instead of being the one uncached chunk dragging cost up.
 
-function buildStaticInstructionsBlock(needsCard, source, MIN_CHARS, MAX_CHARS) {
+function buildStaticInstructionsBlock(
+  needsCard,
+  source,
+  MIN_CHARS,
+  MAX_CHARS,
+  articleType,
+) {
   const isLongMode = MAX_CHARS > 280;
   return `
 OUTPUT RULES:
@@ -1191,11 +1232,12 @@ ${
     : ""
 }
 ${
-  source === "CB"
+  source === "CB" &&
+  (articleType === "breaking_news" || articleType === "injury_news")
     ? `OPENER VARIATION (Cricbuzz only):
 - This source posts rarely and is India/IPL-filtered, so its tweets should not all read as one template.
-- If the article is genuinely urgent/first-to-report (a squad drop, injury, selection call, result just in — not a routine update or opinion piece), you MAY open the tweet with exactly this line: "🚨 Breaking - <short punchy headline>" — then continue the rest of the tweet as normal on the next line(s).
-- Use this opener occasionally, only when the news actually justifies "breaking" — never on analysis, opinion, or soft/human-interest pieces. Do not use it on every CB tweet; most should still use your normal hook style.
+- This article was already classified as ${articleType}, which is genuinely urgent/first-to-report — you MAY open the tweet with exactly this line: "🚨 Breaking - <short punchy headline>" — then continue the rest of the tweet as normal on the next line(s).
+- Use this opener occasionally, not on every ${articleType} tweet — most should still use your normal hook style. Never use it on any other article type.
 `
     : ""
 }
@@ -1383,7 +1425,10 @@ async function _generateTweet(
   isLongEligible = false,
   correctionNote = null,
 ) {
-  const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
+  const articleTypeInstruction =
+    articleType === "breaking_news" && source !== "CB"
+      ? BREAKING_NEWS_PLAIN
+      : ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
 
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
@@ -1408,6 +1453,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     source,
     MIN_CHARS,
     MAX_CHARS,
+    articleType,
   );
 
   const response = await client.messages.create({
