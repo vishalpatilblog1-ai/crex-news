@@ -323,6 +323,7 @@ Focus on:
 - The player displaced and why that displacement matters
 - The real balance question this combination creates OR solves
 - When the article frames this as a management "trust" or "succession" call — an established/senior player defended or passed over despite recent form, rather than a plain form-based drop — treat that framing as the strongest available angle and lead with it over a generic balance/combination take.
+- When the article shows the same standard (age, fitness, form, workload) being applied inconsistently across two players or situations — one excused, one penalized for the same thing — that's a "double standard" framing and performs at least as strongly as trust/succession. Name the inconsistency directly rather than just describing both cases separately.
 
 Preferred patterns: E (Open Verdict), J (Uncomfortable Truth)
 
