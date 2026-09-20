@@ -35,7 +35,7 @@ export function isLongTweetEligible(articleText) {
   if (!articleText || typeof articleText !== "string") return false;
 
   const text = articleText.trim();
-  if (text.length < 600) return false;
+  if (text.length < 650) return false;
 
   const sentenceCount = (text.match(/[.!?](\s|$)/g) || []).length;
   if (sentenceCount < 6) return false;
