@@ -10,8 +10,8 @@ const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 
 function randomTweetDelay(source) {
-  const MIN = 5 * 60 * 1000;
-  const MAX = 15 * 60 * 1000;
+  const MIN = 10 * 60 * 1000;
+  const MAX = 25 * 60 * 1000;
 
   return MIN + Math.random() * (MAX - MIN);
 }
