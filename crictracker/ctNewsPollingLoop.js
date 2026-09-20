@@ -162,9 +162,9 @@ export async function ctNewsPollingLoop() {
       // console.log("==============================================");
 
       if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-        );
+        // console.log(
+        //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+        // );
         STATE.cricktracker.seen[cleanLink] = Date.now();
         continue;
       }

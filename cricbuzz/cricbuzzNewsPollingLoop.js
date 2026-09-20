@@ -138,7 +138,7 @@ export async function cricbuzzNewsPollingLoop() {
         // console.log("============================================");
 
         if (!isExempt && score < 7) {
-          console.log(`⬇️ Low significance (${score}/10) — skipping`);
+          // console.log(`⬇️ Low significance (${score}/10) — skipping`);
           console.log("============================================");
           STATE.cricbuzz.seen[newsKey] = Date.now();
           continue;

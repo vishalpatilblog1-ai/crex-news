@@ -130,9 +130,9 @@ export async function hinduNewsPollingLoop() {
       const score = contextDecision?.significanceScore ?? 10;
 
       if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
-        );
+        // console.log(
+        //   `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
+        // );
         const cleanLink = normalizeHinduLink(selected.link);
         STATE.hindu.seen[cleanLink] = Date.now();
         STATE.hindu.lastLink = cleanLink;

@@ -193,7 +193,7 @@ export async function ndtvNewspolling() {
 
         console.log("==============================================");
         if (!isExempt && score < 7) {
-          console.log(`⬇️ Low significance (${score}/10) — skipping`);
+          // console.log(`⬇️ Low significance (${score}/10) — skipping`);
           STATE.ndtv.seen[cleanLink] = Date.now();
           STATE.ndtv.lastLink = cleanLink;
           STATE.ndtv.lastTitle = selected.title;

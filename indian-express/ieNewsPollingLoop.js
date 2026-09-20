@@ -136,9 +136,9 @@ export async function ieNewsPollingLoop() {
       const score = contextDecision?.significanceScore ?? 10;
 
       if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
-        );
+        // console.log(
+        //   `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
+        // );
         const cleanLink = normalizeIELink(selected.link);
         STATE.ie.seen[cleanLink] = Date.now();
         STATE.ie.lastLink = cleanLink;

@@ -184,9 +184,9 @@ export async function caNewsPollingLoop() {
       // console.log("==============================================");
 
       if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-        );
+        // console.log(
+        //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+        // );
         STATE.ca.seen[cleanLink] = Date.now();
         await saveState(STATE, "low significance skipped");
         return false;

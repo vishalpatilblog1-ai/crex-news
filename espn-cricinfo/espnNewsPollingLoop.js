@@ -1,6 +1,5 @@
 // espn/espnNewsPollingLoop.js
 
-
 import { fetchESPNRss } from "./fetchESPNRss.js";
 import { isESPNArticle, normalizeESPNLink } from "./espnFilters.js";
 import { parseESPNArticle } from "./parseESPNArticle.js";
@@ -144,9 +143,9 @@ export async function espnNewsPollingLoop() {
       const score = decision?.significanceScore ?? 10;
 
       if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ ESPN low significance (${score}/10) — skipping: ${selected.headline}`,
-        );
+        // console.log(
+        //   `⬇️ ESPN low significance (${score}/10) — skipping: ${selected.headline}`,
+        // );
         STATE.espn.seen[cleanUrl] = Date.now();
         continue;
       }
@@ -174,7 +173,7 @@ export async function espnNewsPollingLoop() {
         fullText,
         articleType,
         "ESPN",
-        longEligible
+        longEligible,
       );
       tweetText = result?.tweetText;
     } catch (err) {

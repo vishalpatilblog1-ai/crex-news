@@ -198,9 +198,9 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       console.log("==============================================");
 
       if (!isExempt && score < 7) {
-        console.log(
-          `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-        );
+        // console.log(
+        //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+        // );
         markSeen(STATE, selectedItem, cleanLink);
         await saveState(STATE, "Sportskeeda low significance skipped");
         return "skip";
