@@ -1592,8 +1592,9 @@ const REJECT_THEN_ASSERT_PATTERNS = [
   // (b) reject-and-replace, spans the sentence boundary: "That's not X. That's Y."
   /\bthat'?s\s+not\s+[^.!?]*[.!?]\s*that'?s\s+[^.!?]*[.!?]/i,
   // (b) "Not X, that's Y" (same sentence)
-  /\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
+  /(?:\b(?:that'?s|it'?s|this\s+is)\s+)?\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
 ];
+
 
 function hasRejectThenAssert(text) {
   if (!text) return false;
