@@ -19,6 +19,7 @@ import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp
 
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
@@ -125,41 +126,80 @@ export async function espnNewsPollingLoop() {
       console.warn("⚠️ classify failed:", err?.message);
     }
 
-    // ── Step 2: Dedup + significance ────────────────
     let decision = null;
     try {
       decision = await judgeNewsContext({
         articleText: selected.body,
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
-
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔁 ESPN duplicate context — skipping:", selected.headline);
-        STATE.espn.seen[cleanUrl] = Date.now();
-        continue;
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
-
-      if (!isExempt && score < 7) {
-        // console.log(
-        //   `⬇️ ESPN low significance (${score}/10) — skipping: ${selected.headline}`,
-        // );
-        STATE.espn.seen[cleanUrl] = Date.now();
-        continue;
-      }
-
-      if (isExempt) {
-        console.log(`🌟 ESPN exempt type (${articleType})`);
-      } else {
-        console.log(`✅ ESPN significance: ${score}/10`);
-      }
     } catch (err) {
-      console.warn("⚠️ ESPN context judge failed:", err?.message);
+      console.warn(
+        "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
+        err?.message,
+      );
+      try {
+        decision = await judgeNewsContextGPT({
+          articleText: selected.body,
+          existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
+        });
+      } catch (err2) {
+        console.warn(
+          "⚠️ ESPN judgeNewsContext (GPT) also failed:",
+          err2?.message,
+        );
+      }
     }
 
-    // ── Step 3: Image risk-check + dedup ────────────
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      console.log("🔁 ESPN duplicate context — skipping:", selected.headline);
+      STATE.espn.seen[cleanUrl] = Date.now();
+      continue;
+    }
+
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+
+    if (!isExempt && score < 7) {
+      STATE.espn.seen[cleanUrl] = Date.now();
+      continue;
+    }
+
+    if (isExempt) {
+      console.log(`🌟 ESPN exempt type (${articleType})`);
+    } else {
+      console.log(`✅ ESPN significance: ${score}/10`);
+    }
+
+    // let decision = null;
+    // try {
+    //   decision = await judgeNewsContext({
+    //     articleText: selected.body,
+    //     existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
+    //   });
+
+    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+    //     console.log("🔁 ESPN duplicate context — skipping:", selected.headline);
+    //     STATE.espn.seen[cleanUrl] = Date.now();
+    //     continue;
+    //   }
+
+    //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    //   const score = decision?.significanceScore ?? 10;
+
+    //   if (!isExempt && score < 7) {
+    //     STATE.espn.seen[cleanUrl] = Date.now();
+    //     continue;
+    //   }
+
+    //   if (isExempt) {
+    //     console.log(`🌟 ESPN exempt type (${articleType})`);
+    //   } else {
+    //     console.log(`✅ ESPN significance: ${score}/10`);
+    //   }
+    // } catch (err) {
+    //   console.warn("⚠️ ESPN context judge failed:", err?.message);
+    // }
+
     const imageUrl = selected.imageUrl || null;
     const { useImage } = await decideImageUsage({
       imageUrl,

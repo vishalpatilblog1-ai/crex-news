@@ -5,6 +5,7 @@ import {
   isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
@@ -118,49 +119,87 @@ export async function cricbuzzNewsPollingLoop() {
           existingContexts:
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
-
-        if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-          console.log(
-            "🔴 Cricbuzz skipped — already covered context:",
-            selected.hline,
-          );
-          STATE.cricbuzz.seen[newsKey] = Date.now();
-          continue;
-        }
-
-        const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-        const score = decision?.significanceScore ?? 10;
-
-        // console.log("================ Full CB Article =============");
-        // console.log("🏷️ Article Type::", articleType);
-        // console.log("📰 Headline::", selected.hline);
-        // console.log("📄 Article::", fullText);
-        // console.log("============================================");
-
-        if (!isExempt && score < 7) {
-          // console.log(`⬇️ Low significance (${score}/10) — skipping`);
-          console.log("============================================");
-          STATE.cricbuzz.seen[newsKey] = Date.now();
-          continue;
-        }
-
-        if (isExempt) {
-          // console.log(
-          //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-          // );
-        } else {
-          console.log(`✅ Significance: ${score}/10 — proceeding`);
-          // console.log("============================================");
-        }
       } catch (err) {
         console.warn(
-          "⚠️ Cricbuzz judgeNewsContext failed:",
+          "⚠️ Cricbuzz judgeNewsContext (Claude) failed, trying GPT:",
           err?.message || err,
         );
+        try {
+          decision = await judgeNewsContextGPT({
+            articleText: fullText,
+            existingContexts:
+              STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+          });
+        } catch (err2) {
+          console.warn(
+            "⚠️ Cricbuzz judgeNewsContext (GPT) also failed:",
+            err2?.message || err2,
+          );
+        }
       }
 
+      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+        console.log(
+          "🔴 Cricbuzz skipped — already covered context:",
+          selected.hline,
+        );
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        continue;
+      }
+
+      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      const score = decision?.significanceScore ?? 10;
+
+      if (!isExempt && score < 7) {
+        console.log("============================================");
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        continue;
+      }
+
+      if (isExempt) {
+      } else {
+        console.log(`✅ Significance: ${score}/10 — proceeding`);
+      }
+
+      // let decision = null;
+      // try {
+      //   decision = await judgeNewsContext({
+      //     articleText: fullText,
+      //     existingContexts:
+      //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+      //   });
+
+      //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      //     console.log(
+      //       "🔴 Cricbuzz skipped — already covered context:",
+      //       selected.hline,
+      //     );
+      //     STATE.cricbuzz.seen[newsKey] = Date.now();
+      //     continue;
+      //   }
+
+      //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      //   const score = decision?.significanceScore ?? 10;
+
+      //   if (!isExempt && score < 7) {
+      //     console.log("============================================");
+      //     STATE.cricbuzz.seen[newsKey] = Date.now();
+      //     continue;
+      //   }
+
+      //   if (isExempt) {
+      //   } else {
+      //     console.log(`✅ Significance: ${score}/10 — proceeding`);
+      //   }
+      // } catch (err) {
+      //   console.warn(
+      //     "⚠️ Cricbuzz judgeNewsContext failed:",
+      //     err?.message || err,
+      //   );
+      // }
+
       const longEligible = isLongTweetEligible(fullText);
-      //const longEligible = false;
+
       if (longEligible) {
         console.log("📏 Cricbuzz article qualifies for long-tweet mode");
       }

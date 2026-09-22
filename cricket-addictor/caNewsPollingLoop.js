@@ -8,6 +8,7 @@ import {
   generateClaudeTweetWithType,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
@@ -151,6 +152,8 @@ export async function caNewsPollingLoop() {
       console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
 
+    //////// NEW CODE START //////
+
     let decision = null;
     try {
       decision = await judgeNewsContext({
@@ -158,50 +161,97 @@ export async function caNewsPollingLoop() {
         existingContexts:
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
-
-      // console.log(
-      //   `📊 Scores — significance: ${
-      //     decision?.significanceScore ?? "n/a"
-      //   }, virality: ${decision?.viralityScore ?? "n/a"} — "${
-      //     parsed.headline
-      //   }"`,
-      // );
-
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 CA skipped — already covered context");
-        STATE.ca.seen[cleanLink] = Date.now();
-        await saveState(STATE, "duplicate context skipped");
-        return false;
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
-
-      // console.log("================ Full CA Article ===========");
-      // console.log("🏷️ Article Type::", articleType);
-      // console.log("📰 Headline::", selected.title);
-      // console.log("📄 Article::", parsed.body);
-      // console.log("==============================================");
-
-      if (!isExempt && score < 7) {
-        // console.log(
-        //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-        // );
-        STATE.ca.seen[cleanLink] = Date.now();
-        await saveState(STATE, "low significance skipped");
-        return false;
-      }
-
-      if (isExempt) {
-        // console.log(
-        //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        // );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
     } catch (err) {
-      console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+      console.warn(
+        "⚠️ judgeNewsContext (Claude) failed, trying GPT:",
+        err?.message || err,
+      );
+      try {
+        decision = await judgeNewsContextGPT({
+          articleText: fullText,
+          existingContexts:
+            STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+        });
+      } catch (err2) {
+        console.warn(
+          "⚠️ judgeNewsContext (GPT) also failed:",
+          err2?.message || err2,
+        );
+      }
     }
+
+    console.log(
+      `📊 Scores — significance: ${
+        decision?.significanceScore ?? "n/a"
+      }, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
+    );
+
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      console.log("🔴 CA skipped — already covered context");
+      STATE.ca.seen[cleanLink] = Date.now();
+      await saveState(STATE, "duplicate context skipped");
+      return false;
+    }
+
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+    //////// NEW CODE END //////
+
+    //////// OLD CODE START //////
+
+    // let decision = null;
+    // try {
+    //   decision = await judgeNewsContext({
+    //     articleText: fullText,
+    //     existingContexts:
+    //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+    //   });
+
+    //   // console.log(
+    //   //   `📊 Scores — significance: ${
+    //   //     decision?.significanceScore ?? "n/a"
+    //   //   }, virality: ${decision?.viralityScore ?? "n/a"} — "${
+    //   //     parsed.headline
+    //   //   }"`,
+    //   // );
+
+    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+    //     console.log("🔴 CA skipped — already covered context");
+    //     STATE.ca.seen[cleanLink] = Date.now();
+    //     await saveState(STATE, "duplicate context skipped");
+    //     return false;
+    //   }
+
+    //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    //   const score = decision?.significanceScore ?? 10;
+
+    //   // console.log("================ Full CA Article ===========");
+    //   // console.log("🏷️ Article Type::", articleType);
+    //   // console.log("📰 Headline::", selected.title);
+    //   // console.log("📄 Article::", parsed.body);
+    //   // console.log("==============================================");
+
+    //   if (!isExempt && score < 7) {
+    //     // console.log(
+    //     //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+    //     // );
+    //     STATE.ca.seen[cleanLink] = Date.now();
+    //     await saveState(STATE, "low significance skipped");
+    //     return false;
+    //   }
+
+    //   if (isExempt) {
+    //     // console.log(
+    //     //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
+    //     // );
+    //   } else {
+    //     console.log(`✅ Significance: ${score}/10 — proceeding`);
+    //   }
+    // } catch (err) {
+    //   console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
+    // }
+
+    //////// OLD CODE END ///////
 
     // ── Step 3: Tweet generation ──────────────────────────────────────────────
     let tweetText = null;
