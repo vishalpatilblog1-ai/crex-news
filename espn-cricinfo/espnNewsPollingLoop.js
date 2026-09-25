@@ -123,7 +123,8 @@ export async function espnNewsPollingLoop() {
       articleType = await classifyArticle(fullText);
       console.log("🏷️ Article classified as:", articleType);
     } catch (err) {
-      console.warn("⚠️ classify failed:", err?.message);
+      // console.warn("⚠️ classify failed:", err?.message);
+      console.warn("⚠️ classify failed:");
     }
 
     let decision = null;

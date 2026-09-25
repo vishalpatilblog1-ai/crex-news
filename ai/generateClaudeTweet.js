@@ -137,9 +137,9 @@ export async function classifyArticle(articleText) {
   const usage = response.usage;
   const inputCost = (usage.input_tokens / 1_000_000) * 1;
   const outputCost = (usage.output_tokens / 1_000_000) * 5;
-  // console.log(
-  //   `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
-  // );
+  console.log(
+    `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
+  );
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
@@ -1503,9 +1503,9 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   const outputCost = (usage.output_tokens / 1_000_000) * 10;
   const totalCost = inputCost + outputCost;
 
-  // console.log(
-  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
-  // );
+  console.log(
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  );
 
   const textBlock = response.content.find((block) => block.type === "text");
   const rawText = textBlock?.text;
@@ -1595,7 +1595,6 @@ const REJECT_THEN_ASSERT_PATTERNS = [
   // (b) "Not X, that's Y" (same sentence)
   /(?:\b(?:that'?s|it'?s|this\s+is)\s+)?\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
 ];
-
 
 function hasRejectThenAssert(text) {
   if (!text) return false;
@@ -1776,7 +1775,8 @@ export async function generateClaudeTweet(articleText) {
   try {
     return await generateWithRetry(articleText, articleType);
   } catch (err) {
-    console.error("❌ Claude Tweet Generation Error:", err);
+    // console.error("❌ Claude Tweet Generation Error:", err);
+    console.error("❌ Claude Tweet Generation Error:");
     return { tweetText: null, card: null };
   }
 }
@@ -1811,7 +1811,8 @@ export async function generateClaudeTweetWithType(
     );
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
-    console.error("❌ Claude Tweet Generation Error:", err);
+    // console.error("❌ Claude Tweet Generation Error:", err);
+    console.error("❌ Claude Tweet Generation Error:");
     return { tweetText: null, articleType: resolvedType, card: null };
   }
 }
