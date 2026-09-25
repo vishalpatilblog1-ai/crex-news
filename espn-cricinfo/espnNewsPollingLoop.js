@@ -133,10 +133,11 @@ export async function espnNewsPollingLoop() {
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
     } catch (err) {
-      console.warn(
-        "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
-        err?.message,
-      );
+      console.warn("⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:");
+      // console.warn(
+      //   "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
+      //   err?.message,
+      // );
       try {
         decision = await judgeNewsContextGPT({
           articleText: selected.body,

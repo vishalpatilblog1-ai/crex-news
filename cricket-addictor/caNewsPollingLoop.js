@@ -162,10 +162,11 @@ export async function caNewsPollingLoop() {
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
     } catch (err) {
-      console.warn(
-        "⚠️ judgeNewsContext (Claude) failed, trying GPT:",
-        err?.message || err,
-      );
+      // console.warn(
+      //   "⚠️ judgeNewsContext (Claude) failed, trying GPT:",
+      //   err?.message || err,
+      // );
+      console.warn("⚠️ CA judgeNewsContext (Claude) failed, trying GPT:");
       try {
         decision = await judgeNewsContextGPT({
           articleText: fullText,

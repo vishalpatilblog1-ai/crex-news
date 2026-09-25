@@ -120,10 +120,11 @@ export async function cricbuzzNewsPollingLoop() {
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
       } catch (err) {
-        console.warn(
-          "⚠️ Cricbuzz judgeNewsContext (Claude) failed, trying GPT:",
-          err?.message || err,
-        );
+        console.warn("⚠️ CB judgeNewsContext (Claude) failed, trying GPT:");
+        // console.warn(
+        //   "⚠️ Cricbuzz judgeNewsContext (Claude) failed, trying GPT:",
+        //   err?.message || err,
+        // );
         try {
           decision = await judgeNewsContextGPT({
             articleText: fullText,

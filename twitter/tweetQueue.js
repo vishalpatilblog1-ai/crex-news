@@ -21,11 +21,11 @@ function canTweetNow(source) {
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
 
   if (now < nextAllowed) {
-    console.log(
-      `⏳ Tweet cooldown (${Math.ceil(
-        (nextAllowed - now) / 1000,
-      )}s left) — ${source} skipped`,
-    );
+    // console.log(
+    //   `⏳ Tweet cooldown (${Math.ceil(
+    //     (nextAllowed - now) / 1000,
+    //   )}s left) — ${source} skipped`,
+    // );
     return false;
   }
 
