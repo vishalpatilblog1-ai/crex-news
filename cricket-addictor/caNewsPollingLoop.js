@@ -198,11 +198,20 @@ export async function caNewsPollingLoop() {
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
 
+    // if (!isExempt && score < 7) {
+    //   STATE.ca.seen[cleanLink] = Date.now();
+    //   console.log('👊 CA TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW');
+    //   continue;
+    // }
 
     if (!isExempt && score < 7) {
+      // console.log(
+      //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+      // );
       STATE.ca.seen[cleanLink] = Date.now();
-      console.log('👊 CA TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW');
-      continue;
+      await saveState(STATE, "low significance skipped");
+      console.log("👊 CA TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
+      return false;
     }
     //////// NEW CODE END //////
 
