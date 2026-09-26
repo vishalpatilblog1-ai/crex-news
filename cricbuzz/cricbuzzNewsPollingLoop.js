@@ -130,7 +130,7 @@ export async function cricbuzzNewsPollingLoop() {
           //   "⚠️ Cricbuzz judgeNewsContext (GPT) also failed:",
           //   err2?.message || err2,
           // );
-          console.log("⚠️ Cricbuzz judgeNewsContext (GPT) also failed:");
+          // console.log("⚠️ Cricbuzz judgeNewsContext (GPT) also failed:");
         }
       }
 
@@ -147,8 +147,9 @@ export async function cricbuzzNewsPollingLoop() {
       const score = decision?.significanceScore ?? 10;
 
       if (!isExempt && score < 7) {
-        console.log("============================================");
+        // console.log("============================================");
         STATE.cricbuzz.seen[newsKey] = Date.now();
+        console.log("👊 CB TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
         continue;
       }
 

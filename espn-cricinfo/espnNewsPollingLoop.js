@@ -154,7 +154,7 @@ export async function espnNewsPollingLoop() {
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
         });
       } catch (err2) {
-        console.log("⚠️ ESPN judgeNewsContext (GPT) also failed:");
+        // console.log("⚠️ ESPN judgeNewsContext (GPT) also failed:");
         // console.warn(
         //   "⚠️ ESPN judgeNewsContext (GPT) also failed:",
         //   err2?.message,
@@ -173,6 +173,7 @@ export async function espnNewsPollingLoop() {
 
     if (!isExempt && score < 7) {
       STATE.espn.seen[cleanUrl] = Date.now();
+      console.log("👊 ESPN TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
       continue;
     }
 
