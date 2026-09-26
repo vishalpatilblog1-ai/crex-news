@@ -170,7 +170,7 @@ export async function espnNewsPollingLoop() {
     if (isExempt) {
       console.log(`🌟 ESPN exempt type (${articleType})`);
     } else {
-      console.log(`✅ ESPN significance: ${score}/10`);
+      // console.log(`✅ ESPN significance: ${score}/10`);
     }
 
     // let decision = null;

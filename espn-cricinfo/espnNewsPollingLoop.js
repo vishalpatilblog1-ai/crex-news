@@ -180,7 +180,7 @@ export async function espnNewsPollingLoop() {
     if (isExempt) {
       console.log(`🌟 ESPN exempt type (${articleType})`);
     } else {
-      console.log(`✅ ESPN significance: ${score}/10`);
+      // console.log(`✅ ESPN significance: ${score}/10`);
     }
 
     // let decision = null;
@@ -235,7 +235,8 @@ export async function espnNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        tweetText = await generateGPTTweet(fullText);
+        const gptResult = await generateGPTTweet(fullText);
+        tweetText = gptResult?.tweetText;
       } catch (err) {
         console.warn("⚠️ GPT fallback failed:", err?.message || err);
       }
