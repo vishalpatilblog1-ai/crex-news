@@ -17,7 +17,8 @@
 // against cluster_posts_results, not less.
 
 import {
-  classifyArticle,
+  classifyArticleGPT,
+  // classifyArticle,
   generateGPTTweetWithType,
 } from "../ai/generate-gpt-tweet.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
@@ -154,7 +155,7 @@ async function attemptXNewsTweet(STATE, story) {
     let articleType = "player_form";
 
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
     } catch (error) {
       console.log("⚠️ X News classification failed:", error?.message || error);
     }
