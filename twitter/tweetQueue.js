@@ -67,7 +67,7 @@ export function enqueueTweet({
     text,
     imageUrl,
     seenKey,
-    publishedAt: publishedAt ?? Date.now(), // real article pubDate, used for the 60-min freshness check at flush time
+    publishedAt: publishedAt ?? Date.now(),
     createdAt: Date.now(),
   });
 
@@ -81,7 +81,7 @@ export function enqueueTweet({
   console.log(`🤖 TWEET MODEL :: ${model}`);
   console.log(`📰 TWEET HEADLINE :: ${headline}`);
   console.log(`⭐ TWEET SOURCE :: ${source}`);
-  // console.log(`🟦 TWEET LINK :: ${nextTweet.id}`);
+  console.log(`🟦 TWEET LINK :: ${id}`);
   console.log(`📥 ACTUAL TEXT :: ${text}`);
   console.log("========================================================");
 }
