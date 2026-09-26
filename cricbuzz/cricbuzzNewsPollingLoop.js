@@ -113,7 +113,7 @@ export async function cricbuzzNewsPollingLoop() {
         });
       } catch (err) {
         // console.log("⚠️ CB judgeNewsContext (Claude) failed, trying GPT ..");
-        console.log("⚠️ CB JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
+        // console.log("⚠️ CB JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
         // console.warn(
         //   "⚠️ Cricbuzz judgeNewsContext (Claude) failed, trying GPT:",
         //   err?.message || err,

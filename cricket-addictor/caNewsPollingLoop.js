@@ -165,7 +165,7 @@ export async function caNewsPollingLoop() {
       //   err?.message || err,
       // );
       // console.warn("⚠️ CA judgeNewsContext (Claude) failed, trying GPT:");
-      console.log("⚠️ CA JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
+      // console.log("⚠️ CA JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
       try {
         MODEL = "GPT";
         decision = await judgeNewsContextGPT({

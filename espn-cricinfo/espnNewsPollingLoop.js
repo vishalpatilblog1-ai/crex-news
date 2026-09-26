@@ -142,7 +142,7 @@ export async function espnNewsPollingLoop() {
       });
     } catch (err) {
       // console.warn("⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:");
-      console.log("⚠️ ESPN JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
+      // console.log("⚠️ ESPN JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
       // console.warn(
       //   "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
       //   err?.message,
