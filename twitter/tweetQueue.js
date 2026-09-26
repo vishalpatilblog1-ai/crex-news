@@ -60,9 +60,6 @@ export function enqueueTweet({
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
   if (STATE.tweetQueue.some((t) => t.id === id)) return;
-  const nextTweet = STATE.tweetQueue[0];
-  console.log("nextTweet >>>>", nextTweet);
-  console.log("STATE.tweetQueue[0] >>>>", STATE.tweetQueue[0]);
 
   STATE.tweetQueue.push({
     id,
@@ -73,6 +70,10 @@ export function enqueueTweet({
     publishedAt: publishedAt ?? Date.now(), // real article pubDate, used for the 60-min freshness check at flush time
     createdAt: Date.now(),
   });
+
+  const nextTweet = STATE.tweetQueue[0];
+  console.log("nextTweet >>>>", nextTweet);
+  // console.log("STATE.tweetQueue[0] >>>>", STATE.tweetQueue[0]);
   console.log("========================================================");
 
   console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
