@@ -123,7 +123,8 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_CRICKETADDICTOR_NEWS_POLLING === "true") {
-    console.log("📰 Cricket Addictor news polling is enabled");
+    // console.log("📰 Cricket Addictor news polling is enabled");
+    console.log("📰 CA NEWS POLLING IS ENABLED");
     setInterval(
       runIfAwake(
         caNewsPollingLoop,

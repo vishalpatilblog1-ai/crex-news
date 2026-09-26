@@ -27,7 +27,8 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
-let MODAL = "claude";
+
+let MODEL = "claude";
 
 export async function espnNewsPollingLoop() {
   // console.log("espnNewsPollingLoop started ...");
