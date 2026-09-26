@@ -61,6 +61,9 @@ export function enqueueTweet({
 
   if (STATE.tweetQueue.some((t) => t.id === id)) return;
   const nextTweet = STATE.tweetQueue[0];
+  console.log("nextTweet >>>>", nextTweet);
+  console.log("STATE.tweetQueue[0] >>>>", STATE.tweetQueue[0]);
+
   STATE.tweetQueue.push({
     id,
     source,
@@ -71,20 +74,13 @@ export function enqueueTweet({
     createdAt: Date.now(),
   });
   console.log("========================================================");
-  // console.log(`📰 ARTILE TYPE :: ${articleType}`);
-  // console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
-  // console.log(`🤖 TWEET MODEL :: ${model}`);
-  // console.log(`𝐇 TWEET HEADLINE :: ${headline}`);
-  // console.log(`ℹ️ TWEET SOURCE :: ${source}`);
-  // console.log(`🔗 TWEET LINK :: ${nextTweet.id}`);
-  // console.log(`📥 ACTUAL TEXT :: ${text}`);
 
   console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
   console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
   console.log(`🤖 TWEET MODEL :: ${model}`);
   console.log(`📰 TWEET HEADLINE :: ${headline}`);
   console.log(`⭐ TWEET SOURCE :: ${source}`);
-  console.log(`🟦 TWEET LINK :: ${nextTweet.id}`);
+  // console.log(`🟦 TWEET LINK :: ${nextTweet.id}`);
   console.log(`📥 ACTUAL TEXT :: ${text}`);
   console.log("========================================================");
 }
