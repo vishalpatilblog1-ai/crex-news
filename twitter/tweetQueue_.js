@@ -40,7 +40,7 @@ function markTweeted(trigger, source) {
 
   const seconds = Math.round(delay / 1000);
 
-  // console.log(`🟢 TWEET SENT BY QUEUE ${trigger}.. Next tweet in ~${seconds}s`);
+  console.log(`🟢 TWEET SENT BY QUEUE ${trigger}.. Next tweet in ~${seconds}s`);
 }
 
 export function enqueueTweet({
@@ -50,17 +50,12 @@ export function enqueueTweet({
   imageUrl,
   seenKey,
   publishedAt,
-  headline,
-  model,
-  articleType,
-  score,
 }) {
   const STATE = global.STATE;
-
   if (!STATE.tweetQueue) STATE.tweetQueue = [];
 
   if (STATE.tweetQueue.some((t) => t.id === id)) return;
-  const nextTweet = STATE.tweetQueue[0];
+
   STATE.tweetQueue.push({
     id,
     source,
@@ -71,15 +66,7 @@ export function enqueueTweet({
     createdAt: Date.now(),
   });
 
-  console.log(`📰 ARTILE TYPE: ${articleType}`);
-  console.log(`👌 PERFORMANCE SCORE: ${score}`);
-  console.log(`🤖 TWEET MODEL: ${model}`);
-  console.log(`𝐇 TWEET HEADLINE: ${headline}`);
-  console.log(`ℹ️ TWEET SOURCE :: ${source}`);
-  console.log(`🔗 TWEET LINK :: ${nextTweet.id}`);
-  console.log(`📥 ACTUAL TEXT :: ${text}`);
-  console.log("\n");
-  console.log("========================================================");
+  console.log(`📥 TWEET SOURCE :: ${source}`);
 }
 
 // Removes anything sitting in the queue that's now older than MAX_TWEET_AGE_MS.
@@ -113,6 +100,11 @@ export async function tryFlushTweetQueue() {
 
   if (!STATE.tweetQueue.length) return false;
 
+  // Plain FIFO now -- subject-based cooldown/spacing removed. Real
+  // duplicate-story protection is handled elsewhere already
+  // (judgeNewsContext's isAlreadyCovered check, which looks at actual
+  // content) and isBlockedSKHeadline (content-type filtering) -- this queue
+  // just posts what's next.
   const next = STATE.tweetQueue[0];
 
   if (!canTweetNow(next.source)) return false;
@@ -148,7 +140,7 @@ export async function tryFlushTweetQueue() {
     markTweeted("QUEUE", next.source);
     await saveState(STATE);
 
-    // console.log(`🔵 TWEET LINK: ${next.id}`);
+    console.log(`🔵 TWEET LINK: ${next.id}`);
     return true;
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);

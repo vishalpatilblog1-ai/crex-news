@@ -29,7 +29,6 @@ import path from "path";
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
-const MODEL = "claude";
 
 const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
 const LOCAL_TWEETS_DIR = path.join(process.cwd(), "local-tweets");
@@ -61,6 +60,12 @@ function saveTweetLocally(tweetText) {
 export async function caNewsPollingLoop() {
   if (!global.STATE) return false;
 
+  // NOTE: CA's dedicated 11:30PM-6AM block (isCricketAddictorBlocked) has
+  // been removed. index.js's global sleep window (1-5 AM IST, via
+  // runIfAwake) now covers every source including CA at the polling level,
+  // so this local gate was redundant and its window no longer matched the
+  // global one anyway.
+
   const STATE = global.STATE;
 
   STATE.ca ??= {};
@@ -68,6 +73,7 @@ export async function caNewsPollingLoop() {
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
+  // ── Prune state ───────────────────────────────────────────────────────────
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
@@ -75,6 +81,7 @@ export async function caNewsPollingLoop() {
 
   if (stateDirty) await saveState(STATE, "prune cleanup");
 
+  // ── Fetch RSS ─────────────────────────────────────────────────────────────
   let items;
   try {
     items = await fetchCARSS();
@@ -142,8 +149,7 @@ export async function caNewsPollingLoop() {
     try {
       articleType = await classifyArticle(fullText);
     } catch (err) {
-      // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-      console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED ..");
+      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
     }
 
     //////// NEW CODE START //////
@@ -160,10 +166,8 @@ export async function caNewsPollingLoop() {
       //   "⚠️ judgeNewsContext (Claude) failed, trying GPT:",
       //   err?.message || err,
       // );
-      // console.warn("⚠️ CA judgeNewsContext (Claude) failed, trying GPT:");
-      console.log("⚠️ CA JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
+      console.warn("⚠️ CA judgeNewsContext (Claude) failed, trying GPT:");
       try {
-        MODEL = "GPT";
         decision = await judgeNewsContextGPT({
           articleText: fullText,
           existingContexts:
@@ -345,16 +349,13 @@ export async function caNewsPollingLoop() {
         id: tweetId,
         source: "CA",
         text: tweetText,
+        // imageUrl: generatedPath || null,
         imageUrl: null,
         seenKey: cleanLink,
         publishedAt: pubMs || Date.now(),
-        headline: parsed.headline,
-        model: MODEL,
-        articleType,
-        score,
       });
 
-      // console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
+      console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
 
       if (useImage && imageUrl) {
         STATE.usedImages[imageUrl] = Date.now();

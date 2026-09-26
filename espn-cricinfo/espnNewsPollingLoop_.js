@@ -24,7 +24,6 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
-const MODAL = "claude";
 
 export async function espnNewsPollingLoop() {
   // console.log("espnNewsPollingLoop started ...");
@@ -125,8 +124,7 @@ export async function espnNewsPollingLoop() {
       console.log("🏷️ Article classified as:", articleType);
     } catch (err) {
       // console.warn("⚠️ classify failed:", err?.message);
-
-      console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED ..");
+      console.warn("⚠️ classify failed:");
     }
 
     let decision = null;
@@ -136,14 +134,12 @@ export async function espnNewsPollingLoop() {
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
     } catch (err) {
-      // console.warn("⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:");
-      console.log("⚠️ ESPN JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
+      console.warn("⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:");
       // console.warn(
       //   "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
       //   err?.message,
       // );
       try {
-        MODEL = "GPT";
         decision = await judgeNewsContextGPT({
           articleText: selected.body,
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
@@ -249,16 +245,12 @@ export async function espnNewsPollingLoop() {
       id: `${cleanUrl}`,
       source: "ESPN",
       text: tweetText,
+      // imageUrl: useImage ? imageUrl : null,
       imageUrl: null,
       seenKey: cleanUrl,
-      publishedAt: "",
-      headline: selected.headline,
-      model: MODEL,
-      articleType,
-      score,
     });
 
-    // console.log("📥 TWEET HEADLINE:", selected.headline);
+    console.log("📥 TWEET HEADLINE:", selected.headline);
 
     if (useImage && imageUrl) {
       STATE.usedImages[imageUrl] = Date.now();

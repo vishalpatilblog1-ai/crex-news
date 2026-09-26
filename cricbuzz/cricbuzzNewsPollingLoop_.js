@@ -12,7 +12,7 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const SOURCE = "CB";
-const MODEL = "claude";
+
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
@@ -55,13 +55,26 @@ export async function cricbuzzNewsPollingLoop() {
         const ageMin = (Date.now() - pubMs) / 60000;
 
         if (ageMin > MAX_AGE_MIN) {
+          // console.log(
+          //   `⏳ Cricbuzz aged out (${Math.round(ageMin)}m): ${story.hline}`,
+          // );
           STATE.cricbuzz.seen[newsKey] = Date.now();
           continue;
         }
       }
 
+      // if (!isIndiaRelated(story)) {
+      //   console.log(`⏭️ Cricbuzz skipped (not India/IPL): ${story.hline}`);
+      //   STATE.cricbuzz.seen[newsKey] = Date.now();
+      //   continue;
+      // }
+
       candidates.push(story);
     }
+
+    // console.log(
+    //   `📰 Cricbuzz list: ${storyList.length} stories, ${candidates.length} unseen candidates`,
+    // );
 
     if (candidates.length === 0) {
       await saveState(STATE);
@@ -96,8 +109,7 @@ export async function cricbuzzNewsPollingLoop() {
       try {
         articleType = await classifyArticle(fullText);
       } catch (err) {
-        // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-        console.log("⚠️ CB ARTICLE CLASSIFICATION FAILED ..");
+        console.warn("⚠️ classifyArticle failed, using default:", err?.message);
       }
 
       let decision = null;
@@ -108,14 +120,12 @@ export async function cricbuzzNewsPollingLoop() {
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
       } catch (err) {
-        // console.log("⚠️ CB judgeNewsContext (Claude) failed, trying GPT ..");
-        console.log("⚠️ CB JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
+        console.warn("⚠️ CB judgeNewsContext (Claude) failed, trying GPT:");
         // console.warn(
         //   "⚠️ Cricbuzz judgeNewsContext (Claude) failed, trying GPT:",
         //   err?.message || err,
         // );
         try {
-          MODEL = "GPT";
           decision = await judgeNewsContextGPT({
             articleText: fullText,
             existingContexts:
@@ -249,11 +259,6 @@ export async function cricbuzzNewsPollingLoop() {
         text: tweetText,
         imageUrl,
         seenKey: newsKey,
-        publishedAt: "",
-        headline: selected.hline,
-        model: MODEL,
-        articleType,
-        score,
       });
 
       STATE.cricbuzz.seen[newsKey] = Date.now();
@@ -271,6 +276,8 @@ export async function cricbuzzNewsPollingLoop() {
           createdAt: new Date().toISOString(),
         });
       }
+
+      console.log(`📥 TWEET HEADLINE: ${selected.hline}`);
     }
 
     await saveState(STATE);

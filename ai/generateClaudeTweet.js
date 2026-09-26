@@ -1565,9 +1565,9 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
       `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`,
     );
   }
-  console.log(`=========== ${source} Claude Tweet ===========`);
-  console.log(tweetText);
-  console.log(" =============================================");
+  // console.log(`=========== ${source} Claude Tweet ===========`);
+  // console.log(tweetText);
+  // console.log(" =============================================");
   // console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
 
   return { tweetText, card };
@@ -1776,7 +1776,8 @@ export async function generateClaudeTweet(articleText) {
     return await generateWithRetry(articleText, articleType);
   } catch (err) {
     // console.error("❌ Claude Tweet Generation Error:", err);
-    console.error("❌ Claude Tweet Generation Error:");
+    // console.error("❌ Claude Tweet Generation Error:");
+    console.log("❌ Claude Tweet Generation Error ..");
     return { tweetText: null, card: null };
   }
 }
