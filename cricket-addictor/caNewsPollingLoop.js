@@ -286,20 +286,20 @@ export async function caNewsPollingLoop() {
 
       tweetText = tweetToPost;
 
-      if (card) {
-        try {
-          generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE,
-            card,
-          );
+      // if (card) {
+      //   try {
+      //     generatedPath = await generateCardImage(
+      //       CREX_BASE_IMAGE_TEMPLATE,
+      //       card,
+      //     );
 
-          console.log("Claude generatedPath:::", generatedPath);
-        } catch (err) {
-          console.error("❌ Image generation failed:", err);
-        }
-      } else {
-        // console.log("📝 Text-only tweet (no card)");
-      }
+      //     console.log("Claude generatedPath:::", generatedPath);
+      //   } catch (err) {
+      //     console.error("❌ Image generation failed:", err);
+      //   }
+      // } else {
+      //   console.log("📝 Text-only tweet (no card)");
+      // }
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
@@ -319,20 +319,20 @@ export async function caNewsPollingLoop() {
 
         tweetText = gptTweet;
 
-        if (card) {
-          try {
-            generatedPath = await generateCardImage(
-              CREX_BASE_IMAGE_TEMPLATE,
-              card,
-            );
+        // if (card) {
+        //   try {
+        //     generatedPath = await generateCardImage(
+        //       CREX_BASE_IMAGE_TEMPLATE,
+        //       card,
+        //     );
 
-            // console.log("GPT generatedPath:::", generatedPath);
-          } catch (err) {
-            console.error("❌ Image generation failed:", err);
-          }
-        } else {
-          // console.log("📝 Text-only tweet (no card)");
-        }
+        //     // console.log("GPT generatedPath:::", generatedPath);
+        //   } catch (err) {
+        //     console.error("❌ Image generation failed:", err);
+        //   }
+        // } else {
+        //   console.log("📝 Text-only tweet (no card)");
+        // }
       } catch (err) {
         console.warn("⚠️ GPT failed:", err?.message || err);
       }

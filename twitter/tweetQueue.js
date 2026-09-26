@@ -83,8 +83,6 @@ export function enqueueTweet({
   console.log(`=========== ${source} TWEET END ============`);
 }
 
-// Removes anything sitting in the queue that's now older than MAX_TWEET_AGE_MS.
-// Prevents stale news from firing once a blocked window lifts (e.g. overnight backlog).
 function dropStaleQueuedTweets(STATE) {
   let droppedAny = false;
 
@@ -117,7 +115,6 @@ export async function tryFlushTweetQueue() {
   const next = STATE.tweetQueue[0];
 
   if (!canTweetNow(next.source)) return false;
-
   STATE.tweetQueue.shift();
 
   try {
@@ -143,13 +140,14 @@ export async function tryFlushTweetQueue() {
         next.source,
       );
     } else {
+      console.log("next::::", next);
+
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
     }
 
     markTweeted("QUEUE", next.source);
     await saveState(STATE);
 
-    // console.log(`🔵 TWEET LINK: ${next.id}`);
     return true;
   } catch (err) {
     console.error("❌ Queue tweet failed, requeueing:", err);
