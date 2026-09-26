@@ -1,4 +1,4 @@
-import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
+import { classifyArticleGPT, generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
@@ -12,7 +12,7 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const SOURCE = "CB";
-const MODEL = "claude";
+const let = "claude";
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
@@ -97,7 +97,8 @@ export async function cricbuzzNewsPollingLoop() {
         articleType = await classifyArticle(fullText);
       } catch (err) {
         // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-        console.log("⚠️ CB ARTICLE CLASSIFICATION FAILED ..");
+        console.log("⚠️ CB ARTICLE CLASSIFICATION FAILED FOR CLAUDE....");
+           articleType = await classifyArticleGPT(fullText);
       }
 
       let decision = null;
@@ -122,9 +123,12 @@ export async function cricbuzzNewsPollingLoop() {
               STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
           });
         } catch (err2) {
-          console.warn(
-            "⚠️ Cricbuzz judgeNewsContext (GPT) also failed:",
-            err2?.message || err2,
+          // console.warn(
+          //   "⚠️ Cricbuzz judgeNewsContext (GPT) also failed:",
+          //   err2?.message || err2,
+          // );
+                    console.log(
+            "⚠️ Cricbuzz judgeNewsContext (GPT) also failed:"
           );
         }
       }
@@ -241,7 +245,7 @@ export async function cricbuzzNewsPollingLoop() {
       // ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
       // : null;
 
-      const tweetId = `${SOURCE}:${newsKey}`;
+      const tweetId = `${newsKey}`;
 
       enqueueTweet({
         id: tweetId,

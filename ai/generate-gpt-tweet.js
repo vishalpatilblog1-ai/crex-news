@@ -56,7 +56,7 @@ export function isLongTweetEligible(articleText) {
 
 // ─── ARTICLE CLASSIFIER ──────────────────────────────────────────────────────
 
-export async function classifyArticle(articleText) {
+export async function classifyArticleGPT(articleText) {
   const prompt = `
 Classify this cricket article into ONE of these types:
 
@@ -1272,7 +1272,7 @@ export async function generateGPTTweet(articleText) {
   let articleType = "player_form";
 
   try {
-    const classified = await classifyArticle(articleText);
+    const classified = await classifyArticleGPT(articleText);
     if (ARTICLE_TYPE_INSTRUCTIONS[classified]) {
       articleType = classified;
       console.log("articleType::", articleType);

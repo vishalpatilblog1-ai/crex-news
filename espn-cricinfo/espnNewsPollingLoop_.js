@@ -145,10 +145,11 @@ export async function espnNewsPollingLoop() {
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
         });
       } catch (err2) {
-        console.warn(
-          "⚠️ ESPN judgeNewsContext (GPT) also failed:",
-          err2?.message,
-        );
+        // console.warn(
+        //   "⚠️ ESPN judgeNewsContext (GPT) also failed:",
+        //   err2?.message,
+        // );
+        console.log("⚠️ ESPN judgeNewsContext (GPT) also failed:");
       }
     }
 

@@ -70,15 +70,22 @@ export function enqueueTweet({
     publishedAt: publishedAt ?? Date.now(), // real article pubDate, used for the 60-min freshness check at flush time
     createdAt: Date.now(),
   });
+  console.log("========================================================");
+  // console.log(`📰 ARTILE TYPE :: ${articleType}`);
+  // console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
+  // console.log(`🤖 TWEET MODEL :: ${model}`);
+  // console.log(`𝐇 TWEET HEADLINE :: ${headline}`);
+  // console.log(`ℹ️ TWEET SOURCE :: ${source}`);
+  // console.log(`🔗 TWEET LINK :: ${nextTweet.id}`);
+  // console.log(`📥 ACTUAL TEXT :: ${text}`);
 
-  console.log(`📰 ARTILE TYPE: ${articleType}`);
-  console.log(`👌 PERFORMANCE SCORE: ${score}`);
-  console.log(`🤖 TWEET MODEL: ${model}`);
-  console.log(`𝐇 TWEET HEADLINE: ${headline}`);
-  console.log(`ℹ️ TWEET SOURCE :: ${source}`);
-  console.log(`🔗 TWEET LINK :: ${nextTweet.id}`);
+  console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+  console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
+  console.log(`🤖 TWEET MODEL :: ${model}`);
+  console.log(`📰 TWEET HEADLINE :: ${headline}`);
+  console.log(`⭐ TWEET SOURCE :: ${source}`);
+  console.log(`🟦 TWEET LINK :: ${nextTweet.id}`);
   console.log(`📥 ACTUAL TEXT :: ${text}`);
-  console.log("\n");
   console.log("========================================================");
 }
 

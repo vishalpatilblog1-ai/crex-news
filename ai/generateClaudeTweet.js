@@ -1813,7 +1813,7 @@ export async function generateClaudeTweetWithType(
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
     // console.error("❌ Claude Tweet Generation Error:", err);
-    console.error("❌ Claude Tweet Generation Error:");
+    console.log("❌ Claude Tweet Generation Error:");
     return { tweetText: null, articleType: resolvedType, card: null };
   }
 }

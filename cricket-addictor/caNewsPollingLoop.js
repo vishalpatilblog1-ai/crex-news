@@ -1,6 +1,9 @@
 // cricket-addictor/caNewsPollingLoop.js
 
-import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
+import {
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
 
 import {
   classifyArticle,
@@ -29,7 +32,7 @@ import path from "path";
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
-const MODEL = "claude";
+let MODEL = "claude";
 
 const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
 const LOCAL_TWEETS_DIR = path.join(process.cwd(), "local-tweets");
@@ -143,7 +146,8 @@ export async function caNewsPollingLoop() {
       articleType = await classifyArticle(fullText);
     } catch (err) {
       // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-      console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED ..");
+      console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED FOR CLAUDE ..");
+      articleType = await classifyArticleGPT(fullText);
     }
 
     //////// NEW CODE START //////
@@ -170,10 +174,11 @@ export async function caNewsPollingLoop() {
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
       } catch (err2) {
-        console.warn(
-          "⚠️ judgeNewsContext (GPT) also failed:",
-          err2?.message || err2,
-        );
+        // console.warn(
+        //   "⚠️ judgeNewsContext (GPT) also failed:",
+        //   err2?.message || err2,
+        // );
+        console.log("⚠️ judgeNewsContext (GPT) also failed:");
       }
     }
 
@@ -339,7 +344,7 @@ export async function caNewsPollingLoop() {
         usedImages: STATE.usedImages,
       });
 
-      const tweetId = `CA:${cleanLink}`;
+      const tweetId = `${cleanLink}`;
 
       enqueueTweet({
         id: tweetId,
@@ -371,7 +376,7 @@ export async function caNewsPollingLoop() {
     }
 
     await saveState(STATE);
-    console.log(`✅ CA published: ${parsed.headline}`);
+    // console.log(`✅ CA published: ${parsed.headline}`);
     return true;
   } catch (err) {
     console.warn("⚠️ CA processing failed:", err?.message || err);

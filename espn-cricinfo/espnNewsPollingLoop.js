@@ -4,7 +4,10 @@ import { fetchESPNRss } from "./fetchESPNRss.js";
 import { isESPNArticle, normalizeESPNLink } from "./espnFilters.js";
 import { parseESPNArticle } from "./parseESPNArticle.js";
 
-import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import {
+  classifyArticleGPT,
+  generateGPTTweet,
+} from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
@@ -24,7 +27,7 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
-const MODAL = "claude";
+let MODAL = "claude";
 
 export async function espnNewsPollingLoop() {
   // console.log("espnNewsPollingLoop started ...");
@@ -122,11 +125,12 @@ export async function espnNewsPollingLoop() {
     let articleType = "general_news";
     try {
       articleType = await classifyArticle(fullText);
-      console.log("🏷️ Article classified as:", articleType);
+      // console.log("🏷️ Article classified as:", articleType);
     } catch (err) {
       // console.warn("⚠️ classify failed:", err?.message);
 
-      console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED ..");
+      console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED FOR CLAUDE..");
+      articleType = await classifyArticleGPT(fullText);
     }
 
     let decision = null;
@@ -149,10 +153,11 @@ export async function espnNewsPollingLoop() {
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
         });
       } catch (err2) {
-        console.warn(
-          "⚠️ ESPN judgeNewsContext (GPT) also failed:",
-          err2?.message,
-        );
+        console.log("⚠️ ESPN judgeNewsContext (GPT) also failed:");
+        // console.warn(
+        //   "⚠️ ESPN judgeNewsContext (GPT) also failed:",
+        //   err2?.message,
+        // );
       }
     }
 
