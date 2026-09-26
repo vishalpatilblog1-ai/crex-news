@@ -72,17 +72,15 @@ export function enqueueTweet({
   });
 
   const nextTweet = STATE.tweetQueue[0];
-  console.log("nextTweet >>>>", nextTweet);
-  // console.log("STATE.tweetQueue[0] >>>>", STATE.tweetQueue[0]);
-  console.log(`=========== ${source} TWEET ==========`);
+
+  console.log(`=========== ${source} TWEET START ==========`);
   console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
   console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
   console.log(`⭐ TWEET MODEL :: ${model}`);
   console.log(`📰 TWEET HEADLINE :: ${headline}`);
-  // console.log(`⭐ TWEET SOURCE :: ${source}`);
   console.log(`🟦 TWEET LINK :: ${id}`);
   console.log(`📥 ACTUAL TEXT :: ${text}`);
-  console.log(`=======================================`);
+  console.log(`=========== ${source} TWEET END ============`);
 }
 
 // Removes anything sitting in the queue that's now older than MAX_TWEET_AGE_MS.

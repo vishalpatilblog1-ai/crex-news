@@ -298,7 +298,7 @@ export async function caNewsPollingLoop() {
           console.error("❌ Image generation failed:", err);
         }
       } else {
-        console.log("📝 Text-only tweet (no card)");
+        // console.log("📝 Text-only tweet (no card)");
       }
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
@@ -331,7 +331,7 @@ export async function caNewsPollingLoop() {
             console.error("❌ Image generation failed:", err);
           }
         } else {
-          console.log("📝 Text-only tweet (no card)");
+          // console.log("📝 Text-only tweet (no card)");
         }
       } catch (err) {
         console.warn("⚠️ GPT failed:", err?.message || err);
