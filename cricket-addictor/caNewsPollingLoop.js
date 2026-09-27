@@ -171,14 +171,11 @@ export async function caNewsPollingLoop() {
       } catch (err2) {}
     }
 
-    console.log(
-      `📊 Scores — significance: ${
-        decision?.significanceScore ?? "n/a"
-      }, virality: ${decision?.viralityScore ?? "n/a"}"`,
-    );
-    console.log(`🟦 HEADLINE: ${parsed.headline}`);
-    console.log(`🔗 Article Link: ${cleanLink}`);
-
+    // console.log(
+    //   `📊 Scores — significance: ${
+    //     decision?.significanceScore ?? "n/a"
+    //   }, virality: ${decision?.viralityScore ?? "n/a"}`,
+    // );
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
       STATE.ca.seen[cleanLink] = Date.now();
@@ -189,16 +186,21 @@ export async function caNewsPollingLoop() {
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
 
-    // if (!isExempt && score < 7) {
-    //   STATE.ca.seen[cleanLink] = Date.now();
-    //   console.log('👊 CA TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW');
-    //   continue;
-    // }
-
     if (!isExempt && score < 7) {
       // console.log(
-      //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
+      //   `📊 Scores — significance: ${
+      //     decision?.significanceScore ?? "n/a"
+      //   }, virality: ${decision?.viralityScore ?? "n/a"}`,
       // );
+      // console.log(`🟦 HEADLINE: ${parsed.headline}`);
+      // console.log(`🔗 Article Link: ${cleanLink}`);
+
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score}`);
+      console.log(`⭐ TWEET MODEL :: ${MODEL}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log(`🟦 TWEET LINK :: ${cleanLink}`);
+
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "low significance skipped");
       console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
@@ -208,71 +210,15 @@ export async function caNewsPollingLoop() {
     }
     //////// NEW CODE END //////
 
-    //////// OLD CODE START //////
-
-    // let decision = null;
-    // try {
-    //   decision = await judgeNewsContext({
-    //     articleText: fullText,
-    //     existingContexts:
-    //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-    //   });
-
-    //   // console.log(
-    //   //   `📊 Scores — significance: ${
-    //   //     decision?.significanceScore ?? "n/a"
-    //   //   }, virality: ${decision?.viralityScore ?? "n/a"} — "${
-    //   //     parsed.headline
-    //   //   }"`,
-    //   // );
-
-    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-    //     console.log("🔴 CA skipped — already covered context");
-    //     STATE.ca.seen[cleanLink] = Date.now();
-    //     await saveState(STATE, "duplicate context skipped");
-    //     return false;
-    //   }
-
-    //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-    //   const score = decision?.significanceScore ?? 10;
-
-    //   // console.log("================ Full CA Article ===========");
-    //   // console.log("🏷️ Article Type::", articleType);
-    //   // console.log("📰 Headline::", selected.title);
-    //   // console.log("📄 Article::", parsed.body);
-    //   // console.log("==============================================");
-
-    //   if (!isExempt && score < 7) {
-    //     // console.log(
-    //     //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-    //     // );
-    //     STATE.ca.seen[cleanLink] = Date.now();
-    //     await saveState(STATE, "low significance skipped");
-    //     return false;
-    //   }
-
-    //   if (isExempt) {
-    //     // console.log(
-    //     //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-    //     // );
-    //   } else {
-    //     console.log(`✅ Significance: ${score}/10 — proceeding`);
-    //   }
-    // } catch (err) {
-    //   console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-    // }
-
-    //////// OLD CODE END ///////
-
     // ── Step 3: Tweet generation ──────────────────────────────────────────────
     let tweetText = null;
     let generatedPath = null;
 
     const longEligible = isLongTweetEligible(fullText);
 
-    if (longEligible) {
-      console.log("📏 CA article qualifies for long-tweet mode");
-    }
+    // if (longEligible) {
+    //   console.log("📏 CA article qualifies for long-tweet mode");
+    // }
 
     try {
       // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
