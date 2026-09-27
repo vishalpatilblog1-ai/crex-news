@@ -69,18 +69,22 @@ export function enqueueTweet({
     seenKey,
     publishedAt: publishedAt ?? Date.now(),
     createdAt: Date.now(),
+    headline,
+    model,
+    articleType,
+    score,
   });
 
   const nextTweet = STATE.tweetQueue[0];
 
-  console.log(`=========== ${source} TWEET START ==========`);
-  console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
-  console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
-  console.log(`⭐ TWEET MODEL :: ${model}`);
-  console.log(`📰 TWEET HEADLINE :: ${headline}`);
-  console.log(`🟦 TWEET LINK :: ${id}`);
-  console.log(`📥 ACTUAL TEXT :: ${text}`);
-  console.log(`=========== ${source} TWEET END ============`);
+  // console.log(`=========== ${source} TWEET START ==========`);
+  // console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+  // console.log(`✅ SIGNIFICANCE SCORE :: ${score}`);
+  // console.log(`⭐ TWEET MODEL :: ${model}`);
+  // console.log(`📰 TWEET HEADLINE :: ${headline}`);
+  // console.log(`🟦 TWEET LINK :: ${id}`);
+  // console.log(`📥 ACTUAL TEXT :: ${text}`);
+  // console.log(`=========== ${source} TWEET END ============`);
 }
 
 function dropStaleQueuedTweets(STATE) {
@@ -133,6 +137,16 @@ export async function tryFlushTweetQueue() {
 
     let tweetResponse;
 
+    console.log("next version::::");
+    console.log(`=========== ${source} TWEET START ==========`);
+    console.log(`🗂️ ARTICLE TYPE :: ${next.articleType}`);
+    console.log(`✅ SIGNIFICANCE SCORE :: ${next.score}`);
+    console.log(`⭐ TWEET MODEL :: ${next.model}`);
+    console.log(`📰 TWEET HEADLINE :: ${next.headline}`);
+    console.log(`🟦 TWEET LINK :: ${next.id}`);
+    console.log(`📥 ACTUAL TEXT :: ${next.text}`);
+    console.log(`=========== ${source} TWEET END ============`);
+
     if (next.imageUrl) {
       tweetResponse = await tweetNewsWithImage(
         next.text,
@@ -140,8 +154,6 @@ export async function tryFlushTweetQueue() {
         next.source,
       );
     } else {
-      console.log("next::::", next);
-
       tweetResponse = await tweetNewsWithoutImage({ text: next.text });
     }
 

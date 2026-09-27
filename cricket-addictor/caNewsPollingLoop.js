@@ -9,6 +9,7 @@ import {
   classifyArticle,
   // classifyArticle,
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
@@ -275,6 +276,12 @@ export async function caNewsPollingLoop() {
     let tweetText = null;
     let generatedPath = null;
 
+    const longEligible = isLongTweetEligible(fullText);
+
+    if (longEligible) {
+      console.log("📏 CA article qualifies for long-tweet mode");
+    }
+
     try {
       // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
       //   fullText,
@@ -282,7 +289,12 @@ export async function caNewsPollingLoop() {
       // );
 
       const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType, "CA");
+        await generateClaudeTweetWithType(
+          fullText,
+          articleType,
+          "CA",
+          longEligible,
+        );
 
       tweetText = tweetToPost;
 
