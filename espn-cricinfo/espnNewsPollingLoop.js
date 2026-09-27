@@ -122,14 +122,11 @@ export async function espnNewsPollingLoop() {
     const fullText = `${selected.headline}\n${selected.body}`;
 
     const longEligible = isLongTweetEligible(fullText);
-    // ── Step 1: Classify ───────────────────────────
+
     let articleType = "general_news";
     try {
       articleType = await classifyArticle(fullText);
-      // console.log("🏷️ Article classified as:", articleType);
     } catch (err) {
-      // console.warn("⚠️ classify failed:", err?.message);
-
       console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED FOR CLAUDE..");
       articleType = await classifyArticleGPT(fullText);
     }
@@ -141,25 +138,13 @@ export async function espnNewsPollingLoop() {
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
     } catch (err) {
-      // console.warn("⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:");
-      // console.log("⚠️ ESPN JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
-      // console.warn(
-      //   "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
-      //   err?.message,
-      // );
       try {
         MODEL = "GPT";
         decision = await judgeNewsContextGPT({
           articleText: selected.body,
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
         });
-      } catch (err2) {
-        // console.log("⚠️ ESPN judgeNewsContext (GPT) also failed:");
-        // console.warn(
-        //   "⚠️ ESPN judgeNewsContext (GPT) also failed:",
-        //   err2?.message,
-        // );
-      }
+      } catch (err2) {}
     }
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
