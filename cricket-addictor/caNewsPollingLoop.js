@@ -177,6 +177,7 @@ export async function caNewsPollingLoop() {
       }, virality: ${decision?.viralityScore ?? "n/a"}"`,
     );
     console.log(`🟦 HEADLINE: ${parsed.headline}`);
+    console.log(`🔗 Article Link: ${cleanLink}`);
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
@@ -201,7 +202,7 @@ export async function caNewsPollingLoop() {
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "low significance skipped");
       console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
-      console.log("==============================");
+      console.log("===========================================");
 
       return false;
     }
