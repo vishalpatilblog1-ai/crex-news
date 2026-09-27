@@ -137,7 +137,6 @@ export async function tryFlushTweetQueue() {
 
     let tweetResponse;
 
-    console.log("next version::::");
     console.log(`=========== ${next.source} TWEET START ==========`);
     console.log(`🗂️ ARTICLE TYPE :: ${next.articleType}`);
     console.log(`✅ SIGNIFICANCE SCORE :: ${next.score}`);
