@@ -1490,17 +1490,39 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
 
   // after
   const usage = response.usage;
-  const inputCost = (usage.input_tokens / 1_000_000) * 3;
+  const inputCost = (usage.input_tokens / 1_000_000) * 2;
   const cacheWriteCost =
-    ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 6;
+    ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 4;
   const cacheReadCost =
-    ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.3;
-  const outputCost = (usage.output_tokens / 1_000_000) * 15;
+    ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.2;
+  const outputCost = (usage.output_tokens / 1_000_000) * 10;
   const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
   console.log(
     `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   );
+
+  // // after
+  // const usage = response.usage;
+  // // correct version — replaces what I gave you before
+  // const inputCost = (usage.input_tokens / 1_000_000) * 2; // back to 2, not 3
+  // const cacheWriteCost =
+  //   ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 4; // 4, not 6 (1h write price)
+  // const cacheReadCost =
+  //   ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.2; // 0.2, not 0.3
+  // const outputCost = (usage.output_tokens / 1_000_000) * 10; // back to 10, not 15
+  // // const inputCost = (usage.input_tokens / 1_000_000) * 3;
+  // // const cacheWriteCost =
+  // //   ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 6;
+  // // const cacheReadCost =
+  // //   ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.3;
+  // // const outputCost = (usage.output_tokens / 1_000_000) * 15;
+
+  // const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
+
+  // console.log(
+  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // );
 
   // const usage = response.usage;
   // const inputCost = (usage.input_tokens / 1_000_000) * 2;
