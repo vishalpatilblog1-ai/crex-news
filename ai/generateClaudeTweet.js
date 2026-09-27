@@ -1472,30 +1472,44 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
       {
         type: "text",
         text: systemPrompt,
-        cache_control: { type: "ephemeral" },
+        cache_control: { type: "ephemeral", ttl: "1h" },
       },
       {
         type: "text",
         text: staticInstructionsBlock,
-        cache_control: { type: "ephemeral" },
+        cache_control: { type: "ephemeral", ttl: "1h" },
       },
       {
         type: "text",
         text: articleTypeInstruction,
-        cache_control: { type: "ephemeral" },
+        cache_control: { type: "ephemeral", ttl: "1h" },
       },
     ],
     messages: [{ role: "user", content: userPrompt }],
   });
 
+  // after
   const usage = response.usage;
-  const inputCost = (usage.input_tokens / 1_000_000) * 2;
-  const outputCost = (usage.output_tokens / 1_000_000) * 10;
-  const totalCost = inputCost + outputCost;
+  const inputCost = (usage.input_tokens / 1_000_000) * 3;
+  const cacheWriteCost =
+    ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 6;
+  const cacheReadCost =
+    ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.3;
+  const outputCost = (usage.output_tokens / 1_000_000) * 15;
+  const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
   console.log(
-    `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   );
+
+  // const usage = response.usage;
+  // const inputCost = (usage.input_tokens / 1_000_000) * 2;
+  // const outputCost = (usage.output_tokens / 1_000_000) * 10;
+  // const totalCost = inputCost + outputCost;
+
+  // console.log(
+  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // );
 
   const textBlock = response.content.find((block) => block.type === "text");
   const rawText = textBlock?.text;
