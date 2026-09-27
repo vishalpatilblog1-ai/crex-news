@@ -138,14 +138,14 @@ export async function tryFlushTweetQueue() {
     let tweetResponse;
 
     console.log("next version::::");
-    console.log(`=========== ${source} TWEET START ==========`);
+    console.log(`=========== ${next.source} TWEET START ==========`);
     console.log(`🗂️ ARTICLE TYPE :: ${next.articleType}`);
     console.log(`✅ SIGNIFICANCE SCORE :: ${next.score}`);
     console.log(`⭐ TWEET MODEL :: ${next.model}`);
     console.log(`📰 TWEET HEADLINE :: ${next.headline}`);
     console.log(`🟦 TWEET LINK :: ${next.id}`);
     console.log(`📥 ACTUAL TEXT :: ${next.text}`);
-    console.log(`=========== ${source} TWEET END ============`);
+    console.log(`=========== ${next.source} TWEET END ============`);
 
     if (next.imageUrl) {
       tweetResponse = await tweetNewsWithImage(
