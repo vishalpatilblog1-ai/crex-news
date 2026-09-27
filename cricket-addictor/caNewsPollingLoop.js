@@ -161,12 +161,6 @@ export async function caNewsPollingLoop() {
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
     } catch (err) {
-      // console.warn(
-      //   "⚠️ judgeNewsContext (Claude) failed, trying GPT:",
-      //   err?.message || err,
-      // );
-      // console.warn("⚠️ CA judgeNewsContext (Claude) failed, trying GPT:");
-      // console.log("⚠️ CA JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
       try {
         MODEL = "GPT";
         decision = await judgeNewsContextGPT({
@@ -174,20 +168,15 @@ export async function caNewsPollingLoop() {
           existingContexts:
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
-      } catch (err2) {
-        // console.warn(
-        //   "⚠️ judgeNewsContext (GPT) also failed:",
-        //   err2?.message || err2,
-        // );
-        // console.log("⚠️ judgeNewsContext (GPT) also failed:");
-      }
+      } catch (err2) {}
     }
 
     console.log(
       `📊 Scores — significance: ${
         decision?.significanceScore ?? "n/a"
-      }, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
+      }, virality: ${decision?.viralityScore ?? "n/a"}"`,
     );
+    console.log(`🟦 HEADLINE: ${parsed.headline}`);
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
@@ -211,7 +200,9 @@ export async function caNewsPollingLoop() {
       // );
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "low significance skipped");
-      console.log("👊 CA TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
+      console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
+      console.log("==============================");
+
       return false;
     }
     //////// NEW CODE END //////

@@ -1470,26 +1470,16 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     ],
     system: [
       {
-        // Universal rules -- identical on every call regardless of article
-        // type, so this stays cached even when the type below changes.
         type: "text",
         text: systemPrompt,
         cache_control: { type: "ephemeral" },
       },
       {
-        // Output rules / final-check audit / card-field spec -- only two
-        // possible variants (needsCard true/false), previously lived
-        // uncached inside userPrompt on every single call. Placed BEFORE
-        // articleTypeInstruction so its cache hit rate isn't coupled to
-        // which of the 12 article types just ran (prefix-match caching).
         type: "text",
         text: staticInstructionsBlock,
         cache_control: { type: "ephemeral" },
       },
       {
-        // Type-specific instruction -- ~12 possible values, so this is the
-        // most cache-volatile block. Placed LAST so reshuffling it on type
-        // change never invalidates the cache for the blocks above it.
         type: "text",
         text: articleTypeInstruction,
         cache_control: { type: "ephemeral" },
