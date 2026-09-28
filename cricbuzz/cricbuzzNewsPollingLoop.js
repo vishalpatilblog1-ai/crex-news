@@ -132,11 +132,21 @@ export async function cricbuzzNewsPollingLoop() {
 
       const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
+      const vScore = decision?.viralityScore ?? "n/a";
 
       if (!isExempt && score < 7) {
-        // console.log("============================================");
         STATE.cricbuzz.seen[newsKey] = Date.now();
-        console.log("👊 CB TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
+
+        console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+        console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+        console.log(`📰 TWEET HEADLINE :: ${selected.hline}`);
+        console.log(`🟦 TWEET LINK :: ${cleanLink}`);
+        console.log("🔴 CB ARTICLE SCORE IS TOO LOW");
+        console.log("===========================================");
+
+        STATE.ca.seen[cleanLink] = Date.now();
+        await saveState(STATE, "low significance skipped");
+
         continue;
       }
 

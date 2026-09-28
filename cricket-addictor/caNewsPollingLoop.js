@@ -176,24 +176,18 @@ export async function caNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
 
     if (!isExempt && score < 7) {
-      // console.log(
-      //   `📊 Scores — significance: ${
-      //     decision?.significanceScore ?? "n/a"
-      //   }, virality: ${decision?.viralityScore ?? "n/a"}`,
-      // );
-
       console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
-      console.log(`📊 SIGNIFICANCE SCORE :: ${score}`);
-      console.log(`⭐ TWEET MODEL :: ${MODEL}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
       console.log(`🟦 TWEET LINK :: ${cleanLink}`);
+      console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
 
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "low significance skipped");
-      console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
-      console.log("===========================================");
 
       return false;
     }

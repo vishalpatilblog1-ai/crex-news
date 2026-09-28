@@ -155,8 +155,16 @@ export async function espnNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
 
     if (!isExempt && score < 7) {
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.headline}`);
+      console.log(`🟦 TWEET LINK :: ${cleanUrl}`);
+      console.log("🔴 ESPN ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
       STATE.espn.seen[cleanUrl] = Date.now();
       console.log("👊 ESPN TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
       continue;
@@ -167,36 +175,6 @@ export async function espnNewsPollingLoop() {
     } else {
       // console.log(`✅ ESPN significance: ${score}/10`);
     }
-
-    // let decision = null;
-    // try {
-    //   decision = await judgeNewsContext({
-    //     articleText: selected.body,
-    //     existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
-    //   });
-
-    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-    //     console.log("🔁 ESPN duplicate context — skipping:", selected.headline);
-    //     STATE.espn.seen[cleanUrl] = Date.now();
-    //     continue;
-    //   }
-
-    //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-    //   const score = decision?.significanceScore ?? 10;
-
-    //   if (!isExempt && score < 7) {
-    //     STATE.espn.seen[cleanUrl] = Date.now();
-    //     continue;
-    //   }
-
-    //   if (isExempt) {
-    //     console.log(`🌟 ESPN exempt type (${articleType})`);
-    //   } else {
-    //     console.log(`✅ ESPN significance: ${score}/10`);
-    //   }
-    // } catch (err) {
-    //   console.warn("⚠️ ESPN context judge failed:", err?.message);
-    // }
 
     const imageUrl = selected.imageUrl || null;
     const { useImage } = await decideImageUsage({
