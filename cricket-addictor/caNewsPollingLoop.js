@@ -14,21 +14,19 @@ import {
 } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
-import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
+import fs from "fs";
+import path from "path";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticleRss } from "./parseCAArticleRss.js";
-import fs from "fs";
-import path from "path";
 
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
@@ -144,18 +142,16 @@ export async function caNewsPollingLoop() {
 
     let articleType = "player_form";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
     } catch (err) {
       // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
       console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED FOR CLAUDE ..");
       articleType = await classifyArticleGPT(fullText);
     }
 
-    //////// NEW CODE START //////
-
     let decision = null;
     try {
-      decision = await judgeNewsContext({
+      decision = await judgeNewsContextGPT({
         articleText: fullText,
         existingContexts:
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
@@ -171,11 +167,6 @@ export async function caNewsPollingLoop() {
       } catch (err2) {}
     }
 
-    // console.log(
-    //   `📊 Scores — significance: ${
-    //     decision?.significanceScore ?? "n/a"
-    //   }, virality: ${decision?.viralityScore ?? "n/a"}`,
-    // );
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
       STATE.ca.seen[cleanLink] = Date.now();
@@ -192,8 +183,6 @@ export async function caNewsPollingLoop() {
       //     decision?.significanceScore ?? "n/a"
       //   }, virality: ${decision?.viralityScore ?? "n/a"}`,
       // );
-      // console.log(`🟦 HEADLINE: ${parsed.headline}`);
-      // console.log(`🔗 Article Link: ${cleanLink}`);
 
       console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
       console.log(`📊 SIGNIFICANCE SCORE :: ${score}`);
@@ -208,24 +197,13 @@ export async function caNewsPollingLoop() {
 
       return false;
     }
-    //////// NEW CODE END //////
 
-    // ── Step 3: Tweet generation ──────────────────────────────────────────────
     let tweetText = null;
     let generatedPath = null;
 
     const longEligible = isLongTweetEligible(fullText);
 
-    // if (longEligible) {
-    //   console.log("📏 CA article qualifies for long-tweet mode");
-    // }
-
     try {
-      // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
-      //   fullText,
-      //   articleType,
-      // );
-
       const { tweetText: tweetToPost, card } =
         await generateClaudeTweetWithType(
           fullText,
@@ -235,21 +213,6 @@ export async function caNewsPollingLoop() {
         );
 
       tweetText = tweetToPost;
-
-      // if (card) {
-      //   try {
-      //     generatedPath = await generateCardImage(
-      //       CREX_BASE_IMAGE_TEMPLATE,
-      //       card,
-      //     );
-
-      //     console.log("Claude generatedPath:::", generatedPath);
-      //   } catch (err) {
-      //     console.error("❌ Image generation failed:", err);
-      //   }
-      // } else {
-      //   console.log("📝 Text-only tweet (no card)");
-      // }
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
@@ -261,28 +224,7 @@ export async function caNewsPollingLoop() {
           articleType,
         );
 
-        // const {
-        //   tweetText: gptTweet,
-        //   card,
-        //   source,
-        // } = await generateGeminiTweet(fullText, articleType);
-
         tweetText = gptTweet;
-
-        // if (card) {
-        //   try {
-        //     generatedPath = await generateCardImage(
-        //       CREX_BASE_IMAGE_TEMPLATE,
-        //       card,
-        //     );
-
-        //     // console.log("GPT generatedPath:::", generatedPath);
-        //   } catch (err) {
-        //     console.error("❌ Image generation failed:", err);
-        //   }
-        // } else {
-        //   console.log("📝 Text-only tweet (no card)");
-        // }
       } catch (err) {
         console.warn("⚠️ GPT failed:", err?.message || err);
       }

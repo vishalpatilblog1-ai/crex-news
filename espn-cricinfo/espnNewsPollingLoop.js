@@ -125,7 +125,7 @@ export async function espnNewsPollingLoop() {
 
     let articleType = "general_news";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
     } catch (err) {
       console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED FOR CLAUDE..");
       articleType = await classifyArticleGPT(fullText);
@@ -133,7 +133,7 @@ export async function espnNewsPollingLoop() {
 
     let decision = null;
     try {
-      decision = await judgeNewsContext({
+      decision = await judgeNewsContextGPT({
         articleText: selected.body,
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });

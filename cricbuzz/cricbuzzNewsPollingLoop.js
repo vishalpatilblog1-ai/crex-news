@@ -97,27 +97,20 @@ export async function cricbuzzNewsPollingLoop() {
 
       let articleType = "player_form";
       try {
-        articleType = await classifyArticle(fullText);
+        articleType = await classifyArticleGPT(fullText);
       } catch (err) {
-        // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
         console.log("⚠️ CB ARTICLE CLASSIFICATION FAILED FOR CLAUDE....");
         articleType = await classifyArticleGPT(fullText);
       }
 
       let decision = null;
       try {
-        decision = await judgeNewsContext({
+        decision = await judgeNewsContextGPT({
           articleText: fullText,
           existingContexts:
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
       } catch (err) {
-        // console.log("⚠️ CB judgeNewsContext (Claude) failed, trying GPT ..");
-        // console.log("⚠️ CB JUDGE-NEWS-CONTEXT FAILED FOR CLAUDE..");
-        // console.warn(
-        //   "⚠️ Cricbuzz judgeNewsContext (Claude) failed, trying GPT:",
-        //   err?.message || err,
-        // );
         try {
           MODEL = "GPT";
           decision = await judgeNewsContextGPT({
@@ -125,13 +118,7 @@ export async function cricbuzzNewsPollingLoop() {
             existingContexts:
               STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
           });
-        } catch (err2) {
-          // console.warn(
-          //   "⚠️ Cricbuzz judgeNewsContext (GPT) also failed:",
-          //   err2?.message || err2,
-          // );
-          // console.log("⚠️ Cricbuzz judgeNewsContext (GPT) also failed:");
-        }
+        } catch (err2) {}
       }
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
@@ -157,43 +144,6 @@ export async function cricbuzzNewsPollingLoop() {
       } else {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
       }
-
-      // let decision = null;
-      // try {
-      //   decision = await judgeNewsContext({
-      //     articleText: fullText,
-      //     existingContexts:
-      //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-      //   });
-
-      //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-      //     console.log(
-      //       "🔴 Cricbuzz skipped — already covered context:",
-      //       selected.hline,
-      //     );
-      //     STATE.cricbuzz.seen[newsKey] = Date.now();
-      //     continue;
-      //   }
-
-      //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      //   const score = decision?.significanceScore ?? 10;
-
-      //   if (!isExempt && score < 7) {
-      //     console.log("============================================");
-      //     STATE.cricbuzz.seen[newsKey] = Date.now();
-      //     continue;
-      //   }
-
-      //   if (isExempt) {
-      //   } else {
-      //     console.log(`✅ Significance: ${score}/10 — proceeding`);
-      //   }
-      // } catch (err) {
-      //   console.warn(
-      //     "⚠️ Cricbuzz judgeNewsContext failed:",
-      //     err?.message || err,
-      //   );
-      // }
 
       const longEligible = isLongTweetEligible(fullText);
 
@@ -239,13 +189,7 @@ export async function cricbuzzNewsPollingLoop() {
 
       tweetText = applySourceSignature(tweetText, SOURCE);
 
-      // Text-only tweets for CB — no image, same as the current SK text-only test.
       const imageUrl = null;
-
-      // For future if required
-      //  const imageUrl = imageId
-      // ? `${BASE_IMAGE_URL}/a/img/v1/1080x608/i1/c${imageId}/i.jpg`
-      // : null;
 
       const tweetId = `${newsKey}`;
 
