@@ -43,8 +43,6 @@ export async function cricbuzzNewsPollingLoop() {
     // ---- Collect ALL unseen, non-aged-out candidates (not just the first) ----
     const candidates = [];
     for (const item of storyList) {
-      console.log("CB item:::", item);
-
       const story = item.story;
       if (!story) continue;
 
