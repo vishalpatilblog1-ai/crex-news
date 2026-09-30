@@ -140,7 +140,7 @@ export async function cricbuzzNewsPollingLoop() {
         console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
         console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
         console.log(`📰 TWEET HEADLINE :: ${selected.hline}`);
-        console.log(`🟦 TWEET LINK :: ${tweetId}`);
+      //  console.log(`🟦 TWEET LINK :: ${tweetId}`);
         console.log("🔴 CB ARTICLE SCORE IS TOO LOW");
         console.log("===========================================");
 
