@@ -487,7 +487,10 @@ Rules:
 - Lead with impact. Avoid sympathy framing entirely.
 - The consequence must reveal something about team structure, not just "X is out, Y comes in"
 - Open with the strongest tension or contradiction, not the basic fact
-
+- If the article quotes a named person's read on the injury (coach, ex-player,
+  selector), lead with that claim and say whether it holds. With no named
+  voice, keep it to 2 lines and skip the roster walk-through.
+  
 FRICTION REQUIREMENT:
 If the tweet states who's out without naming what the team structurally
 loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so
@@ -1032,6 +1035,16 @@ Before manufacturing a hot take, check if the source already has real
 tension — a controversial quote, a stated disagreement, a surprising
 admission. Surface that instead of inventing a separate angle. Manufactured
 friction is for when the source is genuinely neutral, not the default move.
+
+═══════════════════════════════════════════
+DOUBLE STANDARD / IRONY SCAN (all article types, do this first):
+═══════════════════════════════════════════
+Check whether the article's own facts show (a) the same standard applied
+differently to two players or situations, (b) an organisation reversing its
+own earlier stance or hiring the person it once fought, or (c) a named
+person's claim that a number in the article tests. If one exists, lead with
+it and name the inconsistency directly. Use only what the article or a
+verified search result states. Never invent one.
 
 ═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
