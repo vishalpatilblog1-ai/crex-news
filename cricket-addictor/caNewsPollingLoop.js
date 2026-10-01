@@ -29,7 +29,7 @@ import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticleRss } from "./parseCAArticleRss.js";
 
 const MAX_AGE_MIN = 120;
-const RETENTION_MS = 6 * 60 * 60 * 1000;
+const RETENTION_MS = 24 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 let MODEL = "claude";
 
