@@ -17,7 +17,7 @@ import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 const SOURCE = "CB";
 let MODEL = "claude";
 const MAX_AGE_MIN = 120;
-const RETENTION_MS = 6 * 60 * 60 * 1000;
+const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
 
 export async function cricbuzzNewsPollingLoop() {
