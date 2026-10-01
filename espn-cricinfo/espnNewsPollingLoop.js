@@ -25,7 +25,7 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
-const RETENTION_MS = 6 * 60 * 60 * 1000;
+const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
 
 let MODEL = "claude";
