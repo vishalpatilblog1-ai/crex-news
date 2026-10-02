@@ -121,6 +121,11 @@ export async function cricbuzzNewsPollingLoop() {
         } catch (err2) {}
       }
 
+      if (!decision) {
+  console.log("⚠️ CB judge failed twice, skipping for now:", selected.hline);
+  continue;
+      }
+
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
         console.log(
           "🔴 Cricbuzz skipped — already covered context:",
@@ -144,7 +149,7 @@ export async function cricbuzzNewsPollingLoop() {
         console.log("🔴 CB ARTICLE SCORE IS TOO LOW");
         console.log("===========================================");
 
-        STATE.ca.seen[cleanLink] = Date.now();
+     //   STATE.ca.seen[cleanLink] = Date.now();
         await saveState(STATE, "low significance skipped");
 
         continue;
