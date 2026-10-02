@@ -41,10 +41,10 @@ export async function espnNewsPollingLoop() {
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
-  const today = new Date().toISOString().slice(0, 10);
-  if (!STATE.dailyContext.date || STATE.dailyContext.date !== today) {
-    STATE.dailyContext = { date: today, contexts: [] };
-  }
+  //const today = new Date().toISOString().slice(0, 10);
+//  if (!STATE.dailyContext.date || STATE.dailyContext.date !== today) {
+    //STATE.dailyContext = { date: today, contexts: [] };
+ // }
 
   // ── Prune state ────────────────────────────────────
   let stateDirty = false;
@@ -145,6 +145,11 @@ export async function espnNewsPollingLoop() {
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
         });
       } catch (err2) {}
+    }
+
+    if (!decision) {
+  console.log("⚠️ ESPN judge failed twice — skipping, will retry next poll:", selected.headline);
+  continue;
     }
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
