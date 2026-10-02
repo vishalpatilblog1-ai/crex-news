@@ -166,7 +166,10 @@ export async function caNewsPollingLoop() {
         });
       } catch (err2) {}
     }
-
+if (!decision) {
+  console.log("⚠️ CA judge failed twice, skipping this poll:", parsed.headline);
+  return false;
+}
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
       STATE.ca.seen[cleanLink] = Date.now();
