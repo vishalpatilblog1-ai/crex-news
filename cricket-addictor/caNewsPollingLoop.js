@@ -18,6 +18,7 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
 import fs from "fs";
 import path from "path";
@@ -32,6 +33,10 @@ const MAX_AGE_MIN = 120;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 let MODEL = "claude";
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = everything -> WhatsApp (cutover day, you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
 const LOCAL_TWEETS_DIR = path.join(process.cwd(), "local-tweets");
@@ -166,10 +171,13 @@ export async function caNewsPollingLoop() {
         });
       } catch (err2) {}
     }
-if (!decision) {
-  console.log("⚠️ CA judge failed twice, skipping this poll:", parsed.headline);
-  return false;
-}
+    if (!decision) {
+      console.log(
+        "⚠️ CA judge failed twice, skipping this poll:",
+        parsed.headline,
+      );
+      return false;
+    }
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
       STATE.ca.seen[cleanLink] = Date.now();
@@ -181,18 +189,20 @@ if (!decision) {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    if (!isExempt && score < 7) {
-      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
-      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
-      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
-      console.log(`🟦 TWEET LINK :: ${cleanLink}`);
-      console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
-      console.log("===========================================");
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
+    // cutover mode: keep dropping low-score articles, only >= 7 go to WhatsApp
+    if (!POST_VIA_API && isLowScore) {
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "low significance skipped");
-
       return false;
+    }
+
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log("📲 CA score < 7 — sending to WhatsApp, not X API");
     }
 
     let tweetText = null;
@@ -238,7 +248,14 @@ if (!decision) {
 
     STATE.ca.seen[cleanLink] = Date.now();
 
-    if (ENABLE_LOCAL_TWEETS) {
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: "CA",
+        headline: parsed.headline,
+        tweetText,
+        articleUrl: cleanLink,
+      });
+    } else if (ENABLE_LOCAL_TWEETS) {
       saveTweetLocally(tweetText);
       console.log(`📝 Local-only mode: ${parsed.headline}`);
     } else {
@@ -271,7 +288,11 @@ if (!decision) {
       }
     }
 
-    if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+    if (
+      !isLowScore &&
+      decision?.newContext &&
+      !contextExists(STATE, decision.newContext)
+    ) {
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
         source: "CA",

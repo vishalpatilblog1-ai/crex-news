@@ -5,3 +5,6 @@
 
 // more wickets
 // node gullypoint-stats/cricketStats.js --type bowling --format test --team IND --min-matches 90 --sort wickets --order desc
+
+// top N
+// node gullypoint-stats/cricketStats.js --format odi --team IND --min-matches 40 --order desc --limit 15

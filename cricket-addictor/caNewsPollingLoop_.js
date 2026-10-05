@@ -1,34 +1,37 @@
 // cricket-addictor/caNewsPollingLoop.js
 
-import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
+import {
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
 
 import {
   classifyArticle,
   // classifyArticle,
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
-import { generateCardImage } from "../canvas/imageRenderer.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
+import fs from "fs";
+import path from "path";
 import { isCAArticle, normalizeCALink } from "./caFilters.js";
 import { isBlockedCAHeadline } from "./caHeadlineFilter.js";
 import { fetchCARSS } from "./fetchCARss.js";
 import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
 import { parseCAArticleRss } from "./parseCAArticleRss.js";
-import fs from "fs";
-import path from "path";
 
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 6 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
+let MODEL = "claude";
 
 const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
 const LOCAL_TWEETS_DIR = path.join(process.cwd(), "local-tweets");
@@ -60,12 +63,6 @@ function saveTweetLocally(tweetText) {
 export async function caNewsPollingLoop() {
   if (!global.STATE) return false;
 
-  // NOTE: CA's dedicated 11:30PM-6AM block (isCricketAddictorBlocked) has
-  // been removed. index.js's global sleep window (1-5 AM IST, via
-  // runIfAwake) now covers every source including CA at the polling level,
-  // so this local gate was redundant and its window no longer matched the
-  // global one anyway.
-
   const STATE = global.STATE;
 
   STATE.ca ??= {};
@@ -73,7 +70,6 @@ export async function caNewsPollingLoop() {
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
-  // ── Prune state ───────────────────────────────────────────────────────────
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
@@ -81,7 +77,6 @@ export async function caNewsPollingLoop() {
 
   if (stateDirty) await saveState(STATE, "prune cleanup");
 
-  // ── Fetch RSS ─────────────────────────────────────────────────────────────
   let items;
   try {
     items = await fetchCARSS();
@@ -147,45 +142,30 @@ export async function caNewsPollingLoop() {
 
     let articleType = "player_form";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
     } catch (err) {
-      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+      // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+      console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED FOR CLAUDE ..");
+      articleType = await classifyArticleGPT(fullText);
     }
-
-    //////// NEW CODE START //////
 
     let decision = null;
     try {
-      decision = await judgeNewsContext({
+      decision = await judgeNewsContextGPT({
         articleText: fullText,
         existingContexts:
           STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
       });
     } catch (err) {
-      // console.warn(
-      //   "⚠️ judgeNewsContext (Claude) failed, trying GPT:",
-      //   err?.message || err,
-      // );
-      console.warn("⚠️ CA judgeNewsContext (Claude) failed, trying GPT:");
       try {
+        MODEL = "GPT";
         decision = await judgeNewsContextGPT({
           articleText: fullText,
           existingContexts:
             STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
         });
-      } catch (err2) {
-        console.warn(
-          "⚠️ judgeNewsContext (GPT) also failed:",
-          err2?.message || err2,
-        );
-      }
+      } catch (err2) {}
     }
-
-    console.log(
-      `📊 Scores — significance: ${
-        decision?.significanceScore ?? "n/a"
-      }, virality: ${decision?.viralityScore ?? "n/a"} — "${parsed.headline}"`,
-    );
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
       console.log("🔴 CA skipped — already covered context");
@@ -196,93 +176,37 @@ export async function caNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
-    //////// NEW CODE END //////
+    const vScore = decision?.viralityScore ?? "n/a";
 
-    //////// OLD CODE START //////
+    if (!isExempt && score < 7) {
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log(`🟦 TWEET LINK :: ${cleanLink}`);
+      console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
 
-    // let decision = null;
-    // try {
-    //   decision = await judgeNewsContext({
-    //     articleText: fullText,
-    //     existingContexts:
-    //       STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
-    //   });
+      STATE.ca.seen[cleanLink] = Date.now();
+      await saveState(STATE, "low significance skipped");
 
-    //   // console.log(
-    //   //   `📊 Scores — significance: ${
-    //   //     decision?.significanceScore ?? "n/a"
-    //   //   }, virality: ${decision?.viralityScore ?? "n/a"} — "${
-    //   //     parsed.headline
-    //   //   }"`,
-    //   // );
+      return false;
+    }
 
-    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-    //     console.log("🔴 CA skipped — already covered context");
-    //     STATE.ca.seen[cleanLink] = Date.now();
-    //     await saveState(STATE, "duplicate context skipped");
-    //     return false;
-    //   }
-
-    //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-    //   const score = decision?.significanceScore ?? 10;
-
-    //   // console.log("================ Full CA Article ===========");
-    //   // console.log("🏷️ Article Type::", articleType);
-    //   // console.log("📰 Headline::", selected.title);
-    //   // console.log("📄 Article::", parsed.body);
-    //   // console.log("==============================================");
-
-    //   if (!isExempt && score < 7) {
-    //     // console.log(
-    //     //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-    //     // );
-    //     STATE.ca.seen[cleanLink] = Date.now();
-    //     await saveState(STATE, "low significance skipped");
-    //     return false;
-    //   }
-
-    //   if (isExempt) {
-    //     // console.log(
-    //     //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-    //     // );
-    //   } else {
-    //     console.log(`✅ Significance: ${score}/10 — proceeding`);
-    //   }
-    // } catch (err) {
-    //   console.warn("⚠️ judgeNewsContext failed:", err?.message || err);
-    // }
-
-    //////// OLD CODE END ///////
-
-    // ── Step 3: Tweet generation ──────────────────────────────────────────────
     let tweetText = null;
     let generatedPath = null;
 
-    try {
-      // const { tweetText: tweetToPost, card } = await generateGPTTweetWithType(
-      //   fullText,
-      //   articleType,
-      // );
+    const longEligible = isLongTweetEligible(fullText);
 
+    try {
       const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(fullText, articleType, "CA");
+        await generateClaudeTweetWithType(
+          fullText,
+          articleType,
+          "CA",
+          longEligible,
+        );
 
       tweetText = tweetToPost;
-
-      if (card) {
-        try {
-          generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE,
-            card,
-          );
-
-          console.log("Claude generatedPath:::", generatedPath);
-        } catch (err) {
-          console.error("❌ Image generation failed:", err);
-        }
-      } else {
-        console.log("📝 Text-only tweet (no card)");
-      }
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
@@ -294,28 +218,7 @@ export async function caNewsPollingLoop() {
           articleType,
         );
 
-        // const {
-        //   tweetText: gptTweet,
-        //   card,
-        //   source,
-        // } = await generateGeminiTweet(fullText, articleType);
-
         tweetText = gptTweet;
-
-        if (card) {
-          try {
-            generatedPath = await generateCardImage(
-              CREX_BASE_IMAGE_TEMPLATE,
-              card,
-            );
-
-            // console.log("GPT generatedPath:::", generatedPath);
-          } catch (err) {
-            console.error("❌ Image generation failed:", err);
-          }
-        } else {
-          console.log("📝 Text-only tweet (no card)");
-        }
       } catch (err) {
         console.warn("⚠️ GPT failed:", err?.message || err);
       }
@@ -343,19 +246,22 @@ export async function caNewsPollingLoop() {
         usedImages: STATE.usedImages,
       });
 
-      const tweetId = `CA:${cleanLink}`;
+      const tweetId = `${cleanLink}`;
 
       enqueueTweet({
         id: tweetId,
         source: "CA",
         text: tweetText,
-        // imageUrl: generatedPath || null,
         imageUrl: null,
         seenKey: cleanLink,
         publishedAt: pubMs || Date.now(),
+        headline: parsed.headline,
+        model: MODEL,
+        articleType,
+        score,
       });
 
-      console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
+      // console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
 
       if (useImage && imageUrl) {
         STATE.usedImages[imageUrl] = Date.now();
@@ -372,7 +278,7 @@ export async function caNewsPollingLoop() {
     }
 
     await saveState(STATE);
-    console.log(`✅ CA published: ${parsed.headline}`);
+    // console.log(`✅ CA published: ${parsed.headline}`);
     return true;
   } catch (err) {
     console.warn("⚠️ CA processing failed:", err?.message || err);

@@ -111,9 +111,6 @@ function getFormatId(format = "test") {
     return FORMAT_IDS[normalized];
   }
 
-  /*
-   * Allow direct numeric Cricbuzz format IDs
-   */
   if (/^\d+$/.test(normalized)) {
     return normalized;
   }
@@ -123,7 +120,7 @@ function getFormatId(format = "test") {
 
 /*
 |--------------------------------------------------------------------------
-| TEAM
+| TEAM / OPPONENT
 |--------------------------------------------------------------------------
 */
 
@@ -137,8 +134,9 @@ function getTeamId(team = "all") {
   }
 
   /*
-   * Allow direct Cricbuzz numeric team IDs
+   * Allow direct Cricbuzz team ID
    */
+
   if (/^\d+$/.test(String(team))) {
     return String(team);
   }
@@ -182,22 +180,6 @@ function toNumber(value) {
 |--------------------------------------------------------------------------
 | BATTING MAPPER
 |--------------------------------------------------------------------------
-|
-| Cricbuzz batting webValues:
-|
-| [
-|   playerId,
-|   playerName,
-|   matches,
-|   innings,
-|   runs,
-|   average,
-|   strikeRate,
-|   fours,
-|   sixes
-| ]
-|
-|--------------------------------------------------------------------------
 */
 
 function mapBatter(row) {
@@ -223,23 +205,6 @@ function mapBatter(row) {
 |--------------------------------------------------------------------------
 | BOWLING MAPPER
 |--------------------------------------------------------------------------
-|
-| Cricbuzz bowling webValues:
-|
-| [
-|   playerId,
-|   playerName,
-|   matches,
-|   overs,
-|   balls,
-|   wickets,
-|   average,
-|   runs,
-|   fourFers,
-|   fiveFers
-| ]
-|
-|--------------------------------------------------------------------------
 */
 
 function mapBowler(row) {
@@ -250,9 +215,13 @@ function mapBowler(row) {
     matches: toNumber(row[2]),
 
     /*
-     * Overs should stay as a string because values like
-     * 6808.2 mean 6808 overs + 2 balls, not decimal overs.
+     * Keep overs as string.
+     *
+     * Example:
+     * 6808.2 means 6808 overs + 2 balls,
+     * not decimal 6808.2 overs.
      */
+
     overs: row[3],
 
     balls: toNumber(row[4]),
@@ -270,7 +239,7 @@ function mapBowler(row) {
 
 /*
 |--------------------------------------------------------------------------
-| IDENTIFY TABLE TYPE
+| TABLE TYPE
 |--------------------------------------------------------------------------
 */
 
@@ -295,15 +264,39 @@ export async function getBattingStats({
   team = "all",
   opponent = "all",
 } = {}) {
+  /*
+  |--------------------------------------------------------------------------
+  | RESOLVE QUERY
+  |--------------------------------------------------------------------------
+  */
+
   const statType = getStatType(stat);
 
   const formatId = getFormatId(format);
 
   const teamId = getTeamId(team);
 
+  /*
+   * Cricbuzz uses the same IDs for
+   * teams and opponentTeams.
+   *
+   * Example:
+   * IND = 2
+   * AUS = 4
+   * ENG = 9
+   * RSA = 11
+   * NZ = 13
+   */
+
   const opponentId = getTeamId(opponent);
 
   const tableType = getTableType(statType);
+
+  /*
+  |--------------------------------------------------------------------------
+  | BUILD URL
+  |--------------------------------------------------------------------------
+  */
 
   const url =
     `${BASE_URL}/${statType}` +
@@ -311,6 +304,12 @@ export async function getBattingStats({
     `/${year}` +
     `/${teamId}` +
     `/${opponentId}`;
+
+  /*
+  |--------------------------------------------------------------------------
+  | HEADERS
+  |--------------------------------------------------------------------------
+  */
 
   const headers = {
     accept: "*/*",
@@ -331,14 +330,6 @@ export async function getBattingStats({
   /*
   |--------------------------------------------------------------------------
   | OPTIONAL COOKIE
-  |--------------------------------------------------------------------------
-  |
-  | Normally try without cookies.
-  |
-  | If Cricbuzz returns 403:
-  |
-  | export CRICBUZZ_COOKIE='your cookie'
-  |
   |--------------------------------------------------------------------------
   */
 
@@ -437,14 +428,7 @@ export async function getBattingStats({
 
 /*
 |--------------------------------------------------------------------------
-| OPTIONAL BETTER-NAMED EXPORT
-|--------------------------------------------------------------------------
-|
-| cricketStats.js can continue using getBattingStats().
-|
-| But technically it now fetches both batting and bowling,
-| so this alias is provided for future cleanup.
-|
+| ALIAS
 |--------------------------------------------------------------------------
 */
 

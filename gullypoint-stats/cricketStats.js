@@ -166,16 +166,6 @@ function filterPlayers(players, filters, type) {
 */
 
 function sortPlayers(players, sort, order, type) {
-  // const battingFields = {
-  //   average: "average",
-  //   avg: "average",
-
-  //   matches: "matches",
-  //   match: "matches",
-  //   m: "matches",
-
-  //   runs: "runs",
-  // };
   const battingFields = {
     average: "average",
     avg: "average",
@@ -183,6 +173,9 @@ function sortPlayers(players, sort, order, type) {
     matches: "matches",
     match: "matches",
     m: "matches",
+
+    innings: "innings",
+    inns: "innings",
 
     runs: "runs",
 
@@ -225,6 +218,7 @@ function sortPlayers(players, sort, order, type) {
 
   return [...players].sort((a, b) => {
     const aValue = Number(a[field]) || 0;
+
     const bValue = Number(b[field]) || 0;
 
     const difference = aValue - bValue;
@@ -267,18 +261,15 @@ function getFetchedTimestamp() {
 */
 
 function printTable(players, meta) {
-  const WIDTH = 76;
+  const WIDTH = 84;
 
   console.log("");
-  // console.log("=".repeat(WIDTH));
-
-  // console.log("GULLY POINT CRICKET STATS".padStart(47));
-
-  // console.log("=".repeat(WIDTH));
   console.log("");
 
   console.log(
-    `${meta.team.toUpperCase()} | ${meta.format.toUpperCase()} | ${meta.type.toUpperCase()}`,
+    `${meta.team.toUpperCase()} | ` +
+      `${meta.format.toUpperCase()} | ` +
+      `${meta.type.toUpperCase()}`,
   );
 
   if (meta.opponent && String(meta.opponent).toLowerCase() !== "all") {
@@ -305,7 +296,7 @@ function printTable(players, meta) {
 
   if (meta.type === "bowling") {
     console.log(
-      pad("# ", 3, "right") +
+      pad("#", 3, "right") +
         " " +
         pad("PLAYER", 25) +
         " " +
@@ -322,7 +313,7 @@ function printTable(players, meta) {
 
     players.forEach((player, index) => {
       console.log(
-        pad(index + 1 + ".", 3, "right") +
+        pad(index + 1, 3, "right") +
           " " +
           pad(player.name, 25) +
           " " +
@@ -337,10 +328,11 @@ function printTable(players, meta) {
     });
   } else {
     /*
-  |--------------------------------------------------------------------------
-  | BATTING TABLE
-  |--------------------------------------------------------------------------
-  */
+    |--------------------------------------------------------------------------
+    | BATTING TABLE
+    |--------------------------------------------------------------------------
+    */
+
     console.log(
       pad("#", 3, "right") +
         " " +
@@ -348,10 +340,13 @@ function printTable(players, meta) {
         " " +
         pad("M", 6, "right") +
         " " +
+        pad("INNS", 6, "right") +
+        " " +
         pad("RUNS", 10, "right") +
         " " +
-        pad("AVG", 8, "right"),
-      " " + pad("SR", 8, "right"),
+        pad("AVG", 8, "right") +
+        " " +
+        pad("SR", 8, "right"),
     );
 
     console.log("-".repeat(WIDTH));
@@ -363,6 +358,8 @@ function printTable(players, meta) {
           pad(player.name, 25) +
           " " +
           pad(player.matches, 6, "right") +
+          " " +
+          pad(player.innings, 6, "right") +
           " " +
           pad(formatNumber(player.runs), 10, "right") +
           " " +
@@ -376,6 +373,7 @@ function printTable(players, meta) {
   console.log("-".repeat(WIDTH));
 
   console.log("Analysis: Gully Point");
+
   console.log("");
 }
 
@@ -442,6 +440,8 @@ Batting:
 --sort avg
 --sort runs
 --sort matches
+--sort innings
+--sort sr
 
 Bowling:
 --sort wickets
@@ -454,6 +454,15 @@ ORDER:
 
 --order asc
 --order desc
+
+PLAYER FILTER:
+
+--include "Virat Kohli,KL Rahul"
+--exclude "Sachin Tendulkar"
+
+LIMIT:
+
+--limit 10
 `);
 }
 
@@ -550,15 +559,15 @@ async function main() {
   */
 
   let players = filterPlayers(result.players, filters, type);
+
+  /*
+  |--------------------------------------------------------------------------
+  | INCLUDE PLAYERS
+  |--------------------------------------------------------------------------
+  */
+
   const includedPlayers = args.include
     ? String(args.include)
-        .split(",")
-        .map((name) => name.trim().toLowerCase())
-        .filter(Boolean)
-    : [];
-
-  const excludedPlayers = args.exclude
-    ? String(args.exclude)
         .split(",")
         .map((name) => name.trim().toLowerCase())
         .filter(Boolean)
@@ -570,24 +579,24 @@ async function main() {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | EXCLUDE PLAYERS
+  |--------------------------------------------------------------------------
+  */
+
+  const excludedPlayers = args.exclude
+    ? String(args.exclude)
+        .split(",")
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+
   if (excludedPlayers.length > 0) {
     players = players.filter(
       (player) => !excludedPlayers.includes(String(player.name).toLowerCase()),
     );
   }
-
-  // const excludedPlayers = args.exclude
-  //   ? String(args.exclude)
-  //       .split(",")
-  //       .map((name) => name.trim().toLowerCase())
-  //       .filter(Boolean)
-  //   : [];
-
-  // if (excludedPlayers.length > 0) {
-  //   players = players.filter(
-  //     (player) => !excludedPlayers.includes(String(player.name).toLowerCase()),
-  //   );
-  // }
 
   /*
   |--------------------------------------------------------------------------
@@ -603,6 +612,18 @@ async function main() {
     String(args.order || "desc").toLowerCase(),
     type,
   );
+
+  /*
+  |--------------------------------------------------------------------------
+  | LIMIT
+  |--------------------------------------------------------------------------
+  */
+
+  const limit = numberOrNull(args.limit);
+
+  if (limit !== null && limit > 0) {
+    players = players.slice(0, limit);
+  }
 
   /*
   |--------------------------------------------------------------------------
