@@ -73,19 +73,22 @@ export async function sendTweetDraftToWhatsApp(draft) {
     imageUrl = null,
   } = draft;
 
-  const charCount = tweetText.length;
+  // Pure tweet only, ready to copy and paste into X
+  const messageBody = tweetText;
 
-  const messageBody = [
-    `🐦 *New ${source} draft* (${charCount} chars)`,
-    ``,
-    `*Headline:* ${headline}`,
-    ``,
-    tweetText,
-    ``,
-    articleUrl ? `🔗 ${articleUrl}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  // const charCount = tweetText.length;
+
+  // const messageBody = [
+  //   `🐦 *New ${source} draft* (${charCount} chars)`,
+  //   ``,
+  //   `*Headline:* ${headline}`,
+  //   ``,
+  //   tweetText,
+  //   ``,
+  //   articleUrl ? `🔗 ${articleUrl}` : null,
+  // ]
+  //   .filter(Boolean)
+  //   .join("\n");
 
   try {
     const messageOptions = {
