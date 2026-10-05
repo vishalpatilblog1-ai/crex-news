@@ -4,7 +4,10 @@ import { fetchESPNRss } from "./fetchESPNRss.js";
 import { isESPNArticle, normalizeESPNLink } from "./espnFilters.js";
 import { parseESPNArticle } from "./parseESPNArticle.js";
 
-import { generateGPTTweet } from "../ai/generate-gpt-tweet.js";
+import {
+  classifyArticleGPT,
+  generateGPTTweet,
+} from "../ai/generate-gpt-tweet.js";
 import {
   classifyArticle,
   generateClaudeTweetWithType,
@@ -22,8 +25,10 @@ import { saveState } from "../utils/stateStoreCloud.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
-const RETENTION_MS = 6 * 60 * 60 * 1000;
+const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
+
+let MODEL = "claude";
 
 export async function espnNewsPollingLoop() {
   // console.log("espnNewsPollingLoop started ...");
@@ -36,10 +41,10 @@ export async function espnNewsPollingLoop() {
   STATE.dailyContext ??= { contexts: [] };
   STATE.usedImages ??= {};
 
-  const today = new Date().toISOString().slice(0, 10);
-  if (!STATE.dailyContext.date || STATE.dailyContext.date !== today) {
-    STATE.dailyContext = { date: today, contexts: [] };
-  }
+  //const today = new Date().toISOString().slice(0, 10);
+  //  if (!STATE.dailyContext.date || STATE.dailyContext.date !== today) {
+  //STATE.dailyContext = { date: today, contexts: [] };
+  // }
 
   // ── Prune state ────────────────────────────────────
   let stateDirty = false;
@@ -117,40 +122,37 @@ export async function espnNewsPollingLoop() {
     const fullText = `${selected.headline}\n${selected.body}`;
 
     const longEligible = isLongTweetEligible(fullText);
-    // ── Step 1: Classify ───────────────────────────
+
     let articleType = "general_news";
     try {
-      articleType = await classifyArticle(fullText);
-      console.log("🏷️ Article classified as:", articleType);
+      articleType = await classifyArticleGPT(fullText);
     } catch (err) {
-      // console.warn("⚠️ classify failed:", err?.message);
-      console.warn("⚠️ classify failed:");
+      console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED FOR CLAUDE..");
+      articleType = await classifyArticleGPT(fullText);
     }
 
     let decision = null;
     try {
-      decision = await judgeNewsContext({
+      decision = await judgeNewsContextGPT({
         articleText: selected.body,
         existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
       });
     } catch (err) {
-      console.warn("⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:");
-      // console.warn(
-      //   "⚠️ ESPN judgeNewsContext (Claude) failed, trying GPT:",
-      //   err?.message,
-      // );
       try {
+        MODEL = "GPT";
         decision = await judgeNewsContextGPT({
           articleText: selected.body,
           existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
         });
-      } catch (err2) {
-        // console.warn(
-        //   "⚠️ ESPN judgeNewsContext (GPT) also failed:",
-        //   err2?.message,
-        // );
-        console.log("⚠️ ESPN judgeNewsContext (GPT) also failed:");
-      }
+      } catch (err2) {}
+    }
+
+    if (!decision) {
+      console.log(
+        "⚠️ ESPN judge failed twice — skipping, will retry next poll:",
+        selected.headline,
+      );
+      continue;
     }
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
@@ -161,9 +163,18 @@ export async function espnNewsPollingLoop() {
 
     const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
 
     if (!isExempt && score < 7) {
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.headline}`);
+      console.log(`🟦 TWEET LINK :: ${cleanUrl}`);
+      console.log("🔴 ESPN ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
       STATE.espn.seen[cleanUrl] = Date.now();
+      console.log("👊 ESPN TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
       continue;
     }
 
@@ -172,36 +183,6 @@ export async function espnNewsPollingLoop() {
     } else {
       // console.log(`✅ ESPN significance: ${score}/10`);
     }
-
-    // let decision = null;
-    // try {
-    //   decision = await judgeNewsContext({
-    //     articleText: selected.body,
-    //     existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
-    //   });
-
-    //   if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-    //     console.log("🔁 ESPN duplicate context — skipping:", selected.headline);
-    //     STATE.espn.seen[cleanUrl] = Date.now();
-    //     continue;
-    //   }
-
-    //   const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-    //   const score = decision?.significanceScore ?? 10;
-
-    //   if (!isExempt && score < 7) {
-    //     STATE.espn.seen[cleanUrl] = Date.now();
-    //     continue;
-    //   }
-
-    //   if (isExempt) {
-    //     console.log(`🌟 ESPN exempt type (${articleType})`);
-    //   } else {
-    //     console.log(`✅ ESPN significance: ${score}/10`);
-    //   }
-    // } catch (err) {
-    //   console.warn("⚠️ ESPN context judge failed:", err?.message);
-    // }
 
     const imageUrl = selected.imageUrl || null;
     const { useImage } = await decideImageUsage({
@@ -225,7 +206,8 @@ export async function espnNewsPollingLoop() {
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        tweetText = await generateGPTTweet(fullText);
+        const gptResult = await generateGPTTweet(fullText);
+        tweetText = gptResult?.tweetText;
       } catch (err) {
         console.warn("⚠️ GPT fallback failed:", err?.message || err);
       }
@@ -246,12 +228,16 @@ export async function espnNewsPollingLoop() {
       id: `${cleanUrl}`,
       source: "ESPN",
       text: tweetText,
-      // imageUrl: useImage ? imageUrl : null,
       imageUrl: null,
       seenKey: cleanUrl,
+      publishedAt: "",
+      headline: selected.headline,
+      model: MODEL,
+      articleType,
+      score,
     });
 
-    console.log("📥 TWEET HEADLINE:", selected.headline);
+    // console.log("📥 TWEET HEADLINE:", selected.headline);
 
     if (useImage && imageUrl) {
       STATE.usedImages[imageUrl] = Date.now();

@@ -22,11 +22,16 @@ import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp
 
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5;
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 let MODEL = "claude";
 
@@ -42,9 +47,9 @@ export async function espnNewsPollingLoop() {
   STATE.usedImages ??= {};
 
   //const today = new Date().toISOString().slice(0, 10);
-//  if (!STATE.dailyContext.date || STATE.dailyContext.date !== today) {
-    //STATE.dailyContext = { date: today, contexts: [] };
- // }
+  //  if (!STATE.dailyContext.date || STATE.dailyContext.date !== today) {
+  //STATE.dailyContext = { date: today, contexts: [] };
+  // }
 
   // ── Prune state ────────────────────────────────────
   let stateDirty = false;
@@ -148,8 +153,11 @@ export async function espnNewsPollingLoop() {
     }
 
     if (!decision) {
-  console.log("⚠️ ESPN judge failed twice — skipping, will retry next poll:", selected.headline);
-  continue;
+      console.log(
+        "⚠️ ESPN judge failed twice — skipping, will retry next poll:",
+        selected.headline,
+      );
+      continue;
     }
 
     if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
@@ -162,7 +170,10 @@ export async function espnNewsPollingLoop() {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    if (!isExempt && score < 7) {
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
+
+    if (isLowScore && !POST_VIA_API) {
       console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${selected.headline}`);
@@ -175,6 +186,12 @@ export async function espnNewsPollingLoop() {
       continue;
     }
 
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.headline}`);
+      console.log("📲 ESPN score < 7 — sending to WhatsApp, not X API");
+    }
+
     if (isExempt) {
       console.log(`🌟 ESPN exempt type (${articleType})`);
     } else {
@@ -182,10 +199,13 @@ export async function espnNewsPollingLoop() {
     }
 
     const imageUrl = selected.imageUrl || null;
-    const { useImage } = await decideImageUsage({
-      imageUrl,
-      usedImages: STATE.usedImages,
-    });
+    // WhatsApp drafts are text-only, so skip the image/OCR check for them
+    const { useImage } = sendViaWhatsApp
+      ? { useImage: false }
+      : await decideImageUsage({
+          imageUrl,
+          usedImages: STATE.usedImages,
+        });
 
     // ── Step 4: Tweet generation ────────────────────
     let tweetText = null;
@@ -221,29 +241,43 @@ export async function espnNewsPollingLoop() {
     // console.log("tweetText>>>", tweetText);
 
     // ── Enqueue ──────────────────────────────────────
-    enqueueTweet({
-      id: `${cleanUrl}`,
-      source: "ESPN",
-      text: tweetText,
-      imageUrl: null,
-      seenKey: cleanUrl,
-      publishedAt: "",
-      headline: selected.headline,
-      model: MODEL,
-      articleType,
-      score,
-    });
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: "ESPN",
+        headline: selected.headline,
+        tweetText,
+        articleUrl: cleanUrl,
+      });
+      STATE.espn.seen[cleanUrl] = Date.now();
+    } else {
+      enqueueTweet({
+        id: `${cleanUrl}`,
+        source: "ESPN",
+        text: tweetText,
+        imageUrl: null,
+        seenKey: cleanUrl,
+        publishedAt: "",
+        headline: selected.headline,
+        model: MODEL,
+        articleType,
+        score,
+      });
 
-    // console.log("📥 TWEET HEADLINE:", selected.headline);
+      // console.log("📥 TWEET HEADLINE:", selected.headline);
 
-    if (useImage && imageUrl) {
-      STATE.usedImages[imageUrl] = Date.now();
+      if (useImage && imageUrl) {
+        STATE.usedImages[imageUrl] = Date.now();
+      }
+
+      STATE.espn.seen[cleanUrl] = Date.now();
+      queuedCount++;
     }
 
-    STATE.espn.seen[cleanUrl] = Date.now();
-    queuedCount++;
-
-    if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+    if (
+      !isLowScore &&
+      decision?.newContext &&
+      !contextExists(STATE, decision.newContext)
+    ) {
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
         source: "ESPN",

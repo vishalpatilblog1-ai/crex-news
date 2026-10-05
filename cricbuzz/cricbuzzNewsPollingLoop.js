@@ -12,6 +12,7 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const SOURCE = "CB";
@@ -19,6 +20,10 @@ let MODEL = "claude";
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 export async function cricbuzzNewsPollingLoop() {
   if (!global.STATE) {
@@ -122,8 +127,11 @@ export async function cricbuzzNewsPollingLoop() {
       }
 
       if (!decision) {
-  console.log("⚠️ CB judge failed twice, skipping for now:", selected.hline);
-  continue;
+        console.log(
+          "⚠️ CB judge failed twice, skipping for now:",
+          selected.hline,
+        );
+        continue;
       }
 
       if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
@@ -139,20 +147,29 @@ export async function cricbuzzNewsPollingLoop() {
       const score = decision?.significanceScore ?? 10;
       const vScore = decision?.viralityScore ?? "n/a";
 
-      if (!isExempt && score < 7) {
+      const isLowScore = !isExempt && score < 7;
+      const sendViaWhatsApp = !POST_VIA_API || isLowScore;
+
+      if (isLowScore && !POST_VIA_API) {
         STATE.cricbuzz.seen[newsKey] = Date.now();
 
         console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
         console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
         console.log(`📰 TWEET HEADLINE :: ${selected.hline}`);
-      //  console.log(`🟦 TWEET LINK :: ${tweetId}`);
+        //  console.log(`🟦 TWEET LINK :: ${tweetId}`);
         console.log("🔴 CB ARTICLE SCORE IS TOO LOW");
         console.log("===========================================");
 
-     //   STATE.ca.seen[cleanLink] = Date.now();
+        //   STATE.ca.seen[cleanLink] = Date.now();
         await saveState(STATE, "low significance skipped");
 
         continue;
+      }
+
+      if (isLowScore) {
+        console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+        console.log(`📰 TWEET HEADLINE :: ${selected.hline}`);
+        console.log("📲 CB score < 7 — sending to WhatsApp, not X API");
       }
 
       if (isExempt) {
@@ -208,23 +225,32 @@ export async function cricbuzzNewsPollingLoop() {
 
       const tweetId = `${newsKey}`;
 
-      enqueueTweet({
-        id: tweetId,
-        source: SOURCE,
-        text: tweetText,
-        imageUrl,
-        seenKey: newsKey,
-        publishedAt: "",
-        headline: selected.hline,
-        model: MODEL,
-        articleType,
-        score,
-      });
+      if (sendViaWhatsApp) {
+        await sendTweetDraftToWhatsApp({
+          source: SOURCE,
+          headline: selected.hline,
+          tweetText,
+        });
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+      } else {
+        enqueueTweet({
+          id: tweetId,
+          source: SOURCE,
+          text: tweetText,
+          imageUrl,
+          seenKey: newsKey,
+          publishedAt: "",
+          headline: selected.hline,
+          model: MODEL,
+          articleType,
+          score,
+        });
 
-      STATE.cricbuzz.seen[newsKey] = Date.now();
-      queuedCount++;
+        STATE.cricbuzz.seen[newsKey] = Date.now();
+        queuedCount++;
+      }
 
-      if (decision?.newContext) {
+      if (!isLowScore && decision?.newContext) {
         STATE.dailyContext ??= {
           date: new Date().toISOString().slice(0, 10),
           contexts: [],
