@@ -34,7 +34,14 @@ import { parseIEArticle } from "./parseIEArticle.js";
 const SOURCE = "IE";
 const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
-const CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext prune window, matches CA / NDTV
+// const CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000;
+const CONTEXT_RETENTION_MS =
+  (Number(process.env.CONTEXT_TTL_HOURS) > 0
+    ? Number(process.env.CONTEXT_TTL_HOURS)
+    : 6) *
+  60 *
+  60 *
+  1000; // dailyContext prune window
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
 // true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)

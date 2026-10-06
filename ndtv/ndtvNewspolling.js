@@ -43,7 +43,14 @@ const MAX_AGE_MIN = 120;
 // article can't slip past dedup. Confirm whether NDTV republishes/bumps
 // pubDate the same way CA does; if not, this can safely drop back down.
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
-const RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext prune window, matches CA
+// const RETENTION_MS = 6 * 60 * 60 * 1000;
+const RETENTION_MS =
+  (Number(process.env.CONTEXT_TTL_HOURS) > 0
+    ? Number(process.env.CONTEXT_TTL_HOURS)
+    : 6) *
+  60 *
+  60 *
+  1000; // dailyContext prune window
 const MAX_PER_POLL = 5; // cap how many tweets can queue / be sent in a single poll cycle
 
 // true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)

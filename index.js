@@ -99,12 +99,12 @@ async function bootstrap() {
   }
 
   if (process.env.ENABLE_IE_NEWS_POLLING === "true") {
-    console.log("📰 Indian Express news polling enabled");
+    console.log("📰 INDIAN EXPRESS NEWS POLLING IS ENABLED");
     setInterval(runIfAwake(ieNewsPollingLoop, "Indian Express"), 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_HINDU_NEWS_POLLING === "true") {
-    console.log("The Hindu news polling enabled");
+    console.log("📰 THE HINDU NEWS POLLING IS ENABLED");
     setInterval(runIfAwake(hinduNewsPollingLoop, "The Hindu"), 1000 * 60 * 2);
   }
   if (process.env.ENABLE_YOUTUBE_NEWS_POLLING === "true") {

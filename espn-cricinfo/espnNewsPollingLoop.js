@@ -27,6 +27,13 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
+const CONTEXT_TTL_MS =
+  (Number(process.env.CONTEXT_TTL_HOURS) > 0
+    ? Number(process.env.CONTEXT_TTL_HOURS)
+    : 6) *
+  60 *
+  60 *
+  1000;
 const MAX_PER_POLL = 5;
 
 // true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
@@ -54,7 +61,8 @@ export async function espnNewsPollingLoop() {
   // ── Prune state ────────────────────────────────────
   let stateDirty = false;
   stateDirty ||= pruneESPNSeen(STATE, RETENTION_MS);
-  stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
+  // stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, CONTEXT_TTL_MS);
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
   if (stateDirty) {
