@@ -1,25 +1,45 @@
 // ieNewsPollingLoop.js
+//
+// Aligned with CB / CA / ESPN:
+//  - GPT classify + GPT judge (a dropped article never costs a Claude call)
+//  - POST_VIA_API flag: true  = score >= 7 -> X API, score < 7 -> WhatsApp
+//                       false = score >= 7 -> WhatsApp, score < 7 dropped
+//  - Claude tweet (with SOURCE + long-tweet flag), GPT fallback
+//  - applySourceSignature, same score / virality logging
+//
+// The IE card image is only generated when the tweet goes to the X API queue.
+// WhatsApp drafts are text only (same as CB / CA / ESPN).
 
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
-  classifyArticle,
-  generateClaudeTweet,
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+import {
+  generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
-import { enqueueTweet } from "../twitter/tweetQueue.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
-import { judgeNewsContext } from "./ai/judgeNewsContext.js";
 import { fetchIEArticle } from "./fetchIEArticle.js";
 import { isIEArticle, normalizeIELink } from "./ieFilters.js";
 import { fetchIECricketRSS } from "./ieRssFetcher.js";
 import { parseIEArticle } from "./parseIEArticle.js";
 
+const SOURCE = "IE";
 const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext prune window, matches CA / NDTV
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 export async function ieNewsPollingLoop() {
   if (!global.STATE) {
@@ -32,10 +52,11 @@ export async function ieNewsPollingLoop() {
   STATE.ie ??= {};
   STATE.ie.seen ??= {};
 
-  const today = getTodayUTC();
-  if (!STATE.dailyContext || STATE.dailyContext.date !== today) {
-    STATE.dailyContext = { date: today, contexts: [] };
-  }
+  // Shared with CA / NDTV / CB for cross-source duplicate detection. Do NOT
+  // reset it on a date change (that wipes the other sources' contexts) —
+  // prune by age instead, same contract as CA / NDTV.
+  STATE.dailyContext ??= { contexts: [] };
+  STATE.dailyContext.contexts ??= [];
 
   try {
     // ── Prune stale seen entries ──────────────────────────────────────────────
@@ -50,6 +71,8 @@ export async function ieNewsPollingLoop() {
     }
 
     if (pruned) console.log(`🧹 Pruned ${pruned} old IE seen entries`);
+
+    pruneDailyContext(STATE, CONTEXT_RETENTION_MS);
 
     // ── Fetch + filter RSS ────────────────────────────────────────────────────
     const items = await fetchIECricketRSS();
@@ -90,6 +113,15 @@ export async function ieNewsPollingLoop() {
       selected.pubDate,
     );
 
+    const cleanUrl = normalizeIELink(selected.link);
+
+    const markSeen = () => {
+      STATE.ie.seen[cleanUrl] = Date.now();
+      STATE.ie.lastLink = cleanUrl;
+      STATE.ie.lastTitle = selected.title;
+      STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+    };
+
     // ── Fetch article body ────────────────────────────────────────────────────
     const html = await fetchIEArticle(selected.link);
     const parsed = parseIEArticle(html);
@@ -104,73 +136,149 @@ export async function ieNewsPollingLoop() {
     // ── Step 1: Classify article type first ──────────────────────────────────
     let articleType = "player_form";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
       console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
-      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+      try {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (err2) {
+        console.warn(
+          "⚠️ IE classify failed twice, using default:",
+          err2?.message,
+        );
+      }
     }
 
     // ── Step 2: Deduplication + significance gate ─────────────────────────────
-    let contextDecision = null;
+    const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
+
+    let decision = null;
     try {
-      contextDecision = await judgeNewsContext({
-        articleText: parsed.body,
-        existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
+      decision = await judgeNewsContextGPT({
+        articleText: fullText,
+        existingContexts,
       });
-
-      if (
-        contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.8
-      ) {
-        console.log("🔁 IE context already covered — skipping");
-        const cleanLink = normalizeIELink(selected.link);
-        STATE.ie.seen[cleanLink] = Date.now();
-        STATE.ie.lastLink = cleanLink;
-        STATE.ie.lastTitle = selected.title;
-        STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
-        await saveState(STATE);
-        return;
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = contextDecision?.significanceScore ?? 10;
-
-      if (!isExempt && score < 7) {
-        // console.log(
-        //   `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
-        // );
-        const cleanLink = normalizeIELink(selected.link);
-        STATE.ie.seen[cleanLink] = Date.now();
-        STATE.ie.lastLink = cleanLink;
-        STATE.ie.lastTitle = selected.title;
-        STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
-        await saveState(STATE);
-        return;
-      }
-
-      if (isExempt) {
-        // console.log(
-        //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        // );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
     } catch (err) {
-      console.warn(
-        "⚠️ IE context judge failed, proceeding without dedup:",
-        err.message,
+      try {
+        decision = await judgeNewsContextGPT({
+          articleText: fullText,
+          existingContexts,
+        });
+      } catch (err2) {}
+    }
+
+    if (!decision) {
+      // Not marked seen — retried on the next poll (article is < 60 min old).
+      console.log(
+        "⚠️ IE judge failed twice, skipping for now:",
+        selected.title,
       );
+      return;
+    }
+
+    if (decision?.isAlreadyCovered === true && decision?.confidence >= 0.8) {
+      console.log("🔁 IE context already covered — skipping");
+      markSeen();
+      await saveState(STATE);
+      return;
+    }
+
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
+
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
+
+    if (isLowScore && !POST_VIA_API) {
+      markSeen();
+
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
+      console.log("🔴 IE ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
+      await saveState(STATE, "low significance skipped");
+      return;
+    }
+
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
+      console.log("📲 IE score < 7 — sending to WhatsApp, not X API");
+    }
+
+    if (!isExempt) {
+      console.log(`✅ Significance: ${score}/10 — proceeding`);
     }
 
     // ── Step 3: Tweet generation ──────────────────────────────────────────────
+    const longEligible = isLongTweetEligible(fullText);
+
+    if (longEligible) {
+      console.log("📏 IE article qualifies for long-tweet mode");
+    }
+
     let tweetText = null;
-    let generatedPath = null;
+    let card = null;
+    let model = "claude";
+
     try {
-      // const result = await generateClaudeTweetWithType(fullText, articleType);
-      const { tweetText: claudeTweet, card } =
-        await generateClaudeTweet(fullText);
-      tweetText = claudeTweet;
-      console.log("claudeTweet IE:::", tweetText, "card::", card);
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        SOURCE,
+        longEligible,
+      );
+      tweetText = result?.tweetText;
+      card = result?.card ?? null;
+    } catch (err) {
+      console.warn("⚠️ Claude failed:", err?.message || err);
+    }
+
+    if (!tweetText || tweetText.trim().length < 30) {
+      try {
+        const result = await generateGPTTweetWithType(
+          fullText,
+          articleType,
+          SOURCE,
+          longEligible,
+        );
+        tweetText = result?.tweetText;
+        card = null; // card layout is only trusted from the Claude path
+        model = "GPT";
+      } catch (err) {
+        console.warn("⚠️ IE AI failed, skipping tweet:", err?.message || err);
+        return;
+      }
+    }
+
+    if (!tweetText || tweetText.trim().length < 30) {
+      console.warn("⚠️ IE tweet generation failed / too short");
+      markSeen();
+      await saveState(STATE);
+      return;
+    }
+
+    tweetText = applySourceSignature(tweetText, SOURCE);
+
+    // ── Step 4: Deliver (WhatsApp draft or X API queue) ──────────────────────
+    if (CONSOLE_ONLY) {
+      console.log("tweetText::", tweetText);
+      console.log("🧪 CONSOLE_ONLY mode. Not sending / enqueueing.");
+      return;
+    }
+
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: SOURCE,
+        headline: selected.title,
+        tweetText,
+        articleUrl: cleanUrl,
+      });
+    } else {
+      let generatedPath = null;
 
       if (card) {
         try {
@@ -184,84 +292,28 @@ export async function ieNewsPollingLoop() {
       } else {
         console.log("📝 Text-only tweet (no card)");
       }
-    } catch (err) {
-      console.warn("⚠️ Claude failed:", err?.message || err);
+
+      enqueueTweet({
+        id: `IE:${cleanUrl}`,
+        source: SOURCE,
+        text: tweetText,
+        imageUrl: generatedPath || null,
+        seenKey: cleanUrl,
+        headline: selected.title,
+        model,
+        articleType,
+        score,
+      });
+
+      console.log(`📥 Queued IE tweet: ${selected.title}`);
     }
 
-    if (!tweetText || tweetText.trim().length < 30) {
-      try {
-        tweetText = await generateGeminiTweet(fullText);
-        console.log("Prompt generated by Gemini ....");
-      } catch (err) {
-        console.warn("⚠️ Gemini failed:", err?.message || err);
-      }
-    }
+    markSeen();
 
-    if (!tweetText || tweetText.trim().length < 30) {
-      console.warn("⚠️ IE AI failed, skipping tweet");
-      return;
-    }
-
-    // temporary commented
-    // const imageUrl = getIEImageUrl(selected);
-
-    // if (!imageUrl) {
-    //   console.log("🚫 Skipping IE article — no image found");
-    //   const cleanUrl = normalizeIELink(selected.link);
-    //   STATE.ie.seen[cleanUrl] = Date.now();
-    //   STATE.ie.lastLink = cleanUrl;
-    //   STATE.ie.lastTitle = selected.title;
-    //   STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
-    //   await saveState(STATE);
-    //   return;
-    // }
-
-    // const decision = await decideIEImageUsage(imageUrl);
-    // console.log("IE imageUrl::", imageUrl);
-
-    // if (!decision.useImage) {
-    //   console.log(
-    //     "🚫 Skipping IE article due to risky image:",
-    //     decision.reason
-    //   );
-    //   const cleanUrl = normalizeIELink(selected.link);
-    //   STATE.ie.seen[cleanUrl] = Date.now();
-    //   STATE.ie.lastLink = cleanUrl;
-    //   STATE.ie.lastTitle = selected.title;
-    //   STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
-    //   await saveState(STATE);
-    //   return;
-    // }
-
-    const cleanUrl = normalizeIELink(selected.link);
-    const tweetId = `IE:${cleanUrl}`;
-
-    if (CONSOLE_ONLY) {
-      console.log("tweetText::", tweetText);
-      console.log("🧪 CONSOLE_ONLY mode. Not enqueueing.");
-      return;
-    }
-
-    enqueueTweet({
-      id: tweetId,
-      source: "IE",
-      text: tweetText,
-      imageUrl: generatedPath || null,
-      // imageUrl,
-      seenKey: cleanUrl,
-    });
-
-    console.log(`📥 Queued IE tweet: ${selected.title}`);
-
-    STATE.ie.seen[cleanUrl] = Date.now();
-    STATE.ie.lastLink = cleanUrl;
-    STATE.ie.lastTitle = selected.title;
-    STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
-
-    if (contextDecision?.newContext) {
+    if (!isLowScore && decision?.newContext) {
       STATE.dailyContext.contexts.push({
-        summary: contextDecision.newContext,
-        source: "IE",
+        summary: decision.newContext,
+        source: SOURCE,
         link: cleanUrl,
         createdAt: new Date().toISOString(),
       });
@@ -278,6 +330,17 @@ function getPubDate(item) {
   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
 }
 
-function getTodayUTC() {
-  return new Date().toISOString().slice(0, 10);
+function pruneDailyContext(STATE, retentionMs) {
+  try {
+    const ctx = STATE.dailyContext?.contexts;
+    if (!Array.isArray(ctx) || ctx.length === 0) return;
+
+    const now = Date.now();
+    STATE.dailyContext.contexts = ctx.filter((c) => {
+      const t = new Date(c.createdAt).getTime();
+      return Number.isFinite(t) && now - t <= retentionMs;
+    });
+  } catch (err) {
+    console.warn("⚠️ dailyContext prune failed:", err?.message || err);
+  }
 }

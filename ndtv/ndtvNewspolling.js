@@ -1,400 +1,346 @@
-// ndtvnewsPollingLoop.js
+// ieNewsPollingLoop.js
+//
+// Aligned with CB / CA / ESPN:
+//  - GPT classify + GPT judge (a dropped article never costs a Claude call)
+//  - POST_VIA_API flag: true  = score >= 7 -> X API, score < 7 -> WhatsApp
+//                       false = score >= 7 -> WhatsApp, score < 7 dropped
+//  - Claude tweet (with SOURCE + long-tweet flag), GPT fallback
+//  - applySourceSignature, same score / virality logging
+//
+// The IE card image is only generated when the tweet goes to the X API queue.
+// WhatsApp drafts are text only (same as CB / CA / ESPN).
 
-import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
-  classifyArticle,
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+import {
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { generateCardImage } from "../canvas/imageRenderer.js";
-import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { CREX_BASE_IMAGE_TEMPLATE } from "../utils/config.js";
+import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
 import { saveState } from "../utils/stateStoreCloud.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
-import { fetchNDTVArticle } from "./fetchNDTVArticle.js";
-import { isNDTVArticle, normalizeNDTVLink } from "./isNDTVArticle.js";
-import { fetchNDTVCricketRSS } from "./ndtvRssFetcher.js";
-import { parseNDTVArticle } from "./parseNDTVArticle.js";
+import { fetchIEArticle } from "./fetchIEArticle.js";
+import { isIEArticle, normalizeIELink } from "./ieFilters.js";
+import { fetchIECricketRSS } from "./ieRssFetcher.js";
+import { parseIEArticle } from "./parseIEArticle.js";
 
-// NOTE: this file assumes a blocked-pattern headline/body filter equivalent
-// to CA's isBlockedCAHeadline exists (or should exist) for NDTV. CA's own
-// filter lives at cricket-addictor/caHeadlineFilter.js and is CA-specific in
-// name -- confirm whether it's generic enough to reuse for NDTV content, or
-// whether NDTV needs its own blocklist file, then wire the import in below.
-// Left out entirely for now rather than guessing a path that could break the
-// build on deploy.
-// import { isBlockedNDTVHeadline } from "./ndtvHeadlineFilter.js";
+const SOURCE = "IE";
+const MAX_AGE_MIN = 60;
+const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext prune window, matches CA / NDTV
+const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
 
-const SOURCE = "NDTV";
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
-const MAX_AGE_MIN = 120;
-// Bumped from 6h to match CA's 24h retention -- CA's comment notes this
-// exists specifically so a same-day pubDate bump on an already-tweeted
-// article can't slip past dedup. Confirm whether NDTV republishes/bumps
-// pubDate the same way CA does; if not, this can safely drop back down.
-const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
-const RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext prune window, matches CA
-const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
-
-export async function ndtvNewspolling() {
+export async function ieNewsPollingLoop() {
   if (!global.STATE) {
-    console.log("⚠️ global.STATE not ready. Skipping NDTV polling.");
-    return false;
+    console.log("⚠️ global.STATE not ready. Skipping IE polling.");
+    return;
   }
 
   const STATE = global.STATE;
 
-  STATE.ndtv ??= {};
-  STATE.ndtv.seen ??= {};
+  STATE.ie ??= {};
+  STATE.ie.seen ??= {};
 
-  // ── Shared dailyContext bootstrap ────────────────────────────────────────
-  // IMPORTANT: STATE.dailyContext is shared with the CA poller for
-  // cross-source duplicate detection (judgeNewsContext reads/writes the same
-  // array from both loops). CA bootstraps it as a plain { contexts: [] }
-  // with no `date` field and prunes entries by age. Do NOT bootstrap this as
-  // { date: today, contexts: [] } and replace-on-date-mismatch -- since CA
-  // never sets `date`, that comparison is true on literally every poll and
-  // wipes out CA's (and NDTV's own) contexts every cycle. Match CA's
-  // shared-state contract: no date-keyed reset, prune by age instead.
+  // Shared with CA / NDTV / CB for cross-source duplicate detection. Do NOT
+  // reset it on a date change (that wipes the other sources' contexts) —
+  // prune by age instead, same contract as CA / NDTV.
   STATE.dailyContext ??= { contexts: [] };
-
-  // ── Prune stale state ─────────────────────────────────────────────────────
-  let stateDirty = false;
-  stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
-  stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
-
-  if (stateDirty) await saveState(STATE, "prune cleanup");
-
-  let queuedCount = 0;
+  STATE.dailyContext.contexts ??= [];
 
   try {
-    const items = await fetchNDTVCricketRSS();
-    if (!Array.isArray(items) || items.length === 0) {
-      console.log("ℹ️ No NDTV RSS items");
-      return false;
+    // ── Prune stale seen entries ──────────────────────────────────────────────
+    const now = Date.now();
+    let pruned = 0;
+
+    for (const [link, ts] of Object.entries(STATE.ie.seen)) {
+      if (now - ts > SEEN_RETENTION_MS) {
+        delete STATE.ie.seen[link];
+        pruned++;
+      }
     }
 
-    const sorted = [...items]
-      .filter(isNDTVArticle)
+    if (pruned) console.log(`🧹 Pruned ${pruned} old IE seen entries`);
+
+    pruneDailyContext(STATE, CONTEXT_RETENTION_MS);
+
+    // ── Fetch + filter RSS ────────────────────────────────────────────────────
+    const items = await fetchIECricketRSS();
+    if (!Array.isArray(items) || items.length === 0) {
+      console.log("ℹ️ No IE RSS items");
+      return;
+    }
+
+    const sorted = items
+      .filter(isIEArticle)
       .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-    // ---- Collect ALL unseen, non-aged-out candidates (not just the first) ----
-    const candidates = [];
+    let selected = null;
+
     for (const item of sorted) {
       const pubMs = getPubDate(item);
+      if (!pubMs) continue;
 
-      if (pubMs) {
-        const ageMin = (Date.now() - pubMs) / 60000;
-        if (ageMin > MAX_AGE_MIN) {
-          // console.log(
-          //   `⏳ NDTV aged out (${Math.round(ageMin)}m): ${item.title}`,
-          // );
-          const cleanLinkAged = normalizeNDTVLink(item.link);
-          if (cleanLinkAged) STATE.ndtv.seen[cleanLinkAged] = Date.now();
-          continue;
-        }
-      }
+      const ageMin = (Date.now() - pubMs) / 60000;
+      if (ageMin > MAX_AGE_MIN) continue;
 
-      const cleanLink = normalizeNDTVLink(item.link);
-      if (!cleanLink) continue;
+      const cleanLink = normalizeIELink(item.link);
+      if (STATE.ie.seen[cleanLink]) continue;
 
-      if (STATE.ndtv.seen[cleanLink]) continue;
-
-      candidates.push(item);
+      selected = item;
+      break;
     }
 
-    if (candidates.length === 0) {
-      // console.log("🟡 No eligible NDTV articles (age + dedupe)");
-      await saveState(STATE, "no eligible candidates");
-      return false;
+    if (!selected) {
+      console.log("🟡 No eligible IE articles (age + dedupe)");
+      return;
     }
 
-    // ---- Process every candidate (up to MAX_PER_POLL) ----
-    for (const selected of candidates) {
-      if (queuedCount >= MAX_PER_POLL) {
-        console.log(
-          `⏸️ NDTV hit MAX_PER_POLL (${MAX_PER_POLL}) — remaining stay unseen for next poll`,
-        );
-        break;
-      }
+    console.log(
+      "🆕 IE news detected:",
+      selected.title,
+      "| pubDate:",
+      selected.pubDate,
+    );
 
-      const cleanLink = normalizeNDTVLink(selected.link);
-      const pubMs = getPubDate(selected);
+    const cleanUrl = normalizeIELink(selected.link);
 
-      let parsed = null;
+    const markSeen = () => {
+      STATE.ie.seen[cleanUrl] = Date.now();
+      STATE.ie.lastLink = cleanUrl;
+      STATE.ie.lastTitle = selected.title;
+      STATE.ie.visibleDate = new Date(getPubDate(selected)).toUTCString();
+    };
 
+    // ── Fetch article body ────────────────────────────────────────────────────
+    const html = await fetchIEArticle(selected.link);
+    const parsed = parseIEArticle(html);
+
+    if (!parsed?.body || parsed.body.length < 80) {
+      console.warn("⚠️ IE article body missing / too short");
+      return;
+    }
+
+    const fullText = `${parsed.headline}\n${parsed.body}`;
+
+    // ── Step 1: Classify article type first ──────────────────────────────────
+    let articleType = "player_form";
+    try {
+      articleType = await classifyArticleGPT(fullText);
+      console.log(`🏷️ Classified as: ${articleType}`);
+    } catch (err) {
       try {
-        const html = await fetchNDTVArticle(selected.link);
-        parsed = parseNDTVArticle(html);
-      } catch (err) {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (err2) {
         console.warn(
-          "⚠️ NDTV article fetch failed, falling back to RSS description:",
-          err?.message || err,
+          "⚠️ IE classify failed twice, using default:",
+          err2?.message,
         );
-
-        const rssDesc = selected.description?.trim();
-        if (rssDesc && rssDesc.length > 30) {
-          parsed = {
-            headline: selected.title,
-            body: rssDesc,
-          };
-        }
       }
+    }
 
-      if (!parsed?.headline || !parsed?.body || parsed.body.length < 30) {
-        console.warn("⚠️ No usable NDTV body, skipping article");
-        STATE.ndtv.seen[cleanLink] = Date.now();
-        continue;
-      }
+    // ── Step 2: Deduplication + significance gate ─────────────────────────────
+    const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
 
-      const fullText = `${parsed.headline}\n${parsed.body}`;
-
-      let articleType = "player_form";
+    let decision = null;
+    try {
+      decision = await judgeNewsContextGPT({
+        articleText: fullText,
+        existingContexts,
+      });
+    } catch (err) {
       try {
-        articleType = await classifyArticle(fullText);
-        console.log(`🏷️ Classified as: ${articleType}`);
-      } catch (err) {
-        console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-      }
-
-      let contextDecision = null;
-      try {
-        contextDecision = await judgeNewsContext({
+        decision = await judgeNewsContextGPT({
           articleText: fullText,
-          existingContexts:
-            STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+          existingContexts,
         });
+      } catch (err2) {}
+    }
 
-        if (
-          contextDecision?.isAlreadyCovered === true &&
-          contextDecision?.confidence >= 0.8
-        ) {
-          console.log(
-            "🔁 NDTV context already covered — skipping:",
-            selected.title,
-          );
-          STATE.ndtv.seen[cleanLink] = Date.now();
-          STATE.ndtv.lastLink = cleanLink;
-          STATE.ndtv.lastTitle = selected.title;
-          STATE.ndtv.visibleDate = new Date(pubMs).toUTCString();
-          continue;
-        }
+    if (!decision) {
+      // Not marked seen — retried on the next poll (article is < 60 min old).
+      console.log(
+        "⚠️ IE judge failed twice, skipping for now:",
+        selected.title,
+      );
+      return;
+    }
 
-        const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-        const score = contextDecision?.significanceScore ?? 10;
+    if (decision?.isAlreadyCovered === true && decision?.confidence >= 0.8) {
+      console.log("🔁 IE context already covered — skipping");
+      markSeen();
+      await saveState(STATE);
+      return;
+    }
 
-        // console.log("================ Full NDTV Article ===========");
-        // console.log("🏷️ Article Type::", articleType);
-        // console.log("📰 Headline::", selected.title);
-        // console.log("📄 Article::", parsed.body);
-        // console.log("🔗 cleanLink::", cleanLink);
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
 
-        console.log("==============================================");
-        if (!isExempt && score < 7) {
-          // console.log(`⬇️ Low significance (${score}/10) — skipping`);
-          STATE.ndtv.seen[cleanLink] = Date.now();
-          STATE.ndtv.lastLink = cleanLink;
-          STATE.ndtv.lastTitle = selected.title;
-          STATE.ndtv.visibleDate = new Date(pubMs).toUTCString();
-          continue;
-        }
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
-        if (isExempt) {
-          // console.log(
-          //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-          // );
-        } else {
-          console.log(`✅ Significance: ${score}/10 — proceeding`);
-        }
-      } catch (err) {
-        console.warn(
-          "⚠️ NDTV context judge failed, proceeding without dedup:",
-          err?.message || err,
-        );
-      }
+    if (isLowScore && !POST_VIA_API) {
+      markSeen();
 
-      let tweetText = null;
-      let generatedPath = null;
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
+      console.log("🔴 IE ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
 
+      await saveState(STATE, "low significance skipped");
+      return;
+    }
+
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
+      console.log("📲 IE score < 7 — sending to WhatsApp, not X API");
+    }
+
+    if (!isExempt) {
+      console.log(`✅ Significance: ${score}/10 — proceeding`);
+    }
+
+    // ── Step 3: Tweet generation ──────────────────────────────────────────────
+    const longEligible = isLongTweetEligible(fullText);
+
+    if (longEligible) {
+      console.log("📏 IE article qualifies for long-tweet mode");
+    }
+
+    let tweetText = null;
+    let card = null;
+    let model = "claude";
+
+    try {
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        SOURCE,
+        longEligible,
+      );
+      tweetText = result?.tweetText;
+      card = result?.card ?? null;
+    } catch (err) {
+      console.warn("⚠️ Claude failed:", err?.message || err);
+    }
+
+    if (!tweetText || tweetText.trim().length < 30) {
       try {
-        // const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
-        //   fullText,
-        //   articleType,
-        // );
-        const { tweetText: gptTweet, card } = await generateClaudeTweetWithType(
+        const result = await generateGPTTweetWithType(
           fullText,
           articleType,
-          "NDTV",
+          SOURCE,
+          longEligible,
         );
-
-        tweetText = gptTweet;
-
-        if (card) {
-          try {
-            generatedPath = await generateCardImage(
-              CREX_BASE_IMAGE_TEMPLATE,
-              card,
-            );
-            // console.log("GPT generatedPath:::", generatedPath);
-          } catch (err) {
-            console.error("❌ Image generation failed:", err);
-          }
-        } else {
-          // console.log("📝 Text-only tweet (no card)");
-        }
+        tweetText = result?.tweetText;
+        card = null; // card layout is only trusted from the Claude path
+        model = "GPT";
       } catch (err) {
-        console.warn("⚠️ GPT failed:", err?.message || err);
-      }
-
-      if (!tweetText || tweetText.trim().length < 30) {
-        try {
-          const { tweetText: geminiTweet, card } =
-            await generateGeminiTweet(fullText);
-
-          tweetText = geminiTweet;
-
-          console.log("Gemini fallback tweetText::", tweetText, "card::", card);
-
-          if (card) {
-            try {
-              generatedPath = await generateCardImage(
-                CREX_BASE_IMAGE_TEMPLATE,
-                card,
-              );
-              console.log("Gemini generatedPath:::", generatedPath);
-            } catch (err) {
-              console.error("❌ Image generation failed:", err);
-            }
-          } else {
-            console.log("📝 Text-only tweet (no card)");
-          }
-        } catch (err) {
-          console.warn("⚠️ Gemini failed:", err?.message || err);
-        }
-      }
-
-      if (!tweetText || tweetText.trim().length < 30) {
-        console.warn("⚠️ NDTV tweet generation failed / too short");
-        STATE.ndtv.seen[cleanLink] = Date.now();
-        continue;
-      }
-
-      // NDTV tweets get the source-signature marker, same as CA/CB.
-      tweetText = applySourceSignature(tweetText, SOURCE);
-      tweetText = tweetText.trim().replace(/\.?$/, ".");
-
-      const tweetId = `${SOURCE}:${cleanLink}`;
-
-      // USE_WEB_TWEET is now handled centrally in tweetQueue.js's
-      // tryFlushTweetQueue — every source just enqueues unconditionally,
-      // same as CB does, and the queue decides whether to actually post
-      // or log-only.
-      enqueueTweet({
-        id: cleanLink,
-        source: SOURCE,
-        text: tweetText,
-        // imageUrl: generatedPath || null,
-        imageUrl: null,
-        seenKey: cleanLink,
-        publishedAt: pubMs || Date.now(),
-      });
-
-      console.log(`📥 TWEET HEADLINE: ${selected.title}`);
-
-      STATE.ndtv.seen[cleanLink] = Date.now();
-      STATE.ndtv.lastLink = cleanLink;
-      STATE.ndtv.lastTitle = selected.title;
-      STATE.ndtv.visibleDate = new Date(pubMs).toUTCString();
-      queuedCount++;
-
-      if (
-        contextDecision?.newContext &&
-        !contextExists(STATE, contextDecision.newContext)
-      ) {
-        STATE.dailyContext.contexts.push({
-          summary: contextDecision.newContext,
-          source: SOURCE,
-          link: cleanLink,
-          createdAt: new Date().toISOString(),
-        });
+        console.warn("⚠️ IE AI failed, skipping tweet:", err?.message || err);
+        return;
       }
     }
 
-    await saveState(STATE, "NDTV poll cycle complete");
-    return queuedCount > 0;
+    if (!tweetText || tweetText.trim().length < 30) {
+      console.warn("⚠️ IE tweet generation failed / too short");
+      markSeen();
+      await saveState(STATE);
+      return;
+    }
+
+    tweetText = applySourceSignature(tweetText, SOURCE);
+
+    // ── Step 4: Deliver (WhatsApp draft or X API queue) ──────────────────────
+    if (CONSOLE_ONLY) {
+      console.log("tweetText::", tweetText);
+      console.log("🧪 CONSOLE_ONLY mode. Not sending / enqueueing.");
+      return;
+    }
+
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: SOURCE,
+        headline: selected.title,
+        tweetText,
+        articleUrl: cleanUrl,
+      });
+    } else {
+      let generatedPath = null;
+
+      if (card) {
+        try {
+          generatedPath = await generateCardImage(
+            CREX_BASE_IMAGE_TEMPLATE_NEW,
+            card,
+          );
+        } catch (err) {
+          console.error("❌ Image generation failed:", err);
+        }
+      } else {
+        console.log("📝 Text-only tweet (no card)");
+      }
+
+      enqueueTweet({
+        id: `IE:${cleanUrl}`,
+        source: SOURCE,
+        text: tweetText,
+        imageUrl: generatedPath || null,
+        seenKey: cleanUrl,
+        headline: selected.title,
+        model,
+        articleType,
+        score,
+      });
+
+      console.log(`📥 Queued IE tweet: ${selected.title}`);
+    }
+
+    markSeen();
+
+    if (!isLowScore && decision?.newContext) {
+      STATE.dailyContext.contexts.push({
+        summary: decision.newContext,
+        source: SOURCE,
+        link: cleanUrl,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    await saveState(STATE);
+    console.log("🟢 IE state + dailyContext saved");
   } catch (err) {
-    console.error("❌ ERROR in NDTV polling:", err);
-    return false;
+    console.error("❌ ERROR in IE polling:", err);
   }
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 function getPubDate(item) {
   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
 }
 
-function pruneSeen(STATE, retentionMs) {
-  try {
-    const now = Date.now();
-    let pruned = 0;
-
-    for (const [link, ts] of Object.entries(STATE.ndtv?.seen || {})) {
-      if (now - ts > retentionMs) {
-        delete STATE.ndtv.seen[link];
-        pruned++;
-      }
-    }
-
-    if (pruned > 0) {
-      // console.log(`🧹 Pruned ${pruned} old NDTV seen entries`);
-      return true;
-    }
-  } catch (err) {
-    console.warn("⚠️ NDTV seen prune failed:", err?.message || err);
-  }
-  return false;
-}
-
 function pruneDailyContext(STATE, retentionMs) {
   try {
     const ctx = STATE.dailyContext?.contexts;
-    if (!Array.isArray(ctx) || ctx.length === 0) return false;
+    if (!Array.isArray(ctx) || ctx.length === 0) return;
 
     const now = Date.now();
-    const before = ctx.length;
-
     STATE.dailyContext.contexts = ctx.filter((c) => {
       const t = new Date(c.createdAt).getTime();
       return Number.isFinite(t) && now - t <= retentionMs;
     });
-
-    const after = STATE.dailyContext.contexts.length;
-
-    if (before !== after) {
-      // console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
-      return true;
-    }
   } catch (err) {
     console.warn("⚠️ dailyContext prune failed:", err?.message || err);
   }
-  return false;
-}
-
-function contextExists(STATE, summary) {
-  if (!STATE.dailyContext?.contexts?.length) return false;
-  const norm = normalizeSummary(summary);
-  return STATE.dailyContext.contexts.some(
-    (c) => normalizeSummary(c.summary) === norm,
-  );
-}
-
-function normalizeSummary(text = "") {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }

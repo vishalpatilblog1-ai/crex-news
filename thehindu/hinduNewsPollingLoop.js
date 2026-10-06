@@ -1,4 +1,11 @@
 // hinduNewsPollingLoop.js
+//
+// Aligned with CB / CA / ESPN:
+//  - GPT classify + GPT judge (a dropped article never costs a Claude call)
+//  - POST_VIA_API flag: true  = score >= 7 -> X API, score < 7 -> WhatsApp
+//                       false = score >= 7 -> WhatsApp, score < 7 dropped
+//  - Claude tweet (with SOURCE + long-tweet flag), GPT fallback
+//  - applySourceSignature, same score / virality logging
 
 import { saveState } from "../utils/stateStoreCloud.js";
 
@@ -8,19 +15,29 @@ import { isHinduArticle, normalizeHinduLink } from "./hinduFilters.js";
 import { fetchHinduCricketRSS } from "./hinduRssFetcher.js";
 import { parseHinduArticle } from "./parseHinduArticle.js";
 
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
 import {
-  classifyArticle,
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+import {
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { normalizeHinduImageUrl } from "../indian-express/ai/imageDetector.js";
-import { enqueueTweet } from "../twitter/tweetQueue.js";
-import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
+const SOURCE = "HINDU";
 const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000; // dailyContext prune window, matches CA / NDTV
 const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 export async function hinduNewsPollingLoop() {
   if (!global.STATE) {
@@ -33,10 +50,11 @@ export async function hinduNewsPollingLoop() {
   STATE.hindu ??= {};
   STATE.hindu.seen ??= {};
 
-  const today = getTodayUTC();
-  if (!STATE.dailyContext || STATE.dailyContext.date !== today) {
-    STATE.dailyContext = { date: today, contexts: [] };
-  }
+  // Shared with CA / NDTV / CB for cross-source duplicate detection. Do NOT
+  // reset it on a date change (that wipes the other sources' contexts) —
+  // prune by age instead, same contract as CA / NDTV.
+  STATE.dailyContext ??= { contexts: [] };
+  STATE.dailyContext.contexts ??= [];
 
   try {
     // ── Prune stale seen entries ──────────────────────────────────────────────
@@ -51,6 +69,8 @@ export async function hinduNewsPollingLoop() {
     }
 
     if (pruned) console.log(`🧹 Pruned ${pruned} old Hindu seen entries`);
+
+    pruneDailyContext(STATE, CONTEXT_RETENTION_MS);
 
     // ── Fetch + filter RSS ────────────────────────────────────────────────────
     const items = await fetchHinduCricketRSS();
@@ -84,6 +104,15 @@ export async function hinduNewsPollingLoop() {
       return;
     }
 
+    const cleanLink = normalizeHinduLink(selected.link);
+
+    const markSeen = () => {
+      STATE.hindu.seen[cleanLink] = Date.now();
+      STATE.hindu.lastLink = cleanLink;
+      STATE.hindu.lastTitle = selected.title;
+      STATE.hindu.visibleDate = new Date(getPubDate(selected)).toUTCString();
+    };
+
     // ── Fetch article body ────────────────────────────────────────────────────
     const html = await fetchHinduArticle(selected.link);
     const parsed = parseHinduArticle(html);
@@ -98,122 +127,177 @@ export async function hinduNewsPollingLoop() {
     // ── Step 1: Classify article type first ──────────────────────────────────
     let articleType = "player_form";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
       console.log(`🏷️ Classified as: ${articleType}`);
     } catch (err) {
-      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+      try {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (err2) {
+        console.warn(
+          "⚠️ Hindu classify failed twice, using default:",
+          err2?.message,
+        );
+      }
     }
 
     // ── Step 2: Deduplication + significance gate ─────────────────────────────
-    let contextDecision = null;
+    const existingContexts = STATE.dailyContext.contexts.map((c) => c.summary);
+
+    let decision = null;
     try {
-      contextDecision = await judgeNewsContext({
-        articleText: parsed.body,
-        existingContexts: STATE.dailyContext.contexts.map((c) => c.summary),
+      decision = await judgeNewsContextGPT({
+        articleText: fullText,
+        existingContexts,
       });
-
-      if (
-        contextDecision?.isAlreadyCovered === true &&
-        contextDecision?.confidence >= 0.8
-      ) {
-        console.log("🔁 Hindu context already covered — skipping");
-        const cleanLink = normalizeHinduLink(selected.link);
-        STATE.hindu.seen[cleanLink] = Date.now();
-        STATE.hindu.lastLink = cleanLink;
-        STATE.hindu.lastTitle = selected.title;
-        STATE.hindu.visibleDate = new Date(getPubDate(selected)).toUTCString();
-        await saveState(STATE);
-        return;
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = contextDecision?.significanceScore ?? 10;
-
-      if (!isExempt && score < 7) {
-        // console.log(
-        //   `⬇️ Low significance (${score}/10) — skipping: ${selected.title}`,
-        // );
-        const cleanLink = normalizeHinduLink(selected.link);
-        STATE.hindu.seen[cleanLink] = Date.now();
-        STATE.hindu.lastLink = cleanLink;
-        STATE.hindu.lastTitle = selected.title;
-        STATE.hindu.visibleDate = new Date(getPubDate(selected)).toUTCString();
-        await saveState(STATE);
-        return;
-      }
-
-      if (isExempt) {
-        // console.log(
-        //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        // );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
     } catch (err) {
-      console.warn("⚠️ Context judge failed (Hindu), proceeding:", err.message);
+      try {
+        decision = await judgeNewsContextGPT({
+          articleText: fullText,
+          existingContexts,
+        });
+      } catch (err2) {}
+    }
+
+    if (!decision) {
+      // Not marked seen — retried on the next poll (article is < 60 min old).
+      console.log(
+        "⚠️ Hindu judge failed twice, skipping for now:",
+        selected.title,
+      );
+      return;
+    }
+
+    if (decision?.isAlreadyCovered === true && decision?.confidence >= 0.8) {
+      console.log("🔁 Hindu context already covered — skipping");
+      markSeen();
+      await saveState(STATE);
+      return;
+    }
+
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
+
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
+
+    if (isLowScore && !POST_VIA_API) {
+      markSeen();
+
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
+      console.log("🔴 HINDU ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
+      await saveState(STATE, "low significance skipped");
+      return;
+    }
+
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
+      console.log("📲 HINDU score < 7 — sending to WhatsApp, not X API");
+    }
+
+    if (!isExempt) {
+      console.log(`✅ Significance: ${score}/10 — proceeding`);
     }
 
     // ── Step 3: Tweet generation ──────────────────────────────────────────────
+    const longEligible = isLongTweetEligible(fullText);
+
+    if (longEligible) {
+      console.log("📏 Hindu article qualifies for long-tweet mode");
+    }
+
     let tweetText = null;
+    let model = "claude";
+
     try {
-      const result = await generateClaudeTweetWithType(fullText, articleType);
-      tweetText = result.tweetText;
-      console.log("Prompt generated by claude ....");
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        SOURCE,
+        longEligible,
+      );
+      tweetText = result?.tweetText;
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        tweetText = await generateGeminiTweet(fullText);
-        console.log("Prompt generated by Gemini ....");
+        const result = await generateGPTTweetWithType(
+          fullText,
+          articleType,
+          SOURCE,
+          longEligible,
+        );
+        tweetText = result?.tweetText;
+        model = "GPT";
       } catch (err) {
-        console.warn("⚠️ Gemini failed:", err?.message || err);
+        console.warn(
+          "⚠️ Hindu AI failed, skipping tweet:",
+          err?.message || err,
+        );
+        return;
       }
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
-      console.warn("⚠️ Hindu AI failed, skipping tweet");
+      console.warn("⚠️ Hindu tweet generation failed / too short");
+      markSeen();
+      await saveState(STATE);
       return;
     }
 
-    // ── Enqueue ───────────────────────────────────────────────────────────────
-    const cleanUrl = normalizeHinduLink(selected.link);
-    let imageUrl = getHinduImageUrl(selected);
-    imageUrl = normalizeHinduImageUrl(imageUrl);
+    tweetText = applySourceSignature(tweetText, SOURCE);
 
-    const tweetId = `HINDU:${cleanUrl}`;
-
+    // ── Step 4: Deliver (WhatsApp draft or X API queue) ──────────────────────
     if (CONSOLE_ONLY) {
       console.log("tweetText::", tweetText);
-      console.log("🧪 CONSOLE_ONLY mode. Not enqueueing.");
+      console.log("🧪 CONSOLE_ONLY mode. Not sending / enqueueing.");
       return;
     }
 
-    enqueueTweet({
-      id: tweetId,
-      source: "HINDU",
-      text: tweetText,
-      imageUrl,
-      seenKey: cleanUrl,
-    });
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: SOURCE,
+        headline: selected.title,
+        tweetText,
+        articleUrl: cleanLink,
+      });
+    } else {
+      let imageUrl = getHinduImageUrl(selected);
+      imageUrl = normalizeHinduImageUrl(imageUrl);
 
-    console.log(`📥 Queued HINDU tweet: ${selected.title}`);
+      enqueueTweet({
+        id: `HINDU:${cleanLink}`,
+        source: SOURCE,
+        text: tweetText,
+        imageUrl,
+        seenKey: cleanLink,
+        headline: selected.title,
+        model,
+        articleType,
+        score,
+      });
 
-    STATE.hindu.seen[cleanUrl] = Date.now();
+      console.log(`📥 Queued HINDU tweet: ${selected.title}`);
+    }
+
+    markSeen();
     STATE.hindu.lastPubMs = Math.max(
       STATE.hindu.lastPubMs || 0,
       getPubDate(selected),
     );
-    STATE.hindu.lastLink = cleanUrl;
-    STATE.hindu.lastTitle = selected.title;
-    STATE.hindu.visibleDate = new Date(getPubDate(selected)).toUTCString();
 
-    if (contextDecision?.newContext) {
+    if (!isLowScore && decision?.newContext) {
       STATE.dailyContext.contexts.push({
-        summary: contextDecision.newContext,
-        source: "HINDU",
-        link: cleanUrl,
+        summary: decision.newContext,
+        source: SOURCE,
+        link: cleanLink,
         createdAt: new Date().toISOString(),
       });
     }
@@ -229,6 +313,17 @@ function getPubDate(item) {
   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
 }
 
-function getTodayUTC() {
-  return new Date().toISOString().slice(0, 10);
+function pruneDailyContext(STATE, retentionMs) {
+  try {
+    const ctx = STATE.dailyContext?.contexts;
+    if (!Array.isArray(ctx) || ctx.length === 0) return;
+
+    const now = Date.now();
+    STATE.dailyContext.contexts = ctx.filter((c) => {
+      const t = new Date(c.createdAt).getTime();
+      return Number.isFinite(t) && now - t <= retentionMs;
+    });
+  } catch (err) {
+    console.warn("⚠️ dailyContext prune failed:", err?.message || err);
+  }
 }
