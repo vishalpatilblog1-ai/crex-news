@@ -1546,7 +1546,11 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   //   `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   // );
 
-  const textBlock = response.content.find((block) => block.type === "text");
+  //const textBlock = response.content.find((block) => block.type === "text");
+
+const lastSearchIdx = response.content.map((b) => b.type).lastIndexOf("web_search_tool_result");
+const textBlock = { text: response.content.slice(lastSearchIdx + 1).filter((b) => b.type === "text").map((b) => b.text).join("") };
+  
   const rawText = textBlock?.text;
 
   if (!rawText) {
@@ -1593,6 +1597,8 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  tweetText = tweetText.replace(/^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i, "");
 
   if (!tweetText || tweetText.length < 30) {
     console.warn("⚠️ Claude returned empty or too-short tweet");
