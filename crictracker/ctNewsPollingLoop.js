@@ -1,6 +1,26 @@
 // crictracker/ctNewsPollingLoop.js
+//
+// Aligned with CB / CA / ESPN / NDTV / Hindu / IE / SK:
+//  - GPT classify + GPT judge (a dropped article never costs a Claude call)
+//  - POST_VIA_API flag: true  = score >= 7 -> X API, score < 7 -> WhatsApp
+//                       false = score >= 7 -> WhatsApp, score < 7 dropped
+//  - Claude tweet (with SOURCE + long-tweet flag), GPT fallback
+//  - applySourceSignature, same score / virality logging
+//
+// The old card-image generation is gone: its result was never used
+// (imageUrl was already forced to null on enqueue). The article-image OCR
+// bookkeeping only runs on the X API path.
 
-import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
+import {
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+import {
+  generateClaudeTweetWithType,
+  isLongTweetEligible,
+  SIGNIFICANCE_EXEMPT_TYPES,
+} from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 
 import { isBlockedCAHeadline } from "../cricket-addictor/caHeadlineFilter.js";
@@ -10,30 +30,28 @@ import { parseCTArticle } from "./parseCTArticle.js";
 
 import { isRiskyTwitterImage } from "../cricket-addictor/ocr/detectTwitterReference.js";
 import { downloadImageToTemp } from "../cricket-addictor/ocr/downloadImageToTemp.js";
-import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-
-import { generateGeminiTweet } from "../ai/generate-gemini-tweet.js";
-import {
-  classifyArticle,
-  generateClaudeTweet,
-  generateClaudeTweetWithType,
-  SIGNIFICANCE_EXEMPT_TYPES,
-} from "../ai/generateClaudeTweet.js";
-import { generateCardImage } from "../canvas/imageRenderer.js";
 import { getCACTImageUrl } from "../common/getCACTImageUrl.js";
-import { CREX_BASE_IMAGE_TEMPLATE_NEW } from "../utils/config.js";
-// import {
-//   generateGPTTweet,
-//   generateGPTTweetWithType,
-// } from "../ai/generate-gpt-tweet.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
+const SOURCE = "CT";
 const MAX_AGE_MIN = 120;
-const CONSOLE_ONLY = process.env.CONSOLE_ONLY === "true";
-const RETENTION_MS = 6 * 60 * 60 * 1000;
-const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
+const RETENTION_MS = 6 * 60 * 60 * 1000; // seen + usedImages prune window
+// How long the shared "already covered" story memory lasts (hours, from env; default 6).
+const CONTEXT_TTL_MS =
+  (Number(process.env.CONTEXT_TTL_HOURS) > 0
+    ? Number(process.env.CONTEXT_TTL_HOURS)
+    : 6) *
+  60 *
+  60 *
+  1000;
+const MAX_PER_POLL = 5; // cap how many tweets can queue / be sent in a single poll cycle
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 export async function ctNewsPollingLoop() {
-  // console.log("ctNewsPollingLoop..");
   if (!global.STATE) return false;
 
   const STATE = global.STATE;
@@ -46,11 +64,10 @@ export async function ctNewsPollingLoop() {
   // ── Prune state ───────────────────────────────────────────────────────────
   let stateDirty = false;
   stateDirty ||= pruneCTSeen(STATE, RETENTION_MS);
-  stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
+  stateDirty ||= pruneDailyContext(STATE, CONTEXT_TTL_MS);
   stateDirty ||= pruneUsedImages(STATE, RETENTION_MS);
 
   if (stateDirty) {
-    // console.log("💾 Persisting pruned CT state");
     await saveState(STATE);
   }
 
@@ -77,7 +94,6 @@ export async function ctNewsPollingLoop() {
 
     const ageMin = (Date.now() - pubMs) / 60000;
     if (ageMin > MAX_AGE_MIN) {
-      // console.log(`⏳ CT aged out (${Math.round(ageMin)}m): ${item.title}`);
       continue;
     }
 
@@ -93,10 +109,6 @@ export async function ctNewsPollingLoop() {
 
     candidates.push({ item, cleanLink });
   }
-
-  // console.log(
-  //   `📰 CT list: ${sorted.length} articles, ${candidates.length} unseen candidates`,
-  // );
 
   if (candidates.length === 0) {
     await saveState(STATE);
@@ -125,134 +137,178 @@ export async function ctNewsPollingLoop() {
       parsed.table,
     )}`;
 
-    // ── Step 1: Classify article type first ──────────────────────────────
+    // ── Step 1: classify ──────────────────────────────────────────────────
     let articleType = "player_form";
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
     } catch (err) {
-      console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+      try {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (err2) {
+        console.warn(
+          "⚠️ CT classify failed twice, using default:",
+          err2?.message,
+        );
+      }
     }
 
-    // ── Step 2: Deduplication + significance gate ──────────────────────────
+    // ── Step 2: dedup + significance gate ─────────────────────────────────
+    const existingContexts =
+      STATE.dailyContext?.contexts?.map((c) => c.summary) || [];
+
     let decision = null;
     try {
-      decision = await judgeNewsContext({
+      decision = await judgeNewsContextGPT({
         articleText: fullText,
-        existingContexts:
-          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+        existingContexts,
       });
-
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log(
-          "🔴 CT skipped — already covered context::",
-          parsed.headline,
-        );
-        STATE.cricktracker.seen[cleanLink] = Date.now();
-        continue;
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
-
-      // console.log("================ Full CT Article ===========");
-      // console.log("🏷️ Article Type::", articleType);
-      // console.log("📰 Headline::", parsed.headline);
-      // console.log("📄 Article::", fullText);
-      // console.log("🔗 cleanLink::", cleanLink);
-      // console.log("==============================================");
-
-      if (!isExempt && score < 7) {
-        // console.log(
-        //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-        // );
-        STATE.cricktracker.seen[cleanLink] = Date.now();
-        continue;
-      }
-
-      if (isExempt) {
-        // console.log(
-        //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        // );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
     } catch (err) {
-      console.warn("⚠️ CT judgeNewsContext failed:", err?.message || err);
+      try {
+        decision = await judgeNewsContextGPT({
+          articleText: fullText,
+          existingContexts,
+        });
+      } catch (err2) {}
     }
 
-    // ── Step 3: Tweet generation ────────────────────────────────────────────
-    const imageUrl = getCACTImageUrl(selected);
-    const { useImage } = await decideImageUsage({
-      imageUrl,
-      usedImages: STATE.usedImages,
-    });
+    if (!decision) {
+      // Not marked seen — retried on the next poll.
+      console.log(
+        "⚠️ CT judge failed twice, skipping for now:",
+        parsed.headline,
+      );
+      continue;
+    }
+
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      console.log("🔴 CT skipped — already covered context::", parsed.headline);
+      STATE.cricktracker.seen[cleanLink] = Date.now();
+      continue;
+    }
+
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
+
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
+
+    if (isLowScore && !POST_VIA_API) {
+      STATE.cricktracker.seen[cleanLink] = Date.now();
+
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log("🔴 CT ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
+      await saveState(STATE, "low significance skipped");
+      continue;
+    }
+
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log("📲 CT score < 7 — sending to WhatsApp, not X API");
+    }
+
+    if (!isExempt) {
+      console.log(`✅ Significance: ${score}/10 — proceeding`);
+    }
+
+    // ── Step 3: tweet generation ──────────────────────────────────────────
+    const longEligible = isLongTweetEligible(fullText);
+
+    if (longEligible) {
+      console.log("📏 CT article qualifies for long-tweet mode");
+    }
 
     let tweetText = null;
-    let generatedPath = null;
+    let model = "claude";
+
     try {
-      const { tweetText: claudeTweet, card } =
-        await generateClaudeTweetWithType(fullText, articleType, "CT");
-      tweetText = claudeTweet;
-      if (card) {
-        try {
-          generatedPath = await generateCardImage(
-            CREX_BASE_IMAGE_TEMPLATE_NEW,
-            card,
-          );
-        } catch (err) {
-          console.error("❌ Image generation failed:", err);
-        }
-      } else {
-        // console.log("📝 Text-only tweet (no card)");
-      }
-      // console.log("Prompt generated by claude ....");
+      const result = await generateClaudeTweetWithType(
+        fullText,
+        articleType,
+        SOURCE,
+        longEligible,
+      );
+      tweetText = result?.tweetText;
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
       try {
-        tweetText = await generateGeminiTweet(fullText);
-        console.log("Prompt generated by Gemini ....");
+        const result = await generateGPTTweetWithType(
+          fullText,
+          articleType,
+          SOURCE,
+          longEligible,
+        );
+        tweetText = result?.tweetText;
+        model = "GPT";
       } catch (err) {
-        console.warn("⚠️ Gemini failed:", err?.message || err);
+        console.warn("⚠️ CT AI failed, skipping tweet:", err?.message || err);
+        continue;
       }
     }
 
-    // console.log("Actua tweetText by CT:::", tweetText);
-
-    if (!tweetText || tweetText.length < 30) {
+    if (!tweetText || tweetText.trim().length < 30) {
+      console.warn("⚠️ CT tweet generation failed / too short");
       STATE.cricktracker.seen[cleanLink] = Date.now();
       continue;
     }
 
-    // ── Enqueue ──────────────────────────────────────────────────────────────
-    tweetText = applySourceSignature(tweetText, "CT");
+    tweetText = applySourceSignature(tweetText, SOURCE);
 
-    const tweetId = `CT:${cleanLink}`;
+    // ── Step 4: deliver (WhatsApp draft or X API queue) ───────────────────
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: SOURCE,
+        headline: parsed.headline,
+        tweetText,
+        articleUrl: cleanLink,
+      });
+    } else {
+      // Article-image bookkeeping is only needed on the X API path.
+      const imageUrl = getCACTImageUrl(selected);
+      const { useImage } = await decideImageUsage({
+        imageUrl,
+        usedImages: STATE.usedImages,
+      });
 
-    enqueueTweet({
-      id: tweetId,
-      source: "CT",
-      text: tweetText,
-      // imageUrl: generatedPath || null,
-      imageUrl: null,
-      seenKey: cleanLink,
-    });
+      enqueueTweet({
+        id: `CT:${cleanLink}`,
+        source: SOURCE,
+        text: tweetText,
+        imageUrl: null,
+        seenKey: cleanLink,
+        headline: parsed.headline,
+        model,
+        articleType,
+        score,
+      });
 
-    console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
+      console.log(`📥 TWEET HEADLINE: ${parsed.headline}`);
 
-    if (useImage && imageUrl) {
-      STATE.usedImages[imageUrl] = Date.now();
+      if (useImage && imageUrl) {
+        STATE.usedImages[imageUrl] = Date.now();
+      }
     }
 
     STATE.cricktracker.seen[cleanLink] = Date.now();
+    // Counts WhatsApp sends too, so MAX_PER_POLL also caps a draft burst.
     queuedCount++;
 
-    if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+    if (
+      !isLowScore &&
+      decision?.newContext &&
+      !contextExists(STATE, decision.newContext)
+    ) {
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
-        source: "CT",
+        source: SOURCE,
         link: cleanLink,
         createdAt: new Date().toISOString(),
       });
@@ -282,7 +338,6 @@ function pruneCTSeen(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      // console.log(`🧹 Pruned ${pruned} old CT seen entries`);
       return true;
     }
   } catch (err) {
@@ -305,11 +360,6 @@ function pruneDailyContext(STATE, retentionMs) {
     });
 
     if (before !== STATE.dailyContext.contexts.length) {
-      // console.log(
-      //   `🧹 Pruned ${
-      //     before - STATE.dailyContext.contexts.length
-      //   } old dailyContext entries`,
-      // );
       return true;
     }
   } catch (err) {
@@ -331,7 +381,6 @@ function pruneUsedImages(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      // console.log(`🧹 Pruned ${pruned} old usedImages entries`);
       return true;
     }
   } catch (err) {

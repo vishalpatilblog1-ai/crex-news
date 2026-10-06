@@ -1,26 +1,56 @@
-import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
-import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
-import { saveState } from "../utils/stateStoreCloud.js";
-import { fetchSKCricketListing } from "./fetchSKCricketListing.js";
-import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
-import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
-import { parseSKArticle } from "./parseSKArticle.js";
-import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
-import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
-import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
-import { generateGPTTweetWithType } from "../ai/generate-gpt-tweet.js";
+// sportskeeda-cricket/skNewsPollingLoop.js
+//
+// Aligned with CB / CA / ESPN / NDTV / Hindu / IE:
+//  - GPT classify + GPT judge (a dropped article never costs a Claude call)
+//  - POST_VIA_API flag: true  = score >= 7 -> X API, score < 7 -> WhatsApp
+//                       false = score >= 7 -> WhatsApp, score < 7 dropped
+//  - Claude tweet (with SOURCE + long-tweet flag), GPT fallback
+//  - applySourceSignature, same score / virality logging
+//
+// Player photo / article image work (Cloudinary, OCR) only runs when the tweet
+// goes to the X API queue. WhatsApp drafts are text only.
+// USE_WEB_TWEET is handled centrally in tweetQueue.js, same as every other source.
+
 import {
-  classifyArticle,
+  classifyArticleGPT,
+  generateGPTTweetWithType,
+} from "../ai/generate-gpt-tweet.js";
+import {
   generateClaudeTweetWithType,
+  isLongTweetEligible,
   SIGNIFICANCE_EXEMPT_TYPES,
 } from "../ai/generateClaudeTweet.js";
+import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
+import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
+import { saveState } from "../utils/stateStoreCloud.js";
+import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
+import { getPlayerImageUrl } from "./cloudinaryPlayerImage.js";
+import { fetchSKCricketListing } from "./fetchSKCricketListing.js";
+import { downloadImageToTemp } from "./ocr/downloadImageToTemp.js";
+import { isRiskyTwitterImage } from "./ocr/detectTwitterReference.js";
+import { parseSKArticle } from "./parseSKArticle.js";
+import { isSportskeedaCricketArticle, normalizeSKLink } from "./skFilters.js";
+import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
 
+const SOURCE = "SK";
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
-const RETENTION_MS = 6 * 60 * 60 * 1000;
+const RETENTION_MS = 6 * 60 * 60 * 1000; // usedImages prune window
+// How long the shared "already covered" story memory lasts (hours, from env; default 6).
+const CONTEXT_TTL_MS =
+  (Number(process.env.CONTEXT_TTL_HOURS) > 0
+    ? Number(process.env.CONTEXT_TTL_HOURS)
+    : 6) *
+  60 *
+  60 *
+  1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 const IGNORE_SEEN = process.env.SK_IGNORE_SEEN === "true";
 const MAX_CANDIDATES_PER_CYCLE = 5;
 const MAX_AGE_MIN = 120;
+
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
+// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 export async function skNewsPollingLoop() {
   if (IGNORE_SEEN && USE_WEB_TWEET) {
@@ -130,7 +160,7 @@ export async function skNewsPollingLoop() {
     if (result === "success") {
       queuedCount += 1;
       console.log(
-        `📥 SK queued ${queuedCount} tweet(s) this cycle so far (attempt ${attemptsUsed}/${MAX_CANDIDATES_PER_CYCLE})`,
+        `📥 SK handled ${queuedCount} tweet(s) this cycle so far (attempt ${attemptsUsed}/${MAX_CANDIDATES_PER_CYCLE})`,
       );
     }
   }
@@ -161,73 +191,103 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       return "skip";
     }
 
+    // ── Step 1: classify ────────────────────────────────────────────────────
     let articleType = "player_form";
-
     try {
-      articleType = await classifyArticle(fullText);
+      articleType = await classifyArticleGPT(fullText);
     } catch (error) {
-      console.log(
-        "⚠️ Sportskeeda article classification failed:",
-        error?.message || error,
-      );
+      try {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (error2) {
+        console.log(
+          "⚠️ Sportskeeda article classification failed twice, using default:",
+          error2?.message || error2,
+        );
+      }
     }
+
+    // ── Step 2: dedup + significance gate ───────────────────────────────────
+    const existingContexts =
+      STATE.dailyContext?.contexts?.map((c) => c.summary) || [];
 
     let decision = null;
     try {
-      decision = await judgeNewsContext({
+      decision = await judgeNewsContextGPT({
         articleText: fullText,
-        existingContexts:
-          STATE.dailyContext?.contexts?.map((c) => c.summary) || [],
+        existingContexts,
       });
+    } catch (error) {
+      try {
+        decision = await judgeNewsContextGPT({
+          articleText: fullText,
+          existingContexts,
+        });
+      } catch (error2) {}
+    }
 
-      if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
-        console.log("🔴 Sportskeeda skipped — already covered context");
-        markSeen(STATE, selectedItem, cleanLink);
-        await saveState(STATE, "Sportskeeda duplicate context skipped");
-        return "skip";
-      }
-
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
-      const score = decision?.significanceScore ?? 10;
-
-      console.log("================ Full SK Article ===========");
-      console.log("🏷️ Article Type::", articleType);
-      console.log("📰 Headline::", parsed.headline);
-      console.log("📄 Article::", fullText);
-      console.log("🔗 cleanLink::", cleanLink);
-      console.log("==============================================");
-
-      if (!isExempt && score < 7) {
-        // console.log(
-        //   `⬇️ Low significance (${score}/10) — skipping: ${parsed.headline}`,
-        // );
-        markSeen(STATE, selectedItem, cleanLink);
-        await saveState(STATE, "Sportskeeda low significance skipped");
-        return "skip";
-      }
-
-      if (isExempt) {
-        // console.log(
-        //   `🌟 Exempt type (${articleType}) — bypassing significance gate (score: ${score}/10)`,
-        // );
-      } else {
-        console.log(`✅ Significance: ${score}/10 — proceeding`);
-      }
-    } catch (err) {
-      console.warn(
-        "⚠️ sportskeeda judgeNewsContext failed:",
-        err?.message || err,
+    if (!decision) {
+      // Not marked seen — retried on the next cycle.
+      console.log(
+        "⚠️ SK judge failed twice, skipping for now:",
+        parsed.headline,
       );
+      return "retry-later";
+    }
+
+    if (decision?.isAlreadyCovered && decision?.confidence >= 0.8) {
+      console.log("🔴 Sportskeeda skipped — already covered context");
+      markSeen(STATE, selectedItem, cleanLink);
+      await saveState(STATE, "Sportskeeda duplicate context skipped");
+      return "skip";
+    }
+
+    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const score = decision?.significanceScore ?? 10;
+    const vScore = decision?.viralityScore ?? "n/a";
+
+    const isLowScore = !isExempt && score < 7;
+    const sendViaWhatsApp = !POST_VIA_API || isLowScore;
+
+    if (isLowScore && !POST_VIA_API) {
+      markSeen(STATE, selectedItem, cleanLink);
+
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log("🔴 SK ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
+      await saveState(STATE, "Sportskeeda low significance skipped");
+      return "skip";
+    }
+
+    if (isLowScore) {
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log("📲 SK score < 7 — sending to WhatsApp, not X API");
+    }
+
+    if (!isExempt) {
+      console.log(`✅ Significance: ${score}/10 — proceeding`);
+    }
+
+    // ── Step 3: tweet generation ────────────────────────────────────────────
+    const longEligible = isLongTweetEligible(fullText);
+
+    if (longEligible) {
+      console.log("📏 SK article qualifies for long-tweet mode");
     }
 
     let tweetText = null;
     let player = "";
+    let model = "claude";
 
     try {
       const claudeResult = await generateClaudeTweetWithType(
         fullText,
         articleType,
-        "SK",
+        SOURCE,
+        longEligible,
       );
       tweetText = claudeResult?.tweetText || null;
       player = claudeResult?.player || "";
@@ -243,10 +303,12 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         const gptResult = await generateGPTTweetWithType(
           fullText,
           articleType,
-          "SK",
+          SOURCE,
+          longEligible,
         );
         tweetText = gptResult?.tweetText || null;
         player = player || gptResult?.player || "";
+        model = "GPT";
         console.log(
           tweetText
             ? "📝 GPT generated tweet (fallback)"
@@ -268,78 +330,83 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
       return "retry-later";
     }
 
-    let generatedPath = null;
-
-    if (player) {
-      const cloudinaryImageUrl = await getPlayerImageUrl(player);
-      if (cloudinaryImageUrl) {
-        try {
-          generatedPath = await downloadImageToTemp(cloudinaryImageUrl);
-          console.log(`🖼️ Using Cloudinary photo for "${player}"`);
-        } catch (error) {
-          console.log(
-            `⚠️ Failed to download Cloudinary photo for "${player}", posting text-only:`,
-            error?.message || error,
-          );
-          generatedPath = null;
-        }
-      } else {
-        console.log(
-          `⏭️ No Cloudinary photo found for "${player}" — posting text-only`,
-        );
-      }
-    } else {
-      console.log("⏭️ No central player identified — posting text-only");
-    }
-
-    const imageUrl = parsed.imageUrl || null;
-    const imageResult = await decideImageUsage(imageUrl, STATE.usedImages);
-
-    tweetText = applySourceSignature(tweetText, "SK");
+    tweetText = applySourceSignature(tweetText, SOURCE);
     tweetText = tweetText.trim();
     if (!/[.!?]$/.test(tweetText)) tweetText += ".";
 
-    if (!USE_WEB_TWEET) {
-      console.log(
-        "🧪 USE_WEB_TWEET is false — logging Sportskeeda tweet instead of posting:",
-        {
-          headline: parsed.headline,
-          articleUrl: cleanLink,
-          tweetText,
-          generatedPath,
-          articleImage: imageUrl,
-          useArticleImage: imageResult.useImage,
-        },
-      );
-      return "skip";
+    // ── Step 4: deliver (WhatsApp draft or X API queue) ─────────────────────
+    if (sendViaWhatsApp) {
+      await sendTweetDraftToWhatsApp({
+        source: SOURCE,
+        headline: parsed.headline,
+        tweetText,
+        articleUrl: cleanLink,
+      });
+    } else {
+      // Image work is only needed when the tweet is actually going to X.
+      let generatedPath = null;
+
+      if (player) {
+        const cloudinaryImageUrl = await getPlayerImageUrl(player);
+        if (cloudinaryImageUrl) {
+          try {
+            generatedPath = await downloadImageToTemp(cloudinaryImageUrl);
+            console.log(`🖼️ Using Cloudinary photo for "${player}"`);
+          } catch (error) {
+            console.log(
+              `⚠️ Failed to download Cloudinary photo for "${player}", posting text-only:`,
+              error?.message || error,
+            );
+            generatedPath = null;
+          }
+        } else {
+          console.log(
+            `⏭️ No Cloudinary photo found for "${player}" — posting text-only`,
+          );
+        }
+      } else {
+        console.log("⏭️ No central player identified — posting text-only");
+      }
+
+      const imageUrl = parsed.imageUrl || null;
+      const imageResult = await decideImageUsage(imageUrl, STATE.usedImages);
+
+      enqueueTweet({
+        id: `SK:${cleanLink}`,
+        source: SOURCE,
+        text: tweetText,
+        imageUrl: generatedPath || null,
+        seenKey: cleanLink,
+        publishedAt: Date.now(),
+        headline: parsed.headline,
+        model,
+        articleType,
+        score,
+      });
+
+      console.log(`📥 Queued Sportskeeda tweet: ${parsed.headline}`);
+
+      if (imageResult.useImage && imageUrl) {
+        STATE.usedImages[imageUrl] = Date.now();
+      }
     }
 
-    enqueueTweet({
-      id: `SK:${cleanLink}`,
-      source: "SK",
-      text: tweetText,
-      imageUrl: generatedPath || null,
-      seenKey: cleanLink,
-      publishedAt: Date.now(),
-    });
-
-    console.log(`📥 Queued Sportskeeda tweet: ${parsed.headline}`);
     markSeen(STATE, selectedItem, cleanLink);
 
-    if (imageResult.useImage && imageUrl) {
-      STATE.usedImages[imageUrl] = Date.now();
-    }
-
-    if (decision?.newContext && !contextExists(STATE, decision.newContext)) {
+    if (
+      !isLowScore &&
+      decision?.newContext &&
+      !contextExists(STATE, decision.newContext)
+    ) {
       STATE.dailyContext.contexts.push({
         summary: decision.newContext,
-        source: "SK",
+        source: SOURCE,
         link: cleanLink,
         createdAt: new Date().toISOString(),
       });
     }
 
-    await saveState(STATE, "Sportskeeda tweet queued");
+    await saveState(STATE, "Sportskeeda tweet handled");
     console.log(`✅ Sportskeeda processed: ${parsed.headline}`);
     return "success";
   } catch (error) {
@@ -373,7 +440,7 @@ function pruneDailyContext(STATE) {
     (context) => {
       const timestamp = new Date(context.createdAt).getTime();
       return (
-        Number.isFinite(timestamp) && Date.now() - timestamp <= RETENTION_MS
+        Number.isFinite(timestamp) && Date.now() - timestamp <= CONTEXT_TTL_MS
       );
     },
   );
