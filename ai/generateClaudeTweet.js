@@ -83,8 +83,7 @@ Classification Rules (apply in order):
    These go to injury_news, selection_news, or the appropriate type instead.
 
 0b. An article whose PRIMARY purpose is to compare two named players, two teams, or two eras
-   (e.g. "Kohli vs Rohit as captains", "CSK vs MI dynasty debate", "Gill vs Pant for the No. 4
-   slot") is NOT its own type. Route it to whichever of the standard types fits the underlying
+   (e.g. "Kohli vs Rohit as captains", "CSK vs MI dynasty debate", "Gill vs Pant for the No. 4 slot") is NOT its own type. Route it to whichever of the standard types fits the underlying
    news peg: a comparison driven by a selection/lineup decision → selection_news; a comparison
    built on stats/performance trend → player_form; a comparison that's fundamentally a column or
    personal take → opinion_piece.
@@ -138,7 +137,9 @@ export async function classifyArticle(articleText) {
   const inputCost = (usage.input_tokens / 1_000_000) * 1;
   const outputCost = (usage.output_tokens / 1_000_000) * 5;
   console.log(
-    `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
+    `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${
+      usage.output_tokens
+    } tok, cost: $${(inputCost + outputCost).toFixed(4)}`
   );
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
@@ -149,7 +150,7 @@ ENGAGEMENT MECHANICS — apply at least ONE per tweet:
 
 PATTERN A — THE REFRAME
 Start with what everyone thinks, then flip it.
-"Everyone's talking about the 96-run win. The real story is the six overs before anyone was watching."
+"Everyone's talking about the 96-run win. The six overs before anyone was watching decided it."
 
 PATTERN B — THE SPECIFIC CONTRADICTION
 Name the exact decision that contradicted the team's own plan.
@@ -204,8 +205,8 @@ PATTERN J — THE UNCOMFORTABLE TRUTH
 State something obviously true that mainstream cricket media isn't saying out loud.
 Fans feel validated. Critics feel challenged. Both reply.
 Examples (structure only — NEVER repeat these lines):
-"Gambhir's best asset isn't tactics. It's that the players believe him."
-"The bowling attack didn't improve. The pitches did."
+"Gambhir's best asset is that the players believe him."
+"The bowling attack stayed the same. The pitches got easier."
 Rules:
 - Must be grounded in something the article supports — not manufactured controversy
 - Calm delivery only — the discomfort comes from the truth, not the tone
@@ -214,8 +215,7 @@ Rules:
 PATTERN K — THE BEFORE/AFTER CONTRAST
 Two states separated by one event. Visually clean as plain text. Extremely shareable.
 Examples (structure only — NEVER repeat these lines):
-"Six weeks ago Samson was watching from the dugout.
-Today he holds the Player of the Tournament trophy."
+"Six weeks ago Samson was watching from the dugout. Today he holds the Player of the Tournament trophy."
 Rules:
 - The contrast must be concrete — specific timeframe, specific state
 - One line before, one line after, separated by a line break
@@ -306,8 +306,7 @@ Rules:
 FRICTION REQUIREMENT:
 If the tweet describes what happened without naming what SHOULD have
 happened instead — REWRITE. Analysis without a counterfactual is just
-narration. The reader should finish the tweet thinking: "I'll watch for
-that next time."
+narration. The reader should finish the tweet thinking: "I'll watch for that next time."
 `,
 
   selection_news: `
@@ -388,8 +387,7 @@ Beat 2 (Meaning): One universal sentence — the emotional truth this moment rep
   Must hit hard even if the reader has never watched cricket. Should feel quotable.
 
 OPENING FRAME OPTION (use when it beats a direct scene-open):
-You may open with a curiosity frame — "[Name] reveals why...", "What [Name] told
-[someone] about..." — when the story has a genuine "why" the reader would want
+You may open with a curiosity frame — "[Name] reveals why...", "What [Name] told [someone] about..." — when the story has a genuine "why" the reader would want
 answered. Don't default to this on every tweet; use only when it's sharper than
 opening directly on the scene.
 
@@ -493,8 +491,7 @@ Rules:
   
 FRICTION REQUIREMENT:
 If the tweet states who's out without naming what the team structurally
-loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so
-Y" is a take.
+loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so Y" is a take.
 
 REPLACEMENT CANDIDATE RULE:
 If the article lists multiple replacement candidates (2 or more named players),
@@ -534,8 +531,7 @@ the fact that the person is addressing this at all is itself the hook.
 MODE 2 — ACT OVER QUOTE
 Use when WHO is speaking, or THAT they chose to speak at all, is more
 newsworthy than what they said. Use PATTERN G (Act-Over-Quote).
-Example: "MS Dhoni breaks a near two-year social media silence to validate
-Gambhir. The first public endorsement from the man who started this World Cup dynasty."
+Example: "MS Dhoni breaks a near two-year social media silence to validate Gambhir. The first public endorsement from the man who started this World Cup dynasty."
 
 Rules for both modes:
 - Name the speaker in the first or second sentence — no vague attribution
@@ -546,7 +542,7 @@ ATTRIBUTION STAYS TO THE END (strict):
 The closing verdict must still be framed as the speaker's position, not the
 narrator's conclusion. The reader must always know whose argument they're evaluating.
 Wrong: "The pitch preparation is the strategy — not the team selection."
-Right: "Faf's point: KKR's problem last season wasn't the spinners — it was the surface they were handed."
+Right: "Faf's point: KKR's problem last season was the surface they were handed."
 If the closing line could have been written without reading the article, it has
 lost its attribution. Rewrite it.
 
@@ -603,8 +599,7 @@ forward-looking scrutiny angle instead: can this be sustained at the next
 level, what historical precedent does this invite comparison to, what
 specific pressure does this now put on the player.
 WEAK: "His journey shows that dreams, when nurtured, can turn into reality."
-STRONG: "The real test starts now — plenty of teenage prodigies have peaked
-early. Can Vaibhav back this up against senior bowling attacks?"
+STRONG: "The real test starts now — plenty of teenage prodigies have peaked early. Can Vaibhav back this up against senior bowling attacks?"
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -766,8 +761,7 @@ update from after the article was published) — in that case, use the
 newer fact and do not use the article's outdated version.
 
 FAN SENTIMENT SUB-RULE:
-You may characterize genuine public/fan sentiment (e.g. "fans are
-split," "the reaction has been sharp") if, and only if, your search
+You may characterize genuine public/fan sentiment (e.g. "fans are split," "the reaction has been sharp") if, and only if, your search
 turns up a real pattern — multiple independent accounts expressing a
 similar view, not one or two isolated posts. Paraphrase the sentiment in
 your own words; do not quote anyone's exact wording verbatim unless you
@@ -786,8 +780,7 @@ specific, vivid, individually-attributable reaction (a named account,
 a public figure, a journalist) that captures the sentiment sharper
 than paraphrase would — you may use it as a short direct quote under
 the normal Attribution Rule and 15-word-equivalent brevity, instead of
-paraphrasing it away. This is an exception to "paraphrase the
-sentiment," not to the pattern requirement — a single banger quote
+paraphrasing it away. This is an exception to "paraphrase the sentiment," not to the pattern requirement — a single banger quote
 still needs the surrounding pattern (multiple independent accounts
 agreeing) to justify using it at all. One such quote per tweet, max.
 
@@ -821,8 +814,7 @@ CORE STRATEGY
   article or to an actual search result you ran, subject to the scope
   limits in WEB VERIFICATION RULE. Do not use search to go find a
   different, more dramatic story than the one the article gave you — that
-  is not a third angle, that's a different article. Ask "what does this
-  reveal that the journalist didn't write?" If answering requires an
+  is not a third angle, that's a different article. Ask "what does this reveal that the journalist didn't write?" If answering requires an
   assumption you cannot verify against the article or a real search
   result, don't use it. If it could pass as the source's headline,
   rewrite it.
@@ -891,12 +883,9 @@ should deliver a clear verdict, create a strong contradiction, force the
 reader to pick a side, or leave a sharp, slightly uncomfortable truth —
 avoid soft or observational closers.
 WEAK: "It highlights the selectors' priorities in a pivotal cycle."
-STRONG: "Saransh has earned that spot on form. Jadeja's comeback shouldn't
-come at his expense."
+STRONG: "Saransh has earned that spot on form. Jadeja's comeback shouldn't come at his expense."
 If you can't commit, use an Open Verdict (Pattern E) — deliberate tension,
-not uncertainty: "The selection makes sense on paper. Whether it holds in a
-knockout is a different question" (allowed) vs "This might be India's
-smartest tactical shift" (banned hedge).
+not uncertainty: "The selection makes sense on paper. Whether it holds in a knockout is a different question" (allowed) vs "This might be India's smartest tactical shift" (banned hedge).
 Test: could a reasonable fan reply "disagree" or "nah" and mean it? If not,
 rewrite it.
 
@@ -907,8 +896,7 @@ The verdict itself must stay firm (see CLOSING LINE RULE above) — but the
 GRAMMATICAL SHAPE used to deliver that verdict must vary. Do not default to
 the same construction out of habit.
 
-The contrastive imperative — "must/should [verb] X, not Y" (e.g. "Selectors
-should back Padikkal now, not delay it another series") — is ONE valid
+The contrastive imperative — "must/should [verb] X, not Y" (e.g. "Selectors should back Padikkal now, not delay it another series") — is ONE valid
 closing shape. It is NOT the default. Overusing it makes every tweet sound
 interchangeable even when the underlying opinions are genuinely different.
 
@@ -937,8 +925,7 @@ SHAPE — Pointed declarative implication (a stated consequence, not a question)
 
 SHAPE — Negative-space / absence callout ("notice what X didn't say", or a bare
   "X, not Y" contrast with no modal verb)
-  Example: "Notice what he didn't deny." / "Pointing at the boardroom, not the
-  dressing room."
+  Example: "Notice what he didn't deny." / "Pointing at the boardroom, not the dressing room."
   Use ONLY when the omission itself is the actual news — a denial that
   conspicuously avoids one specific claim, a statement that pointedly skips
   something the article flags. This is the SAME overused family as the
@@ -953,17 +940,14 @@ is the actual news peg. Treat these two as ONE family for variety purposes —
 back-to-back use of either counts as a repeat. For most articles, a flat
 declarative, causal-consequence, comparative, or direct-challenge shape will
 land the same verdict with more variety. Before finalizing, ask: is this
-closer built on "must/should ... not ...", a bare "..., not ...", or "notice
-what ... didn't/doesn't"? If yes, actively try one of the other shapes first
+closer built on "must/should ... not ...", a bare "..., not ...", or "notice what ... didn't/doesn't"? If yes, actively try one of the other shapes first
 and use it unless this family is genuinely the sharpest fit for this specific
 article — not just the most familiar one.
 
 ═══════════════════════════════════════════
 CONNECTOR RULE (STRICT)
 ═══════════════════════════════════════════
-No colons or em-dashes as sentence connectors. "Karnataka wanted a leader,
-not a legacy. That's why Vinay Kumar got the job" — not "Karnataka's move is
-clear: a leader over a legacy." Dashes/colons are fine only inside a direct
+No colons or em-dashes as sentence connectors. "Karnataka wanted a leader, not a legacy. That's why Vinay Kumar got the job" — not "Karnataka's move is clear: a leader over a legacy." Dashes/colons are fine only inside a direct
 quote.
 
 ═══════════════════════════════════════════
@@ -1016,8 +1000,7 @@ Required:
 SOURCE FIDELITY RULE
 ═══════════════════════════════════════════
 Preserve specific named details, exact numbers, and direct quotes rather
-than compressing into vague generality — "Banton, Green and Tim David have
-done that" beats "some batters have done that." Only drop a specific detail
+than compressing into vague generality — "Banton, Green and Tim David have done that" beats "some batters have done that." Only drop a specific detail
 if it genuinely doesn't serve the angle.
 
 NO CROSS-ATTRIBUTION (STRICT): when an article names more than one
@@ -1071,28 +1054,23 @@ NAME ACCURACY RULE
 ═══════════════════════════════════════════
 Transcripts often mangle names phonetically. If you recognize a known
 cricket media figure despite a garbled spelling, use their correct public
-spelling. If genuinely unsure who's meant, refer by role ("a Cricinfo
-journalist") instead of guessing.
+spelling. If genuinely unsure who's meant, refer by role ("a Cricinfo journalist") instead of guessing.
 
 ═══════════════════════════════════════════
 LANGUAGE RULES
 ═══════════════════════════════════════════
-Never use: "under pressure", "questions will be asked", "spot is under
-threat", "bold call", "surprise pick", "high-stakes clash", "must-win
-game", "suggests/indicates/signals", "reveals/sends a strong signal",
+Never use: "under pressure", "questions will be asked", "spot is under threat", "bold call", "surprise pick", "high-stakes clash", "must-win game", "suggests/indicates/signals", "reveals/sends a strong signal",
 extreme labels ("Overrated", "Clueless", "Bottler", "Liability").
 
 ═══════════════════════════════════════════
 PREFERRED MOVE — LEAD WITH THE VERDICT:
 ═══════════════════════════════════════════
 State the real insight as your first move. Don't set up a smaller claim
-just to knock it down. If you catch yourself writing "isn't/not [smaller
-claim]," delete the smaller claim entirely and start the sentence at
+just to knock it down. If you catch yourself writing "isn't/not [smaller claim]," delete the smaller claim entirely and start the sentence at
 your actual point.
 Weak instinct: "Tamim's answer isn't a fix, it's a pause."
 Correct instinct: "Tamim's answer is a pause, not a fix." — still
-banned if reordered as reject-and-replace, so go further: "Tamim is
-pausing the BPL, not fixing it." → state what he did, then the
+banned if reordered as reject-and-replace, so go further: "Tamim is pausing the BPL, not fixing it." → state what he did, then the
 implication, no rejection frame at all.
 
 BANNED CONSTRUCTIONS — REJECT-THEN-ASSERT (two forms, same failure):
@@ -1100,16 +1078,12 @@ Never build a tweet on rejecting a smaller framing to assert a bigger one.
 This is a PATTERN, not a fixed phrase — banning exact wording does not stop
 it, because it resurfaces in paraphrase. Both forms are banned, in any
 paraphrase:
-  (a) Downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's
-      Y" / "not only X but also Y" / "more than a X — it's a Y" / "beyond
-      X, this is Y"
+  (a) Downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's Y" / "not only X but also Y" / "more than a X — it's a Y" / "beyond X, this is Y"
       Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
       Banned (paraphrase dodge): "Gambhir's coaching has not only raised eyebrows but opened a rift."
       Instead: "Gambhir's coaching has moved past raised eyebrows into an open rift."
-  (b) Reject-and-replace: "That's not X, that's Y" / "Not the scoreline,
-      that's the real story"
-      Banned: "That's not a bowling change. That's a captain saving his
-      ace for the exact moment panic sets in."
+  (b) Reject-and-replace: "That's not X, that's Y" / "Not the scoreline, that's the real story"
+      Banned: "That's not a bowling change. That's a captain saving his ace for the exact moment panic sets in."
       Instead: "A captain saving his ace for the exact moment panic sets in."
 Before finalizing, check the closing line specifically: does it knock down
 a framing before stating the real point? If yes, cut the setup and lead
@@ -1127,15 +1101,13 @@ If the article has a JSON table of players/stats/records, use it — don't
 ignore it, and don't list everything. Pick the most tweet-worthy subset
 (most surprising entry, most impactful name, a pattern, an upcoming
 threshold) and frame it as a punchy inline enumeration, never bullets:
-"Rana (season), Pathirana (early games), Curran (season) — three
-franchises just lost their plans before IPL 2026." If the table adds
+"Rana (season), Pathirana (early games), Curran (season) — three franchises just lost their plans before IPL 2026." If the table adds
 nothing beyond the article text, ignore it.
 
 ═══════════════════════════════════════════
 BOOKMARK VALUE RULE
 ═══════════════════════════════════════════
-Every tweet needs one insight worth remembering — "this explains something
-I'll notice next time I watch." Compatible with compression: fewer words,
+Every tweet needs one insight worth remembering — "this explains something I'll notice next time I watch." Compatible with compression: fewer words,
 not less substance.
 
 ═══════════════════════════════════════════
@@ -1197,7 +1169,7 @@ function buildStaticInstructionsBlock(
   source,
   MIN_CHARS,
   MAX_CHARS,
-  articleType,
+  articleType
 ) {
   const isLongMode = MAX_CHARS > 280;
   return `
@@ -1225,11 +1197,7 @@ Each distinct thought, beat, or contrast must be on its own line. Never run
 two separate ideas into the same paragraph block. A 3-beat tweet looks like
 this:
 
-"KKR lost balance before the season started.
-
-Starc gone. Pathirana pending. Russell carrying the attack alone.
-
-That's not a bowling unit — that's a gamble."
+"KKR lost balance before the season started. Starc gone. Pathirana pending. Russell carrying the attack alone. That's a gamble."
 
 Even a 2-beat tweet uses a line break between the hook and the verdict. The
 line break IS the pause. It makes the reader feel the weight of each line
@@ -1277,8 +1245,7 @@ FINAL CHECK before outputting:
   doing/saying — not against what would make a sharper premise.
 - HEDGING PRESERVATION CHECK (distinct from the rule below — read both):
   if the article itself frames a claim as unconfirmed, disputed, single-
-  sourced, or speculative (words like "reportedly," "claims," "if the
-  report is to be believed," "according to a source," or an article that
+  sourced, or speculative (words like "reportedly," "claims," "if the report is to be believed," "according to a source," or an article that
   explicitly says the full picture isn't confirmed) — and the claim is
   about a real, named person's motives, relationships, or reputation —
   the tweet must preserve that uncertainty. Do NOT launder a hedged,
@@ -1287,8 +1254,7 @@ FINAL CHECK before outputting:
   own editorial verdict — you can still state your opinion on what the
   (hedged) situation means with full confidence; what you cannot do is
   strip the source's own uncertainty markers from the underlying claim.
-  Example of the failure: an article about a rumored rift says "if the
-  claims made in the report are to be believed" and ends by stating
+  Example of the failure: an article about a rumored rift says "if the claims made in the report are to be believed" and ends by stating
   nobody involved has confirmed anything — a tweet that states the rift
   and its cause as settled fact, with no attribution to the single report
   it came from, has misrepresented an unconfirmed claim as established
@@ -1357,14 +1323,11 @@ FINAL CHECK before outputting:
   - selection_news tweets may end on a genuine question ONLY if it emerges
     naturally from the selection debate itself, not as a generic
     call-to-action.
-  "reveals their true priorities", "raises questions about", "highlights the
-  selectors'/selectors priorities", "shows the challenge ahead", "hints at a
-  promising future". If your closer uses any of these constructions or their
+  "reveals their true priorities", "raises questions about", "highlights the selectors'/selectors priorities", "shows the challenge ahead", "hints at a promising future". If your closer uses any of these constructions or their
   paraphrase, you have failed this check — rewrite with an actual verdict.
   GENERALIZED VERSION OF THE ABOVE RULE:
   The banned list above is illustrative, not exhaustive. Any closing line of
-  the shape "[verb]s the [growing/real/true/deeper] [concerns/priorities/
-  challenges/tension/questions]" is banned regardless of which specific verb
+  the shape "[verb]s the [growing/real/true/deeper] [concerns/priorities/ challenges/tension/questions]" is banned regardless of which specific verb
   or noun fills the slot — this includes but is not limited to "reveals",
   "highlights", "signals", "underscores", "raises". These constructions
   describe that something exists without committing to what YOU think about it.
@@ -1437,7 +1400,7 @@ async function _generateTweet(
   articleType,
   source = null,
   isLongEligible = false,
-  correctionNote = null,
+  correctionNote = null
 ) {
   const articleTypeInstruction =
     articleType === "breaking_news" && source !== "CB"
@@ -1448,7 +1411,7 @@ async function _generateTweet(
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
   const { min: MIN_CHARS, max: MAX_CHARS } = resolveCharLimit(
     source,
-    isLongEligible,
+    isLongEligible
   );
 
   // Only the article text is genuinely different call to call --
@@ -1467,7 +1430,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     source,
     MIN_CHARS,
     MAX_CHARS,
-    articleType,
+    articleType
   );
 
   const response = await client.messages.create({
@@ -1512,7 +1475,11 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
   console.log(
-    `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${
+      usage.cache_creation_input_tokens || 0
+    } tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${
+      usage.output_tokens
+    } tok, cost: $${totalCost.toFixed(4)}`
   );
 
   // // after
@@ -1520,21 +1487,21 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   // // correct version — replaces what I gave you before
   // const inputCost = (usage.input_tokens / 1_000_000) * 2; // back to 2, not 3
   // const cacheWriteCost =
-  //   ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 4; // 4, not 6 (1h write price)
+  // ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 4; // 4, not 6 (1h write price)
   // const cacheReadCost =
-  //   ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.2; // 0.2, not 0.3
+  // ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.2; // 0.2, not 0.3
   // const outputCost = (usage.output_tokens / 1_000_000) * 10; // back to 10, not 15
   // // const inputCost = (usage.input_tokens / 1_000_000) * 3;
   // // const cacheWriteCost =
-  // //   ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 6;
+  // // ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 6;
   // // const cacheReadCost =
-  // //   ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.3;
+  // // ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.3;
   // // const outputCost = (usage.output_tokens / 1_000_000) * 15;
 
   // const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
   // console.log(
-  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   // );
 
   // const usage = response.usage;
@@ -1543,20 +1510,28 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   // const totalCost = inputCost + outputCost;
 
   // console.log(
-  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   // );
 
   //const textBlock = response.content.find((block) => block.type === "text");
 
-const lastSearchIdx = response.content.map((b) => b.type).lastIndexOf("web_search_tool_result");
-const textBlock = { text: response.content.slice(lastSearchIdx + 1).filter((b) => b.type === "text").map((b) => b.text).join("") };
-  
+  const lastSearchIdx = response.content
+    .map((b) => b.type)
+    .lastIndexOf("web_search_tool_result");
+  const textBlock = {
+    text: response.content
+      .slice(lastSearchIdx + 1)
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join(""),
+  };
+
   const rawText = textBlock?.text;
 
   if (!rawText) {
     console.error(
       "⚠️ No text block in Claude response:",
-      JSON.stringify(response.content),
+      JSON.stringify(response.content)
     );
     return { tweetText: null, card: null };
   }
@@ -1583,7 +1558,7 @@ const textBlock = { text: response.content.slice(lastSearchIdx + 1).filter((b) =
       } else {
         console.warn(
           "⚠️ No JSON object found after CARD_JSON marker:",
-          afterMarker,
+          afterMarker
         );
         card = null;
       }
@@ -1598,7 +1573,10 @@ const textBlock = { text: response.content.slice(lastSearchIdx + 1).filter((b) =
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  tweetText = tweetText.replace(/^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i, "");
+  tweetText = tweetText.replace(
+    /^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i,
+    ""
+  );
 
   if (!tweetText || tweetText.length < 30) {
     console.warn("⚠️ Claude returned empty or too-short tweet");
@@ -1607,7 +1585,7 @@ const textBlock = { text: response.content.slice(lastSearchIdx + 1).filter((b) =
 
   if (tweetText.length < MIN_CHARS) {
     console.warn(
-      `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`,
+      `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`
     );
   }
   // console.log(`=========== ${source} Claude Tweet ===========`);
@@ -1710,26 +1688,26 @@ async function generateWithRetry(
   articleText,
   articleType,
   source = null,
-  isLongEligible = false,
+  isLongEligible = false
 ) {
   let result = await _generateTweet(
     articleText,
     articleType,
     source,
-    isLongEligible,
+    isLongEligible
   );
 
   if (result.tweetText && hasRejectThenAssert(result.tweetText)) {
     console.warn(
       "⚠️ Reject-then-assert pattern detected, retrying once:",
-      result.tweetText,
+      result.tweetText
     );
     const retryResult = await _generateTweet(
       articleText,
       articleType,
       source,
       isLongEligible,
-      "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
+      "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all."
     );
 
     if (retryResult.tweetText && hasRejectThenAssert(retryResult.tweetText)) {
@@ -1737,7 +1715,7 @@ async function generateWithRetry(
       // the remainder, unless stripping leaves too little to post.
       console.warn(
         "⚠️ Still failing after retry, stripping offending sentence(s):",
-        retryResult.tweetText,
+        retryResult.tweetText
       );
       const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
 
@@ -1764,15 +1742,19 @@ async function generateWithRetry(
     }
 
     console.warn(
-      `⚠️ Implied-contrast/negative-space closer used ${IMPLIED_CONTRAST_STREAK_LIMIT + 1}x in a row, forcing variety retry:`,
-      getClosingLine(result.tweetText),
+      `⚠️ Implied-contrast/negative-space closer used ${
+        IMPLIED_CONTRAST_STREAK_LIMIT + 1
+      }x in a row, forcing variety retry:`,
+      getClosingLine(result.tweetText)
     );
     const varietyRetry = await _generateTweet(
       articleText,
       articleType,
       source,
       isLongEligible,
-      `Your closing line used the implied-contrast family — either "[must/should] do X, not Y", a bare "X, not Y" with no modal verb, or a "notice what X didn't say/deny" negative-space callout — which has now repeated ${IMPLIED_CONTRAST_STREAK_LIMIT + 1} tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence, and do not frame the insight as something the subject "didn't say/deny/confirm."`,
+      `Your closing line used the implied-contrast family — either "[must/should] do X, not Y", a bare "X, not Y" with no modal verb, or a "notice what X didn't say/deny" negative-space callout — which has now repeated ${
+        IMPLIED_CONTRAST_STREAK_LIMIT + 1
+      } tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence, and do not frame the insight as something the subject "didn't say/deny/confirm."`
     );
 
     if (
@@ -1780,7 +1762,7 @@ async function generateWithRetry(
       !hasRejectThenAssert(varietyRetry.tweetText)
     ) {
       consecutiveImpliedContrastCloses = usesImpliedContrastFamily(
-        varietyRetry.tweetText,
+        varietyRetry.tweetText
       )
         ? consecutiveImpliedContrastCloses + 1 // model still defaulted to it despite the ask
         : 0; // reset — variety achieved
@@ -1811,7 +1793,7 @@ export async function generateClaudeTweet(articleText) {
   } catch (err) {
     console.warn(
       "⚠️ classifyArticle failed, using default:",
-      err?.message || err,
+      err?.message || err
     );
   }
 
@@ -1831,21 +1813,21 @@ export async function generateClaudeTweetWithType(
   articleText,
   articleType,
   source = null,
-  isLongEligible = false,
+  isLongEligible = false
 ) {
   let resolvedType = articleType;
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
     console.warn(
-      `⚠️ Unknown article type "${resolvedType}" passed in, using default`,
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
     );
     resolvedType = "player_form";
   }
 
   // console.log(
-  //   `🏷️ Article type (pre-classified): ${resolvedType}${
-  //     source ? ` | source: ${source}` : ""
-  //   }${isLongEligible ? " | long-tweet mode" : ""}`,
+  // `🏷️ Article type (pre-classified): ${resolvedType}${
+  // source ? ` | source: ${source}` : ""
+  // }${isLongEligible ? " | long-tweet mode" : ""}`,
   // );
 
   try {
@@ -1853,7 +1835,7 @@ export async function generateClaudeTweetWithType(
       articleText,
       resolvedType,
       source,
-      isLongEligible,
+      isLongEligible
     );
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
@@ -1861,4 +1843,4 @@ export async function generateClaudeTweetWithType(
     // console.log("❌ Claude Tweet Generation Error ..");
     return { tweetText: null, articleType: resolvedType, card: null };
   }
-}
+                            }
