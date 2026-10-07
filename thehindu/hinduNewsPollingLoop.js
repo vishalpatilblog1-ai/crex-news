@@ -107,7 +107,7 @@ export async function hinduNewsPollingLoop() {
     }
 
     if (!selected) {
-      console.log("🟡 No eligible Hindu articles");
+      // console.log("🟡 No eligible Hindu articles");
       return;
     }
 

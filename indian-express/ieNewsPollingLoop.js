@@ -109,7 +109,7 @@ export async function ieNewsPollingLoop() {
     }
 
     if (!selected) {
-      console.log("🟡 No eligible IE articles (age + dedupe)");
+      // console.log("🟡 No eligible IE articles (age + dedupe)");
       return;
     }
 

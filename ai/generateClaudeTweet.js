@@ -242,10 +242,24 @@ Rules:
 - Land on a stance, not just a description of the clash (avoid pure "both sides have a point")
 - Works best for rivalry_bait; also usable for selection_news and player_form when a real two-sided comparison is the actual news peg
 
+PATTERN N — THE ARC
+A short run-up in two or three beats, then the moment, then one closing line that names what changed.
+Use only when the article shows a real low point first: dropped, doubted, written off, a long drought, or a return after absence.
+Examples (structure only — NEVER repeat these lines):
+"Left out in March. Back in August. A hundred on Tuesday.
+The question about his place just changed."
+"Eleven months without a Test ton. One innings later, the debate is about where he bats, not whether."
+Rules:
+- Every date, score and setback must come from the article. Never invent a backstory or doubters
+- Two or three short beats, then the moment, then ONE closing line about what it changes, not how anyone should feel
+- No hype words (haters, king, arrived, era), no emoji, no all-caps. The feeling comes from the sequence, not adjectives
+- If the article has no earlier low point, use C, D or L instead
+- Works best for player_form and milestone_record; also usable for human_interest when the journey is the story
+
 PATTERN DIVERSITY RULE (important):
 Do not default to the same pattern repeatedly.
 Rotate across patterns based on what the article genuinely supports.
-If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, or M this time.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, M, or N this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
 
@@ -357,12 +371,12 @@ Focus on:
 - What this form reveals about the player's role or confidence right now
 - What it forces management to confront — even if they don't want to
 
-Preferred patterns: C (Loaded Stat), F (Earned Compliment), L (Number Sandwich), J (Uncomfortable Truth)
+Preferred patterns: C (Loaded Stat), F (Earned Compliment), L (Number Sandwich), J (Uncomfortable Truth), N (The Arc, when a doubted or dropped player delivers)
 
 Rules:
 - Use stats only when they reveal a trend
 - Take a position — in form, still unconvincing, or has earned more trust
-- Avoid single-match overreaction and pure celebration without substance
+Avoid single-match overreaction and pure celebration without substance. A real before/after (Pattern N) counts as substance.
 
 FRICTION REQUIREMENT:
 If the tweet states the numbers without answering "blip or trend" — REWRITE.
@@ -578,7 +592,7 @@ Focus on:
 - What the record says about the era, the format, or the team around them
 - If an upcoming landmark is more significant than the current one — lead with that
 
-Preferred patterns: C (Loaded Stat), D (Historical Anchor), H (Sharp Punch), L (Number Sandwich)
+Preferred patterns: C (Loaded Stat), D (Historical Anchor), H (Sharp Punch), L (Number Sandwich), N (The Arc, only when the milestone follows a real low point)
 L is preferred when two stats can be sandwiched around a single insight.
 Avoid pure congratulation — the milestone is the opening, not the conclusion.
 
