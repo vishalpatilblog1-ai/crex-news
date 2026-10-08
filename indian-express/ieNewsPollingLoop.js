@@ -283,6 +283,9 @@ export async function ieNewsPollingLoop() {
         headline: selected.title,
         tweetText,
         articleUrl: cleanUrl,
+        articleType,
+        score,
+        virality: vScore,
       });
     } else {
       let generatedPath = null;

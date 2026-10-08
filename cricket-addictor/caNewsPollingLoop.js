@@ -277,6 +277,9 @@ export async function caNewsPollingLoop() {
         headline: parsed.headline,
         tweetText,
         articleUrl: cleanLink,
+        articleType,
+        score,
+        virality: vScore,
       });
     } else if (ENABLE_LOCAL_TWEETS) {
       saveTweetLocally(tweetText);

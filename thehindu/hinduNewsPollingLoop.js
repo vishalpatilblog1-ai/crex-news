@@ -274,6 +274,9 @@ export async function hinduNewsPollingLoop() {
         headline: selected.title,
         tweetText,
         articleUrl: cleanLink,
+        articleType,
+        score,
+        virality: vScore,
       });
     } else {
       let imageUrl = getHinduImageUrl(selected);

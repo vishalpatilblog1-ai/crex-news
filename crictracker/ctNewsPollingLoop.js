@@ -199,6 +199,7 @@ export async function ctNewsPollingLoop() {
       console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log(`🟦 TWEET LINK :: ${cleanLink}`);
       console.log("🔴 CT ARTICLE SCORE IS TOO LOW");
       console.log("===========================================");
 
@@ -269,6 +270,9 @@ export async function ctNewsPollingLoop() {
         headline: parsed.headline,
         tweetText,
         articleUrl: cleanLink,
+        articleType,
+        score,
+        virality: vScore,
       });
     } else {
       // Article-image bookkeeping is only needed on the X API path.

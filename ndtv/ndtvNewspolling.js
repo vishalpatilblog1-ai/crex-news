@@ -314,6 +314,9 @@ export async function ndtvNewspolling() {
           headline: selected.title,
           tweetText,
           articleUrl: cleanLink,
+          articleType,
+          score,
+          virality: vScore,
         });
       } else {
         // USE_WEB_TWEET is handled centrally in tweetQueue.js's

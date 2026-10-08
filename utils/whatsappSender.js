@@ -64,16 +64,32 @@ export async function sendTweetDraftToWhatsApp(draft) {
     );
     return false;
   }
-
   const {
     source = "?",
     headline = "",
     tweetText = "",
     articleUrl = "",
     imageUrl = null,
+    articleType = null,
+    score = null,
+    virality = null,
   } = draft;
+  // const {
+  //   source = "?",
+  //   headline = "",
+  //   tweetText = "",
+  //   articleUrl = "",
+  //   imageUrl = null,
+  // } = draft;
 
   // Pure tweet only, ready to copy and paste into X
+
+  console.log(`🗂️ ARTICLE TYPE :: ${articleType ?? "n/a"}`);
+  console.log(
+    `📊 SIGNIFICANCE SCORE :: ${score ?? "n/a"} VIRALITY :: ${virality ?? "n/a"}`,
+  );
+  console.log(`📰 TWEET HEADLINE :: ${headline}`);
+  console.log(`🟦 TWEET LINK :: ${articleUrl || "n/a"}`);
   const messageBody = tweetText;
 
   // const charCount = tweetText.length;

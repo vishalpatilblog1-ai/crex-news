@@ -255,6 +255,9 @@ export async function espnNewsPollingLoop() {
         headline: selected.headline,
         tweetText,
         articleUrl: cleanUrl,
+        articleType,
+        score,
+        virality: vScore,
       });
       STATE.espn.seen[cleanUrl] = Date.now();
     } else {
