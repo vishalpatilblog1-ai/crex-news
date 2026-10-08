@@ -139,7 +139,7 @@ export async function classifyArticle(articleText) {
   console.log(
     `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${
       usage.output_tokens
-    } tok, cost: $${(inputCost + outputCost).toFixed(4)}`
+    } tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
   );
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
@@ -1183,7 +1183,7 @@ function buildStaticInstructionsBlock(
   source,
   MIN_CHARS,
   MAX_CHARS,
-  articleType
+  articleType,
 ) {
   const isLongMode = MAX_CHARS > 280;
   return `
@@ -1245,6 +1245,7 @@ FINAL CHECK before outputting:
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article or in an actual web_search result you ran? (There must be none)
+- Are there any ages, "years since", "first since", counts, percentages or rankings that are not stated in the article or in a web_search result you ran? Each one must be copied from one of those, or be plain arithmetic on two numbers they give. Never fill one in from memory. If you can't source it, delete that line.
 - FAIR CHARACTERIZATION CHECK: if the tweet claims a named person ignored,
   dodged, or failed to address something — check the article. Did they
   actually address it? A tweet cannot accuse someone of NOT saying something
@@ -1414,7 +1415,7 @@ async function _generateTweet(
   articleType,
   source = null,
   isLongEligible = false,
-  correctionNote = null
+  correctionNote = null,
 ) {
   const articleTypeInstruction =
     articleType === "breaking_news" && source !== "CB"
@@ -1425,7 +1426,7 @@ async function _generateTweet(
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
   const { min: MIN_CHARS, max: MAX_CHARS } = resolveCharLimit(
     source,
-    isLongEligible
+    isLongEligible,
   );
 
   // Only the article text is genuinely different call to call --
@@ -1444,7 +1445,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     source,
     MIN_CHARS,
     MAX_CHARS,
-    articleType
+    articleType,
   );
 
   const response = await client.messages.create({
@@ -1493,7 +1494,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
       usage.cache_creation_input_tokens || 0
     } tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${
       usage.output_tokens
-    } tok, cost: $${totalCost.toFixed(4)}`
+    } tok, cost: $${totalCost.toFixed(4)}`,
   );
 
   // // after
@@ -1545,7 +1546,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
   if (!rawText) {
     console.error(
       "⚠️ No text block in Claude response:",
-      JSON.stringify(response.content)
+      JSON.stringify(response.content),
     );
     return { tweetText: null, card: null };
   }
@@ -1572,7 +1573,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
       } else {
         console.warn(
           "⚠️ No JSON object found after CARD_JSON marker:",
-          afterMarker
+          afterMarker,
         );
         card = null;
       }
@@ -1589,7 +1590,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
 
   tweetText = tweetText.replace(
     /^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i,
-    ""
+    "",
   );
 
   if (!tweetText || tweetText.length < 30) {
@@ -1599,7 +1600,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
 
   if (tweetText.length < MIN_CHARS) {
     console.warn(
-      `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`
+      `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`,
     );
   }
   // console.log(`=========== ${source} Claude Tweet ===========`);
@@ -1702,26 +1703,26 @@ async function generateWithRetry(
   articleText,
   articleType,
   source = null,
-  isLongEligible = false
+  isLongEligible = false,
 ) {
   let result = await _generateTweet(
     articleText,
     articleType,
     source,
-    isLongEligible
+    isLongEligible,
   );
 
   if (result.tweetText && hasRejectThenAssert(result.tweetText)) {
     console.warn(
       "⚠️ Reject-then-assert pattern detected, retrying once:",
-      result.tweetText
+      result.tweetText,
     );
     const retryResult = await _generateTweet(
       articleText,
       articleType,
       source,
       isLongEligible,
-      "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all."
+      "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
     );
 
     if (retryResult.tweetText && hasRejectThenAssert(retryResult.tweetText)) {
@@ -1729,7 +1730,7 @@ async function generateWithRetry(
       // the remainder, unless stripping leaves too little to post.
       console.warn(
         "⚠️ Still failing after retry, stripping offending sentence(s):",
-        retryResult.tweetText
+        retryResult.tweetText,
       );
       const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
 
@@ -1759,7 +1760,7 @@ async function generateWithRetry(
       `⚠️ Implied-contrast/negative-space closer used ${
         IMPLIED_CONTRAST_STREAK_LIMIT + 1
       }x in a row, forcing variety retry:`,
-      getClosingLine(result.tweetText)
+      getClosingLine(result.tweetText),
     );
     const varietyRetry = await _generateTweet(
       articleText,
@@ -1768,7 +1769,7 @@ async function generateWithRetry(
       isLongEligible,
       `Your closing line used the implied-contrast family — either "[must/should] do X, not Y", a bare "X, not Y" with no modal verb, or a "notice what X didn't say/deny" negative-space callout — which has now repeated ${
         IMPLIED_CONTRAST_STREAK_LIMIT + 1
-      } tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence, and do not frame the insight as something the subject "didn't say/deny/confirm."`
+      } tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence, and do not frame the insight as something the subject "didn't say/deny/confirm."`,
     );
 
     if (
@@ -1776,7 +1777,7 @@ async function generateWithRetry(
       !hasRejectThenAssert(varietyRetry.tweetText)
     ) {
       consecutiveImpliedContrastCloses = usesImpliedContrastFamily(
-        varietyRetry.tweetText
+        varietyRetry.tweetText,
       )
         ? consecutiveImpliedContrastCloses + 1 // model still defaulted to it despite the ask
         : 0; // reset — variety achieved
@@ -1807,7 +1808,7 @@ export async function generateClaudeTweet(articleText) {
   } catch (err) {
     console.warn(
       "⚠️ classifyArticle failed, using default:",
-      err?.message || err
+      err?.message || err,
     );
   }
 
@@ -1827,13 +1828,13 @@ export async function generateClaudeTweetWithType(
   articleText,
   articleType,
   source = null,
-  isLongEligible = false
+  isLongEligible = false,
 ) {
   let resolvedType = articleType;
 
   if (!ARTICLE_TYPE_INSTRUCTIONS[resolvedType]) {
     console.warn(
-      `⚠️ Unknown article type "${resolvedType}" passed in, using default`
+      `⚠️ Unknown article type "${resolvedType}" passed in, using default`,
     );
     resolvedType = "player_form";
   }
@@ -1849,7 +1850,7 @@ export async function generateClaudeTweetWithType(
       articleText,
       resolvedType,
       source,
-      isLongEligible
+      isLongEligible,
     );
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
@@ -1857,4 +1858,4 @@ export async function generateClaudeTweetWithType(
     // console.log("❌ Claude Tweet Generation Error ..");
     return { tweetText: null, articleType: resolvedType, card: null };
   }
-                            }
+}

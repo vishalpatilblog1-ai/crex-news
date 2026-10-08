@@ -98,7 +98,10 @@ export async function caNewsPollingLoop() {
     throw err;
   }
 
-  if (!Array.isArray(items) || items.length === 0) return false;
+  if (!Array.isArray(items) || items.length === 0) {
+    console.warn("⚠️ CA RSS returned no items");
+    return false;
+  }
 
   const sorted = [...items]
     .filter(isCAArticle)
@@ -202,8 +205,16 @@ export async function caNewsPollingLoop() {
 
     // cutover mode: keep dropping low-score articles, only >= 7 go to WhatsApp
     if (!POST_VIA_API && isLowScore) {
+      console.log(`🗂️ ARTICLE TYPE :: ${articleType}`);
+      console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
+      console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
+      console.log(`🟦 TWEET LINK :: ${cleanLink}`);
+      console.log("🔴 CA ARTICLE SCORE IS TOO LOW");
+      console.log("===========================================");
+
       STATE.ca.seen[cleanLink] = Date.now();
       await saveState(STATE, "low significance skipped");
+      console.log("👊 CA TWEET COULD NOT PROCEED BECAUSE SCORE IS TOO LOW");
       return false;
     }
 
@@ -211,6 +222,10 @@ export async function caNewsPollingLoop() {
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
       console.log("📲 CA score < 7 — sending to WhatsApp, not X API");
+    }
+
+    if (isExempt) {
+      console.log(`🌟 CA exempt type (${articleType})`);
     }
 
     let tweetText = null;
