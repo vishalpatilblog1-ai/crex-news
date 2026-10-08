@@ -1632,6 +1632,8 @@ const REJECT_THEN_ASSERT_PATTERNS = [
   /\bthat'?s\s+not\s+[^.!?]*[.!?]\s*that'?s\s+[^.!?]*[.!?]/i,
   // (b) "Not X, that's Y" (same sentence)
   /(?:\b(?:that'?s|it'?s|this\s+is)\s+)?\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
+    // (c) past-tense: "wasn't about X, it was Y" / "weren't X. They were Y"
+  /\b(?:wasn.?t|weren.?t)\s+(?:just\s+|merely\s+|only\s+)?(?:about|a|an)\s+[^.!?]{1,60}?[.,;—-]\s*(?:it|that|this|he|she|they)\s+(?:was|were)\s+[^.!?]*[.!?]/i,
 ];
 
 function hasRejectThenAssert(text) {
