@@ -1,30 +1,29 @@
 // whatsappSender.js
 //
 // Sends generated tweet drafts to your WhatsApp for manual review instead
-// of auto-posting. Uses Twilio's WhatsApp API.
+// of auto-posting. Uses Twilio's WhatsApp API (sandbox).
 //
-// ── ONE-TIME SETUP (free, ~5 minutes) ──────────────────────────────────────
-// 1. Sign up at https://www.twilio.com/try-twilio (free trial, no card
-//    needed for sandbox use).
-// 2. In the Twilio Console, go to Messaging > Try it out > Send a WhatsApp
-//    message. This gives you a Sandbox number (usually +1 415 523 8886)
-//    and a join code like "join <two-words>".
-// 3. From YOUR WhatsApp, send that join code as a message to the Sandbox
-//    number. This links your number to the sandbox — required once, and
-//    needs to be redone if you don't message the sandbox for 72 hours
-//    (session expires; production numbers don't have this limit).
-// 4. Grab your Account SID and Auth Token from the Twilio Console dashboard.
-// 5. Add to your .env file:
+// ── SETUP ───────────────────────────────────────────────────────────────────
+// 1. Twilio Console > Messaging > Try it out > Send a WhatsApp message.
+//    Sandbox number is usually +1 415 523 8886, with a join code like
+//    "join <two-words>".
+// 2. From YOUR WhatsApp, send the join code to the Sandbox number.
+//    The join lapses after ~72h, so re-send it regularly.
+// 3. The sandbox also has a 24h customer-service window: Twilio can only
+//    send free-form messages within 24h of YOUR last message to the sandbox
+//    number. Send "hi" at least once every 24h.
+// 4. Env vars (.env locally / Railway in production):
 //      TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 //      TWILIO_AUTH_TOKEN=your_auth_token_here
 //      TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-//      TWILIO_WHATSAPP_TO=whatsapp:+91XXXXXXXXXX   (your own number, with country code)
-// 6. npm install twilio
+//      TWILIO_WHATSAPP_TO=whatsapp:+91XXXXXXXXXX
+// 5. npm install twilio
 //
-// Sandbox is free forever for personal/testing use like this. You only
-// need a paid/approved WhatsApp Business number if you want to message
-// OTHER people, not yourself.
-// ─────────────────────────────────────────────────────────────────────────
+// Common failure codes (these show up AFTER Twilio accepts the message):
+//   63015 -> your number is not joined to the sandbox (send the join code)
+//   63016 -> outside the 24h window (send "hi")
+//   21910 -> FROM/TO not both "whatsapp:" prefixed
+// ─────────────────────────────────────────────────────────────────────────────
 
 import twilio from "twilio";
 import dotenv from "dotenv";
@@ -35,6 +34,10 @@ const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const FROM = process.env.TWILIO_WHATSAPP_FROM;
 const TO = process.env.TWILIO_WHATSAPP_TO;
+
+// How long to wait before checking final delivery status (ms).
+// Twilio accepts first and fails async a few seconds later.
+const STATUS_CHECK_DELAY_MS = 8000;
 
 let client = null;
 if (ACCOUNT_SID && AUTH_TOKEN) {
@@ -47,6 +50,8 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
 
 /**
  * Sends a generated tweet draft to your WhatsApp for manual review.
+ * The tweet text is ALWAYS printed to the console first, so a failed
+ * WhatsApp delivery never loses the draft (copy it from the Railway log).
  *
  * @param {Object} draft
  * @param {string} draft.source - "SK" | "CB" | "CA" etc.
@@ -54,16 +59,10 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
  * @param {string} draft.tweetText - the generated tweet text
  * @param {string} [draft.articleUrl] - link to the source article
  * @param {string} [draft.imageUrl] - a PUBLIC image URL (Cloudinary/CDN URL,
- *   NOT a local temp file path — WhatsApp/Twilio can only fetch public URLs)
- * @returns {Promise<boolean>} true if sent successfully
+ *   NOT a local temp file path — Twilio can only fetch public URLs)
+ * @returns {Promise<boolean>} true if delivery was not rejected
  */
 export async function sendTweetDraftToWhatsApp(draft) {
-  if (!client || !FROM || !TO) {
-    console.log(
-      "⚠️ WhatsApp not configured — skipping send, draft was only logged to console.",
-    );
-    return false;
-  }
   const {
     source = "?",
     headline = "",
@@ -74,15 +73,6 @@ export async function sendTweetDraftToWhatsApp(draft) {
     score = null,
     virality = null,
   } = draft;
-  // const {
-  //   source = "?",
-  //   headline = "",
-  //   tweetText = "",
-  //   articleUrl = "",
-  //   imageUrl = null,
-  // } = draft;
-
-  // Pure tweet only, ready to copy and paste into X
 
   console.log(`🗂️ ARTICLE TYPE :: ${articleType ?? "n/a"}`);
   console.log(
@@ -90,21 +80,21 @@ export async function sendTweetDraftToWhatsApp(draft) {
   );
   console.log(`📰 TWEET HEADLINE :: ${headline}`);
   console.log(`🟦 TWEET LINK :: ${articleUrl || "n/a"}`);
+
+  // Always log the tweet so it can be copied manually if WhatsApp fails.
+  console.log(
+    `\n===== TWEET FOR MANUAL POST (${source}, ${tweetText.length} chars) =====\n${tweetText}\n===== END TWEET =====\n`,
+  );
+
+  if (!client || !FROM || !TO) {
+    console.log(
+      "⚠️ WhatsApp not configured — skipping send, draft was only logged to console.",
+    );
+    return false;
+  }
+
+  // Pure tweet only, ready to copy and paste into X
   const messageBody = tweetText;
-
-  // const charCount = tweetText.length;
-
-  // const messageBody = [
-  //   `🐦 *New ${source} draft* (${charCount} chars)`,
-  //   ``,
-  //   `*Headline:* ${headline}`,
-  //   ``,
-  //   tweetText,
-  //   ``,
-  //   articleUrl ? `🔗 ${articleUrl}` : null,
-  // ]
-  //   .filter(Boolean)
-  //   .join("\n");
 
   try {
     const messageOptions = {
@@ -115,16 +105,48 @@ export async function sendTweetDraftToWhatsApp(draft) {
 
     // Twilio can only attach a PUBLICLY reachable URL as media — a local
     // temp file path (e.g. from downloadImageToTemp) will NOT work here.
-    // Only pass imageUrl if it's a real public URL (Cloudinary etc).
     if (imageUrl && /^https?:\/\//.test(imageUrl)) {
       messageOptions.mediaUrl = [imageUrl];
     }
 
-    await client.messages.create(messageOptions);
-    console.log(`✅ Sent ${source} draft to WhatsApp for review`);
+    const msg = await client.messages.create(messageOptions);
+
+    // create() only means Twilio ACCEPTED the message. Delivery failures
+    // (63015, 63016, ...) happen a few seconds later, so check final status.
+    await new Promise((resolve) => setTimeout(resolve, STATUS_CHECK_DELAY_MS));
+
+    let check = null;
+    try {
+      check = await client.messages(msg.sid).fetch();
+    } catch (fetchError) {
+      console.log(
+        "⚠️ Could not verify WhatsApp delivery status:",
+        fetchError?.message || fetchError,
+      );
+    }
+
+    if (check && ["failed", "undelivered"].includes(check.status)) {
+      console.log(
+        `❌ WhatsApp ${source} draft ${check.status} — error ${check.errorCode}: ${check.errorMessage || ""}. Copy the tweet from the log above and post manually.`,
+      );
+      if (check.errorCode === 63015) {
+        console.log("👉 Fix: send the sandbox join code from your WhatsApp.");
+      } else if (check.errorCode === 63016) {
+        console.log('👉 Fix: send "hi" to the sandbox number.');
+      }
+      return false;
+    }
+
+    console.log(
+      `✅ Sent ${source} draft to WhatsApp (status: ${check?.status ?? "unknown"})`,
+    );
     return true;
   } catch (error) {
-    console.log("⚠️ Failed to send WhatsApp draft:", error?.message || error);
+    console.log(
+      `❌ Failed to send WhatsApp ${source} draft:`,
+      error?.code ? `${error.code} — ${error.message}` : error?.message || error,
+      "\nCopy the tweet from the log above and post manually.",
+    );
     return false;
   }
 }
