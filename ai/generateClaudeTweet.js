@@ -613,7 +613,7 @@ forward-looking scrutiny angle instead: can this be sustained at the next
 level, what historical precedent does this invite comparison to, what
 specific pressure does this now put on the player.
 WEAK: "His journey shows that dreams, when nurtured, can turn into reality."
-STRONG: "The real test starts now — plenty of teenage prodigies have peaked early. Can Vaibhav back this up against senior bowling attacks?"
+STRONG: "Vaibhav faces senior bowling attacks next. Plenty of teenage prodigies have peaked right here."
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
@@ -1048,7 +1048,9 @@ ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 Name anyone who makes a strong claim. Never absorb a named opinion into
 your own voice. If WHO spoke (or that they spoke at all) matters more than
-what they said, lead with the act, not the quote.
+what they said, lead with the act, not the quote. Name the person and state
+the claim ("Ashwin says the selectors picked names, not roles"). Never write
+"his argument", "the real argument" or "his real point".
 
 ═══════════════════════════════════════════
 AGGREGATOR SOURCE RULE (STRICT)
@@ -1074,6 +1076,7 @@ spelling. If genuinely unsure who's meant, refer by role ("a Cricinfo journalist
 LANGUAGE RULES
 ═══════════════════════════════════════════
 Never use: "under pressure", "questions will be asked", "spot is under threat", "bold call", "surprise pick", "high-stakes clash", "must-win game", "suggests/indicates/signals", "reveals/sends a strong signal",
+"real argument", "real point", "real story", "real question", "real issue", "real insight", "real reason", "the real X", "sharper than", "deeper than", "bigger than [X]", "goes beyond", "more than just", "the bigger picture", "here's the thing",
 extreme labels ("Overrated", "Clueless", "Bottler", "Liability").
 
 ═══════════════════════════════════════════
@@ -1090,7 +1093,7 @@ implication, no rejection frame at all.
 BANNED CONSTRUCTIONS — REJECT-THEN-ASSERT (two forms, same failure):
 Never build a tweet on rejecting a smaller framing to assert a bigger one.
 This is a PATTERN, not a fixed phrase — banning exact wording does not stop
-it, because it resurfaces in paraphrase. Both forms are banned, in any
+it, because it resurfaces in paraphrase. All three forms are banned, in any
 paraphrase:
   (a) Downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's Y" / "not only X but also Y" / "more than a X — it's a Y" / "beyond X, this is Y"
       Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
@@ -1099,9 +1102,13 @@ paraphrase:
   (b) Reject-and-replace: "That's not X, that's Y" / "Not the scoreline, that's the real story"
       Banned: "That's not a bowling change. That's a captain saving his ace for the exact moment panic sets in."
       Instead: "A captain saving his ace for the exact moment panic sets in."
+  (c) Rank-and-elevate: ranking "the real point" above a lesser frame, with no "not" at all: "His real argument is sharper than tactics" / "The real story is deeper than the score" / "bigger than X" / "this goes beyond X"
+      Banned: "His real argument is sharper than tactics."
+      Instead: name the person and state the claim itself: "Gambhir wants roles, not reputations, in the XI." (never label a point as "real", never rank it against a smaller idea)
 Before finalizing, check the closing line specifically: does it knock down
 a framing before stating the real point? If yes, cut the setup and lead
-with the point. Also avoid card captions that lean on the same escalation
+with the point. Also reject any line containing "real" + argument/point/story/issue/question,
+or "sharper/deeper/bigger than". Also avoid card captions that lean on the same escalation
 reflex, e.g. "X Comes Under Fire" paired with a body that already used this
 construction — pick one angle and state it plainly.
 
@@ -1278,7 +1285,9 @@ FINAL CHECK before outputting:
   beyond what the article itself commits to.
 - Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed on YOUR verdict — this is separate from the Hedging Preservation Check above, which governs uncertain source claims, not your own stated opinion.)
 - Does the closing line (or any line) reject one framing to assert another —
-  "isn't just X, it's Y" or "That's not X, that's Y" in any order or paraphrase?
+  "isn't just X, it's Y" or "That's not X, that's Y" in any order or paraphrase,
+  OR rank a "real" point above a lesser one ("real argument/point/story/issue",
+  "sharper than", "deeper than", "bigger than", "goes beyond")?
   This is banned throughout the tweet, not just the close. If yes, cut the
   rejection and state the real point directly. (See LANGUAGE RULES above for
   full examples.)
@@ -1632,7 +1641,13 @@ const REJECT_THEN_ASSERT_PATTERNS = [
   /\bthat'?s\s+not\s+[^.!?]*[.!?]\s*that'?s\s+[^.!?]*[.!?]/i,
   // (b) "Not X, that's Y" (same sentence)
   /(?:\b(?:that'?s|it'?s|this\s+is)\s+)?\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
-    // (c) past-tense: "wasn't about X, it was Y" / "weren't X. They were Y"
+  // (c) rank-and-elevate: "real argument/point/story...", "sharper than..."
+  /\b(?:real|true|actual)\s+(?:argument|point|story|question|issue|insight|reason|message)\b/i,
+  /\b(?:sharper|deeper|bigger|smarter)\s+than\b/i,
+  /\b(?:goes|go|going)\s+beyond\b/i,
+  /\bmore\s+than\s+just\b/i,
+  /\b(?:the\s+bigger\s+picture|here'?s\s+the\s+thing)\b/i,
+  // (c) past-tense: "wasn't about X, it was Y" / "weren't X. They were Y"
   /\b(?:wasn.?t|weren.?t)\s+(?:just\s+|merely\s+|only\s+)?(?:about|a|an)\s+[^.!?]{1,60}?[.,;—-]\s*(?:it|that|this|he|she|they)\s+(?:was|were)\s+[^.!?]*[.!?]/i,
 ];
 
@@ -1724,7 +1739,7 @@ async function generateWithRetry(
       articleType,
       source,
       isLongEligible,
-      "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
+      "Your previous draft used a banned framing move: 'isn't X, it's Y', 'not X, that's Y', or a 'real argument / real point / real story' / 'sharper than' / 'deeper than' ranking line. Rewrite it by naming the person and stating the claim or fact directly. No rejection framing, no 'real' point, no ranking against a smaller idea.",
     );
 
     if (retryResult.tweetText && hasRejectThenAssert(retryResult.tweetText)) {
