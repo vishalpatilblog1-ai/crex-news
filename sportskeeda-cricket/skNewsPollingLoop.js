@@ -35,7 +35,7 @@ import { isBlockedSKHeadline } from "./skHeadlineFilter.js";
 const SOURCE = "SK";
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 const RETENTION_MS = 6 * 60 * 60 * 1000; // usedImages prune window
-// How long the shared "already covered" story memory lasts (hours, from env; default 6).
+const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const CONTEXT_TTL_MS =
   (Number(process.env.CONTEXT_TTL_HOURS) > 0
     ? Number(process.env.CONTEXT_TTL_HOURS)
@@ -245,7 +245,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    const isLowScore = !isExempt && score < 7;
+    const isLowScore = !isExempt && score < PERFORMANCE_SCORE;
     const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
     if (isLowScore && !POST_VIA_API) {
@@ -264,7 +264,9 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     if (isLowScore) {
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
-      console.log("📲 SK score < 7 — sending to WhatsApp, not X API");
+      console.log(
+        `📲 SK score < ${PERFORMANCE_SCORE} — sending to WhatsApp, not X API`,
+      );
     }
 
     if (!isExempt) {

@@ -32,7 +32,8 @@ import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 const SOURCE = "HINDU";
 const MAX_AGE_MIN = 60;
 const SEEN_RETENTION_MS = 6 * 60 * 60 * 1000; // 6 hours
-// const CONTEXT_RETENTION_MS = 6 * 60 * 60 * 1000;
+
+const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const CONTEXT_RETENTION_MS =
   (Number(process.env.CONTEXT_TTL_HOURS) > 0
     ? Number(process.env.CONTEXT_TTL_HOURS)
@@ -185,7 +186,7 @@ export async function hinduNewsPollingLoop() {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    const isLowScore = !isExempt && score < 7;
+    const isLowScore = !isExempt && score < PERFORMANCE_SCORE;
     const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
     if (isLowScore && !POST_VIA_API) {
@@ -204,7 +205,9 @@ export async function hinduNewsPollingLoop() {
     if (isLowScore) {
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${selected.title}`);
-      console.log("📲 HINDU score < 7 — sending to WhatsApp, not X API");
+      console.log(
+        `📲 HINDU score < ${PERFORMANCE_SCORE} — sending to WhatsApp, not X API`,
+      );
     }
 
     if (!isExempt) {

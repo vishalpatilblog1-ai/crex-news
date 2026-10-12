@@ -18,6 +18,7 @@ import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 const SOURCE = "CB";
 let MODEL = "claude";
 const MAX_AGE_MIN = 120;
+const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
 
@@ -147,7 +148,7 @@ export async function cricbuzzNewsPollingLoop() {
       const score = decision?.significanceScore ?? 10;
       const vScore = decision?.viralityScore ?? "n/a";
 
-      const isLowScore = !isExempt && score < 7;
+      const isLowScore = !isExempt && score < PERFORMANCE_SCORE;
       const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
       if (isLowScore && !POST_VIA_API) {
@@ -169,7 +170,9 @@ export async function cricbuzzNewsPollingLoop() {
       if (isLowScore) {
         console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
         console.log(`📰 TWEET HEADLINE :: ${selected.hline}`);
-        console.log("📲 CB score < 7 — sending to WhatsApp, not X API");
+        console.log(
+          `📲 CB score < ${PERFORMANCE_SCORE} — sending to WhatsApp, not X API`,
+        );
       }
 
       if (isExempt) {

@@ -32,6 +32,7 @@ import { parseCAArticleRss } from "./parseCAArticleRss.js";
 const MAX_AGE_MIN = 120;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
+const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const CONTEXT_TTL_MS =
   (Number(process.env.CONTEXT_TTL_HOURS) > 0
     ? Number(process.env.CONTEXT_TTL_HOURS)
@@ -41,8 +42,8 @@ const CONTEXT_TTL_MS =
   1000;
 let MODEL = "claude";
 
-// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
-// false = everything -> WhatsApp (cutover day, you post manually)
+// true  = score >= 7 -> X API, score < 7 -> WhatsApp
+// false = everything WITH SCORE >=7 -> WhatsApp
 const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
@@ -200,7 +201,7 @@ export async function caNewsPollingLoop() {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    const isLowScore = !isExempt && score < 7;
+    const isLowScore = !isExempt && score < PERFORMANCE_SCORE;
     const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
     // cutover mode: keep dropping low-score articles, only >= 7 go to WhatsApp
@@ -221,7 +222,9 @@ export async function caNewsPollingLoop() {
     if (isLowScore) {
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
-      console.log("📲 CA score < 7 — sending to WhatsApp, not X API");
+      console.log(
+        `📲 CA score < ${PERFORMANCE_SCORE} — sending to WhatsApp, not X API`,
+      );
     }
 
     if (isExempt) {

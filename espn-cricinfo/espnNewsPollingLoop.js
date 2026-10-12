@@ -27,6 +27,7 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
+const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const CONTEXT_TTL_MS =
   (Number(process.env.CONTEXT_TTL_HOURS) > 0
     ? Number(process.env.CONTEXT_TTL_HOURS)
@@ -178,7 +179,7 @@ export async function espnNewsPollingLoop() {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    const isLowScore = !isExempt && score < 7;
+    const isLowScore = !isExempt && score < PERFORMANCE_SCORE;
     const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
     if (isLowScore && !POST_VIA_API) {
@@ -197,7 +198,9 @@ export async function espnNewsPollingLoop() {
     if (isLowScore) {
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${selected.headline}`);
-      console.log("📲 ESPN score < 7 — sending to WhatsApp, not X API");
+      console.log(
+        `📲 ESPN score < ${PERFORMANCE_SCORE} — sending to WhatsApp, not X API`,
+      );
     }
 
     if (isExempt) {

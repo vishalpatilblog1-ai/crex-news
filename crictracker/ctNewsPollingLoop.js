@@ -36,6 +36,7 @@ import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
 const SOURCE = "CT";
 const MAX_AGE_MIN = 120;
+const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const RETENTION_MS = 6 * 60 * 60 * 1000; // seen + usedImages prune window
 // How long the shared "already covered" story memory lasts (hours, from env; default 6).
 const CONTEXT_TTL_MS =
@@ -190,7 +191,7 @@ export async function ctNewsPollingLoop() {
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
-    const isLowScore = !isExempt && score < 7;
+    const isLowScore = !isExempt && score < PERFORMANCE_SCORE;
     const sendViaWhatsApp = !POST_VIA_API || isLowScore;
 
     if (isLowScore && !POST_VIA_API) {
@@ -210,7 +211,9 @@ export async function ctNewsPollingLoop() {
     if (isLowScore) {
       console.log(`📊 SIGNIFICANCE SCORE :: ${score} VIRALITY :: ${vScore}`);
       console.log(`📰 TWEET HEADLINE :: ${parsed.headline}`);
-      console.log("📲 CT score < 7 — sending to WhatsApp, not X API");
+      console.log(
+        `📲 CT score < ${PERFORMANCE_SCORE} — sending to WhatsApp, not X API`,
+      );
     }
 
     if (!isExempt) {
