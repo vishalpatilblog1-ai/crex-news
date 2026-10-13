@@ -36,7 +36,8 @@ import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 
 const SOURCE = "CT";
 const MAX_AGE_MIN = 120;
-const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
+// const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
+const PERFORMANCE_SCORE = 6;
 const RETENTION_MS = 6 * 60 * 60 * 1000; // seen + usedImages prune window
 // How long the shared "already covered" story memory lasts (hours, from env; default 6).
 const CONTEXT_TTL_MS =
