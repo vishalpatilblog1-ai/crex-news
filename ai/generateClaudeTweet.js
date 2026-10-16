@@ -1253,6 +1253,7 @@ FINAL CHECK before outputting:
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article or in an actual web_search result you ran? (There must be none)
 - Are there any ages, "years since", "first since", counts, percentages or rankings that are not stated in the article or in a web_search result you ran? Each one must be copied from one of those, or be plain arithmetic on two numbers they give. Never fill one in from memory. If you can't source it, delete that line.
+- CERTAINTY MATCHING: match the source's certainty exactly. If the article says predicted, probable, likely, expected, tipped, considering, in contention, or reportedly, the tweet must keep that status. Never turn a prediction or report into a confirmed fact. For unannounced squad, selection, transfer or captaincy stories, do NOT write "named in", "selected", "picked", "included", "announced", "confirmed" or "selectors agree". Use "is tipped to", "is expected to", "is reportedly in contention". Never attribute a decision to selectors, the board or a coach unless the article states it as done. For predicted-squad articles the angle is the opinion, never the roster stated as fact. Never write "N-year-old" unless that number appears in the article.
 - FAIR CHARACTERIZATION CHECK: if the tweet claims a named person ignored,
   dodged, or failed to address something — check the article. Did they
   actually address it? A tweet cannot accuse someone of NOT saying something
@@ -1716,6 +1717,24 @@ function usesImpliedContrastFamily(text) {
   );
 }
 
+// ─── CERTAINTY GUARD ───────────────────────────────────────────────────────
+// Backstop for predicted/reported stories stated as fact, and unsourced ages.
+const UNCONFIRMED_SRC =
+  /\b(predicted|probable|likely|tipped|reportedly|considering|in contention|expected to)\b/i;
+const ASSERTS_CONFIRMED =
+  /\b(named in|has been (?:named|selected|picked|included)|have been (?:named|selected|picked)|selected for|picked for|announced|confirmed|selectors (?:clearly )?agree)\b/i;
+
+function hasCertaintyProblem(articleText, tweet) {
+  if (!tweet) return false;
+  const head = (articleText || "").slice(0, 400); // headline/lede area only
+  const unconfirmed = UNCONFIRMED_SRC.test(head);
+  const asserts = ASSERTS_CONFIRMED.test(tweet);
+  const badAge = [...tweet.matchAll(/\b(\d{2})-year-old\b/gi)].some(
+    (m) => !new RegExp(`\\b${m[1]}\\b`).test(articleText || ""),
+  );
+  return (unconfirmed && asserts) || badAge;
+}
+
 async function generateWithRetry(
   articleText,
   articleType,
@@ -1760,6 +1779,27 @@ async function generateWithRetry(
       result = { tweetText: stripped, card: retryResult.card };
     } else {
       result = retryResult; // fixed on retry, or came back empty
+    }
+  }
+
+  if (result.tweetText && hasCertaintyProblem(articleText, result.tweetText)) {
+    console.warn("⚠️ Certainty/age problem, retrying once:", result.tweetText);
+    const certRetry = await _generateTweet(
+      articleText,
+      articleType,
+      source,
+      isLongEligible,
+      "Your previous draft stated a predicted/reported/unannounced event as confirmed (for example 'named in', 'selected', 'selectors agree'), or used an age not in the article. Keep the source's certainty exactly: use 'is tipped to', 'is expected to', 'is reportedly in contention'. Never attribute a decision to selectors or the board unless the article says it is done. Remove any age not stated in the article.",
+    );
+    if (
+      certRetry.tweetText &&
+      !hasCertaintyProblem(articleText, certRetry.tweetText) &&
+      !hasRejectThenAssert(certRetry.tweetText)
+    ) {
+      result = certRetry;
+    } else {
+      console.warn("⚠️ Still failing certainty check, dropping tweet.");
+      return { tweetText: null, card: null };
     }
   }
 
