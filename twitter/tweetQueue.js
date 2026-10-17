@@ -1,5 +1,6 @@
 // twitter/tweetQueue.js
-
+import dotenv from "dotenv";
+dotenv.config();
 import { saveState } from "../utils/stateStoreCloud.js";
 import { tweetNewsWithImage, tweetNewsWithoutImage } from "./twitter.js";
 
@@ -7,9 +8,15 @@ global.NEXT_TWEET_ALLOWED_AT ??= 0;
 
 const USE_WEB_TWEET = process.env.USE_WEB_TWEET === "true";
 
+// false = manual posting via WhatsApp -> no random spacing between tweets.
+// true  = X API posting -> keep the 10-25 min random spacing.
+const POST_VIA_API = process.env.POST_VIA_API !== "false";
+
 const MAX_TWEET_AGE_MS = 60 * 60 * 1000; // don't post news older than 60 min
 
 function randomTweetDelay(source) {
+  if (!POST_VIA_API) return 0;
+
   const MIN = 10 * 60 * 1000;
   const MAX = 25 * 60 * 1000;
 
@@ -17,6 +24,8 @@ function randomTweetDelay(source) {
 }
 
 function canTweetNow(source) {
+  if (!POST_VIA_API) return true;
+
   const now = Date.now();
   const nextAllowed = global.NEXT_TWEET_ALLOWED_AT || 0;
 
