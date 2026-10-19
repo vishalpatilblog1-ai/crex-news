@@ -27,7 +27,8 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
-const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
+// const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
+const PERFORMANCE_SCORE = 6;
 const CONTEXT_TTL_MS =
   (Number(process.env.CONTEXT_TTL_HOURS) > 0
     ? Number(process.env.CONTEXT_TTL_HOURS)
