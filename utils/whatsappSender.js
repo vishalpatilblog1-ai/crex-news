@@ -94,7 +94,8 @@ export async function sendTweetDraftToWhatsApp(draft) {
   }
 
   // Pure tweet only, ready to copy and paste into X
-  const messageBody = tweetText;
+  // const messageBody = tweetText;
+  const messageBody = score != null ? `${tweetText}\n\n[${score}]` : tweetText;
 
   try {
     const messageOptions = {
@@ -144,7 +145,9 @@ export async function sendTweetDraftToWhatsApp(draft) {
   } catch (error) {
     console.log(
       `❌ Failed to send WhatsApp ${source} draft:`,
-      error?.code ? `${error.code} — ${error.message}` : error?.message || error,
+      error?.code
+        ? `${error.code} — ${error.message}`
+        : error?.message || error,
       "\nCopy the tweet from the log above and post manually.",
     );
     return false;
