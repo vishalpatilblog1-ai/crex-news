@@ -234,6 +234,9 @@ export async function cricbuzzNewsPollingLoop() {
           source: SOURCE,
           headline: selected.hline,
           tweetText,
+          articleType,
+          score,
+          virality: vScore,
         });
         STATE.cricbuzz.seen[newsKey] = Date.now();
       } else {
