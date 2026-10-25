@@ -72,6 +72,7 @@ export async function sendTweetDraftToWhatsApp(draft) {
     articleType = null,
     score = null,
     virality = null,
+    articleText = "",
   } = draft;
 
   console.log(`🗂️ ARTICLE TYPE :: ${articleType ?? "n/a"}`);
