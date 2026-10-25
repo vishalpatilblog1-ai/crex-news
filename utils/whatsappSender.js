@@ -81,9 +81,9 @@ export async function sendTweetDraftToWhatsApp(draft) {
   );
   console.log(`📰 TWEET HEADLINE :: ${headline}`);
   console.log(`🟦 TWEET LINK :: ${articleUrl || "n/a"}`);
-  console.log(
-    `\n===== SOURCE ARTICLE (${source}, ${articleText.length} chars) =====\n${articleText}\n===== END ARTICLE =====\n`,
-  );
+ // console.log(
+   // `\n===== SOURCE ARTICLE (${source}, ${articleText.length} chars) =====\n${articleText}\n===== END ARTICLE =====\n`,
+//  );
   
   // Always log the tweet so it can be copied manually if WhatsApp fails.
   console.log(
