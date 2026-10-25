@@ -33,10 +33,21 @@ function resolveCharLimit(source, isLongEligible) {
 }
 */
 
+// const CHAR_LIMITS = {
+//   DEFAULT: { min: 200, max: 280 },
+//   long: { min: 300, max: 560 },
+// };
 const CHAR_LIMITS = {
   DEFAULT: { min: 200, max: 280 },
   long: { min: 300, max: 560 },
 };
+
+// function resolveCharLimit(source, isLongEligible) {
+//   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
+// }
+function resolveCharLimit(source, isLongEligible) {
+  return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
+}
 
 function resolveCharLimit(source, isLongEligible) {
   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
@@ -1237,8 +1248,8 @@ separately.
 
 ${
   isLongMode
-    ? `LONG-FORM MODE (original-source article — use the extra room):
-- This source is an original report, not a wire rewrite. You have ${MIN_CHARS}-${MAX_CHARS} characters instead of the usual 280.
+    ? `LONG-FORM MODE (use the extra room):
+- This article has enough material for a longer tweet. You have ${MIN_CHARS}-${MAX_CHARS} characters instead of the usual 280.
 - Use the extra length for genuine additional detail already IN the article — a second named specific, a fuller quote, an extra beat of context — not for padding, repetition, or restating the hook in different words.
 - Still one clean read, not a thread crammed into one tweet. Keep the same line-break/beat structure, just with room for one more beat if the article supports it.
 - If the article doesn't actually have enough distinct material to fill the extra room honestly, it's fine to land under ${MAX_CHARS} — do not pad to hit the ceiling.
