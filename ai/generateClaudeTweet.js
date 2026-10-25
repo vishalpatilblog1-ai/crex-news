@@ -37,17 +37,26 @@ function resolveCharLimit(source, isLongEligible) {
 //   DEFAULT: { min: 200, max: 280 },
 //   long: { min: 300, max: 560 },
 // };
-const CHAR_LIMITS = {
-  DEFAULT: { min: 200, max: 280 },
-  long: { min: 300, max: 560 },
-};
+// const CHAR_LIMITS = {
+//   DEFAULT: { min: 200, max: 280 },
+//   long: { min: 300, max: 560 },
+// };
 
 // function resolveCharLimit(source, isLongEligible) {
 //   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
 // }
-function resolveCharLimit(source, isLongEligible) {
-  return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
-}
+// function resolveCharLimit(source, isLongEligible) {
+//   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
+// }
+
+// function resolveCharLimit(source, isLongEligible) {
+//   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
+// }
+
+const CHAR_LIMITS = {
+  DEFAULT: { min: 200, max: 280 },
+  long: { min: 300, max: 560 },
+};
 
 function resolveCharLimit(source, isLongEligible) {
   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
