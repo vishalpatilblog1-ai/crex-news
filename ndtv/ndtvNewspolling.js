@@ -1,11 +1,4 @@
 // ndtvnewsPollingLoop.js
-//
-// Aligned with CB / CA / ESPN:
-//  - GPT classify + GPT judge (a dropped article never costs a Claude call)
-//  - POST_VIA_API flag: true  = score >= 7 -> X API, score < 7 -> WhatsApp
-//                       false = score >= 7 -> WhatsApp, score < 7 dropped
-//  - Claude tweet (with SOURCE + long-tweet flag), GPT fallback
-//  - applySourceSignature, same score / virality logging
 
 import {
   classifyArticleGPT,
@@ -26,22 +19,10 @@ import { isNDTVArticle, normalizeNDTVLink } from "./isNDTVArticle.js";
 import { fetchNDTVCricketRSS } from "./ndtvRssFetcher.js";
 import { parseNDTVArticle } from "./parseNDTVArticle.js";
 
-// NOTE: this file assumes a blocked-pattern headline/body filter equivalent
-// to CA's isBlockedCAHeadline exists (or should exist) for NDTV. CA's own
-// filter lives at cricket-addictor/caHeadlineFilter.js and is CA-specific in
-// name -- confirm whether it's generic enough to reuse for NDTV content, or
-// whether NDTV needs its own blocklist file, then wire the import in below.
-// Left out entirely for now rather than guessing a path that could break the
-// build on deploy.
-// import { isBlockedNDTVHeadline } from "./ndtvHeadlineFilter.js";
-
 const SOURCE = "NDTV";
 
 const MAX_AGE_MIN = 120;
-// Bumped from 6h to match CA's 24h retention -- CA's comment notes this
-// exists specifically so a same-day pubDate bump on an already-tweeted
-// article can't slip past dedup. Confirm whether NDTV republishes/bumps
-// pubDate the same way CA does; if not, this can safely drop back down.
+
 const SEEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 const PERFORMANCE_SCORE = Number(process.env.PERFORMANCE_SCORE) || 7;
 const RETENTION_MS =
@@ -53,8 +34,6 @@ const RETENTION_MS =
   1000; // dailyContext prune window
 const MAX_PER_POLL = 5; // cap how many tweets can queue / be sent in a single poll cycle
 
-// true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
-// false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
 const POST_VIA_API = process.env.POST_VIA_API !== "false";
 
 export async function ndtvNewspolling() {
@@ -68,18 +47,8 @@ export async function ndtvNewspolling() {
   STATE.ndtv ??= {};
   STATE.ndtv.seen ??= {};
 
-  // ── Shared dailyContext bootstrap ────────────────────────────────────────
-  // IMPORTANT: STATE.dailyContext is shared with the CA poller for
-  // cross-source duplicate detection (judgeNewsContext reads/writes the same
-  // array from both loops). CA bootstraps it as a plain { contexts: [] }
-  // with no `date` field and prunes entries by age. Do NOT bootstrap this as
-  // { date: today, contexts: [] } and replace-on-date-mismatch -- since CA
-  // never sets `date`, that comparison is true on literally every poll and
-  // wipes out CA's (and NDTV's own) contexts every cycle. Match CA's
-  // shared-state contract: no date-keyed reset, prune by age instead.
   STATE.dailyContext ??= { contexts: [] };
 
-  // ── Prune stale state ─────────────────────────────────────────────────────
   let stateDirty = false;
   stateDirty ||= pruneSeen(STATE, SEEN_RETENTION_MS);
   stateDirty ||= pruneDailyContext(STATE, RETENTION_MS);
@@ -99,7 +68,6 @@ export async function ndtvNewspolling() {
       .filter(isNDTVArticle)
       .sort((a, b) => getPubDate(b) - getPubDate(a));
 
-    // ---- Collect ALL unseen, non-aged-out candidates (not just the first) ----
     const candidates = [];
     for (const item of sorted) {
       const pubMs = getPubDate(item);
@@ -308,7 +276,6 @@ export async function ndtvNewspolling() {
         continue;
       }
 
-      // NDTV tweets get the source-signature marker, same as CA/CB.
       tweetText = applySourceSignature(tweetText, SOURCE);
       tweetText = tweetText.trim().replace(/\.?$/, ".");
 
@@ -325,9 +292,6 @@ export async function ndtvNewspolling() {
           generator,
         });
       } else {
-        // USE_WEB_TWEET is handled centrally in tweetQueue.js's
-        // tryFlushTweetQueue — the queue decides whether to actually post
-        // or log-only.
         enqueueTweet({
           id: cleanLink,
           source: SOURCE,
@@ -345,7 +309,7 @@ export async function ndtvNewspolling() {
       }
 
       markSeen();
-      // Counts WhatsApp sends too, so MAX_PER_POLL also caps a draft burst.
+
       queuedCount++;
 
       if (
@@ -370,8 +334,6 @@ export async function ndtvNewspolling() {
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
 function getPubDate(item) {
   return item?.pubDate ? new Date(item.pubDate).getTime() : 0;
 }
@@ -389,7 +351,6 @@ function pruneSeen(STATE, retentionMs) {
     }
 
     if (pruned > 0) {
-      // console.log(`🧹 Pruned ${pruned} old NDTV seen entries`);
       return true;
     }
   } catch (err) {
@@ -414,7 +375,6 @@ function pruneDailyContext(STATE, retentionMs) {
     const after = STATE.dailyContext.contexts.length;
 
     if (before !== after) {
-      // console.log(`🧹 Pruned ${before - after} old dailyContext entries`);
       return true;
     }
   } catch (err) {
