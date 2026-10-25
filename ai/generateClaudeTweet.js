@@ -17,6 +17,7 @@ export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
   // "milestone_record",
 ]);
 
+/*
 const CHAR_LIMITS = {
   DEFAULT: { min: 200, max: 280 },
   CB: {
@@ -30,15 +31,25 @@ function resolveCharLimit(source, isLongEligible) {
   if (source === "CB") return CHAR_LIMITS.CB.default;
   return CHAR_LIMITS.DEFAULT;
 }
+*/
+
+const CHAR_LIMITS = {
+  DEFAULT: { min: 200, max: 280 },
+  long: { min: 300, max: 560 },
+};
+
+function resolveCharLimit(source, isLongEligible) {
+  return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
+}
 
 export function isLongTweetEligible(articleText) {
   if (!articleText || typeof articleText !== "string") return false;
 
   const text = articleText.trim();
-  if (text.length < 600) return false;
+  if (text.length < 500) return false;
 
   const sentenceCount = (text.match(/[.!?](\s|$)/g) || []).length;
-  if (sentenceCount < 6) return false;
+  if (sentenceCount < 5) return false;
 
   const hasQuote = /["“][^"”]{15,}["”]/.test(text);
   const namedEntityCount = (
