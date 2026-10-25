@@ -346,6 +346,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         articleType,
         score,
         virality: vScore,
+        articleText: fullText,
       });
     } else {
       // Image work is only needed when the tweet is actually going to X.

@@ -288,6 +288,7 @@ export async function ieNewsPollingLoop() {
         articleType,
         score,
         virality: vScore,
+        articleText: fullText,
       });
     } else {
       let generatedPath = null;

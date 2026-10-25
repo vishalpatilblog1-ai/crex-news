@@ -277,6 +277,7 @@ export async function ctNewsPollingLoop() {
         articleType,
         score,
         virality: vScore,
+        articleText: fullText,
       });
     } else {
       // Article-image bookkeeping is only needed on the X API path.

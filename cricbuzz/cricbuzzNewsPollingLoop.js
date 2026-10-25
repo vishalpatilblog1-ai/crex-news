@@ -237,6 +237,7 @@ export async function cricbuzzNewsPollingLoop() {
           articleType,
           score,
           virality: vScore,
+          articleText: fullText,
         });
         STATE.cricbuzz.seen[newsKey] = Date.now();
       } else {

@@ -319,6 +319,7 @@ export async function ndtvNewspolling() {
           articleType,
           score,
           virality: vScore,
+          articleText: fullText,
         });
       } else {
         // USE_WEB_TWEET is handled centrally in tweetQueue.js's

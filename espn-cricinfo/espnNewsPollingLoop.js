@@ -262,6 +262,7 @@ export async function espnNewsPollingLoop() {
         articleType,
         score,
         virality: vScore,
+        articleText: fullText,
       });
       STATE.espn.seen[cleanUrl] = Date.now();
     } else {

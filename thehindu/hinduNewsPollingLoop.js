@@ -280,6 +280,7 @@ export async function hinduNewsPollingLoop() {
         articleType,
         score,
         virality: vScore,
+        articleText: fullText,
       });
     } else {
       let imageUrl = getHinduImageUrl(selected);
