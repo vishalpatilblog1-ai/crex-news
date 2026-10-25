@@ -233,6 +233,7 @@ export async function caNewsPollingLoop() {
     }
 
     let tweetText = null;
+    let generator = "claude";
     let generatedPath = null;
 
     const longEligible = isLongTweetEligible(fullText);
@@ -252,6 +253,7 @@ export async function caNewsPollingLoop() {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
+      generator = "gpt";
       try {
         const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
           fullText,
@@ -285,6 +287,7 @@ export async function caNewsPollingLoop() {
         score,
         virality: vScore,
         articleText: fullText,
+        generator,
       });
     } else if (ENABLE_LOCAL_TWEETS) {
       saveTweetLocally(tweetText);

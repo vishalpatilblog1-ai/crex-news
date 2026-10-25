@@ -230,6 +230,7 @@ export async function ieNewsPollingLoop() {
     }
 
     let tweetText = null;
+    let generator = "claude";
     let card = null;
     let model = "claude";
 
@@ -247,6 +248,7 @@ export async function ieNewsPollingLoop() {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
+      generator = "gpt";
       try {
         const result = await generateGPTTweetWithType(
           fullText,
@@ -289,6 +291,7 @@ export async function ieNewsPollingLoop() {
         score,
         virality: vScore,
         articleText: fullText,
+        generator,
       });
     } else {
       let generatedPath = null;

@@ -281,6 +281,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     }
 
     let tweetText = null;
+    let generator = "claude";
     let player = "";
     let model = "claude";
 
@@ -301,6 +302,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
+      generator = "gpt";
       try {
         const gptResult = await generateGPTTweetWithType(
           fullText,
@@ -347,6 +349,7 @@ async function attemptSportskeedaTweet(STATE, selectedItem, cleanLink) {
         score,
         virality: vScore,
         articleText: fullText,
+        generator,
       });
     } else {
       // Image work is only needed when the tweet is actually going to X.

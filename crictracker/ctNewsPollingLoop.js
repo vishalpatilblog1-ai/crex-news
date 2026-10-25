@@ -229,6 +229,7 @@ export async function ctNewsPollingLoop() {
     }
 
     let tweetText = null;
+    let generator = "claude";
     let model = "claude";
 
     try {
@@ -244,6 +245,7 @@ export async function ctNewsPollingLoop() {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
+      generator = "gpt";
       try {
         const result = await generateGPTTweetWithType(
           fullText,
@@ -278,6 +280,7 @@ export async function ctNewsPollingLoop() {
         score,
         virality: vScore,
         articleText: fullText,
+        generator,
       });
     } else {
       // Article-image bookkeeping is only needed on the X API path.

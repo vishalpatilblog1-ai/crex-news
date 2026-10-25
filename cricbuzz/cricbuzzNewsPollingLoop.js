@@ -188,6 +188,7 @@ export async function cricbuzzNewsPollingLoop() {
       }
 
       let tweetText = null;
+      let generator = "claude";
       try {
         const result = await generateClaudeTweetWithType(
           fullText,
@@ -202,6 +203,7 @@ export async function cricbuzzNewsPollingLoop() {
       }
 
       if (!tweetText || tweetText.trim().length < 30) {
+        generator = "gpt";
         try {
           const result = await generateGPTTweetWithType(
             fullText,
@@ -238,6 +240,7 @@ export async function cricbuzzNewsPollingLoop() {
           score,
           virality: vScore,
           articleText: fullText,
+          generator,
         });
         STATE.cricbuzz.seen[newsKey] = Date.now();
       } else {

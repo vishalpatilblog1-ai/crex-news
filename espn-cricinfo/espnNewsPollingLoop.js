@@ -221,6 +221,7 @@ export async function espnNewsPollingLoop() {
 
     // ── Step 4: Tweet generation ────────────────────
     let tweetText = null;
+    let generator = "claude";
     try {
       const result = await generateClaudeTweetWithType(
         fullText,
@@ -234,6 +235,7 @@ export async function espnNewsPollingLoop() {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
+      generator = "gpt";
       try {
         const gptResult = await generateGPTTweet(fullText);
         tweetText = gptResult?.tweetText;
@@ -263,6 +265,7 @@ export async function espnNewsPollingLoop() {
         score,
         virality: vScore,
         articleText: fullText,
+        generator,
       });
       STATE.espn.seen[cleanUrl] = Date.now();
     } else {

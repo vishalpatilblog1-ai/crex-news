@@ -267,6 +267,7 @@ export async function ndtvNewspolling() {
       }
 
       let tweetText = null;
+      let generator = "claude";
       let model = "claude";
 
       try {
@@ -282,6 +283,7 @@ export async function ndtvNewspolling() {
       }
 
       if (!tweetText || tweetText.trim().length < 30) {
+        generator = "gpt";
         try {
           const result = await generateGPTTweetWithType(
             fullText,
@@ -320,6 +322,7 @@ export async function ndtvNewspolling() {
           score,
           virality: vScore,
           articleText: fullText,
+          generator,
         });
       } else {
         // USE_WEB_TWEET is handled centrally in tweetQueue.js's

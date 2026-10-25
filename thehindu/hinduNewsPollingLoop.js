@@ -222,6 +222,7 @@ export async function hinduNewsPollingLoop() {
     }
 
     let tweetText = null;
+    let generator = "claude";
     let model = "claude";
 
     try {
@@ -237,6 +238,7 @@ export async function hinduNewsPollingLoop() {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
+      generator = "gpt";
       try {
         const result = await generateGPTTweetWithType(
           fullText,
@@ -281,6 +283,7 @@ export async function hinduNewsPollingLoop() {
         score,
         virality: vScore,
         articleText: fullText,
+        generator,
       });
     } else {
       let imageUrl = getHinduImageUrl(selected);
