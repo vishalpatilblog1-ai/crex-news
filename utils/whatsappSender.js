@@ -98,13 +98,7 @@ export async function sendTweetDraftToWhatsApp(draft) {
     return false;
   }
 
-  // Pure tweet only, ready to copy and paste into X
-  // const messageBody = tweetText;
-  // const messageBody = score != null ? `${tweetText}\n\n[${score}]` : tweetText;
-  // const messageBody = `${tweetText}\n\n[${score ?? "n/a"}][${source}]`;
-  // const messageBody = `${tweetText}\n\n[${score ?? "n/a"}][${source}] art:${articleText.length} tweet:${tweetText.length}`;
-
-  const messageBody = `${tweetText}\n\n[${score ?? "n/a"}][${source}] art:${articleText.length} tweet:${tweetText.length} generator: ${generator}`;
+  const messageBody = `${tweetText}\n\n[${score ?? "n/a"}][${source}] article:${articleText.length} | tweet:${tweetText.length} | generator: ${generator}`;
   try {
     const messageOptions = {
       from: FROM,
