@@ -33,26 +33,6 @@ function resolveCharLimit(source, isLongEligible) {
 }
 */
 
-// const CHAR_LIMITS = {
-//   DEFAULT: { min: 200, max: 280 },
-//   long: { min: 300, max: 560 },
-// };
-// const CHAR_LIMITS = {
-//   DEFAULT: { min: 200, max: 280 },
-//   long: { min: 300, max: 560 },
-// };
-
-// function resolveCharLimit(source, isLongEligible) {
-//   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
-// }
-// function resolveCharLimit(source, isLongEligible) {
-//   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
-// }
-
-// function resolveCharLimit(source, isLongEligible) {
-//   return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
-// }
-
 const CHAR_LIMITS = {
   DEFAULT: { min: 200, max: 280 },
   long: { min: 300, max: 560 },
@@ -344,7 +324,7 @@ Preferred patterns: B (Specific Contradiction), C (Loaded Stat), H (Sharp Punch)
 
 Rules:
 - Name the specific decision, don't gesture at it
-- Take a clear position on whether it was justified or not
+- Take a clear position on whether it was justified, as Gully Point's own opinion based on the facts. Never attribute the verdict to a named person unless the source says so.
 - Avoid vague "poor decision-making", scoreline recap, praise without a specific reason
 - Prefer 2-line structure when the insight is strong enough
 
@@ -1287,6 +1267,12 @@ FINAL CHECK before outputting:
 - CERTAINTY MATCHING: match the source's certainty exactly. If the article says predicted, probable, likely, expected, tipped, considering, in contention, or reportedly, the tweet must keep that status. Never turn a prediction or report into a confirmed fact. For unannounced squad, selection, transfer or captaincy stories, do NOT write "named in", "selected", "picked", "included", "announced", "confirmed" or "selectors agree". Use "is tipped to", "is expected to", "is reportedly in contention". Never attribute a decision to selectors, the board or a coach unless the article states it as done. For predicted-squad articles the angle is the opinion, never the roster stated as fact. Never write "N-year-old" unless that number appears in the article.
 - MONEY FIGURES: salaries, earnings, fees and valuations are estimates unless the article quotes a contract. Keep "reportedly" or "estimated" in the tweet. Never write "earns" or "was earning" as a fact for a reported figure.
 - SCORE ORDER: runs first, balls second. "91 off 41" means 91 runs from 41 balls. If the article says "41-ball 91", "91 off 41" or "91 (41)", the runs are 91 and the balls are 41. Re-read the article's score before writing it. If the tweet puts the balls number where the runs belong, rewrite it. Never swap them for effect.
+- NO VERDICTS ON NAMED PEOPLE: never say a named person is wrong, uninformed, or "needs to brush up" unless the article says so. Never end on a verdict about someone's knowledge, motives or honesty.
+- ATTRIBUTE THE WRITER: if a jab, joke or opinion belongs to the article's author, say it is the writer's view ("per <writer>") or leave it out. Never turn the writer's joke into the tweet's attack on someone else.
+- NO MIND-READING: do not write what someone "really means", "is really saying" or "is banking on". Use only what they said or did.
+- JUSTIFIED / DESERVED: use these words only as Gully Point's own opinion, supported by facts in the article. Never attribute that verdict to a named person or source unless they said it.
+- BIRTHPLACE AND HERITAGE: in stories about nationality, accent or heritage, include birthplace and background when the article gives them, before making any point about identity.
+- NUMBERS: if a web_search result (scorecard, official source) gives a different figure from the article for a score, wicket count or milestone, use the scorecard figure.
 - FAIR CHARACTERIZATION CHECK: if the tweet claims a named person ignored,
   dodged, or failed to address something — check the article. Did they
   actually address it? A tweet cannot accuse someone of NOT saying something
@@ -1907,7 +1893,7 @@ export async function generateClaudeTweet(articleText) {
   try {
     return await generateWithRetry(articleText, articleType);
   } catch (err) {
-    // console.error("❌ Claude Tweet Generation Error:", err);
+    console.error("❌ Claude Tweet Generation Error:", err);
     // console.error("❌ Claude Tweet Generation Error:");
     // console.log("❌ Claude Tweet Generation Error ..");
     return { tweetText: null, card: null };
