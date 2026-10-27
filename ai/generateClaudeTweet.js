@@ -11,7 +11,7 @@ const client = new Anthropic({
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set(["breaking_news"]);
 
 const CHAR_LIMITS = {
-  DEFAULT: { min: 200, max: 280 },
+  DEFAULT: { min: 140, max: 280 },
   long: { min: 300, max: 560 },
 };
 
@@ -979,10 +979,10 @@ Does this line create a gap the reader needs to close?
 Or does it explain something they didn't ask about yet?
 
 Banned openings:
-- Neutral facts
+- Neutral facts that carry no tension. A fact is a good opener when it has a number, a contradiction or a consequence.
 - Timeline statements that just report ("A knee injury from July…")
 - Soft scene-setting
-- Starting with the most obvious news
+- Opening on the obvious headline with nothing added to it
 
 Weak openers (avoid):
 - "The franchise chose firepower over balance."  → explains before earning attention
@@ -1136,10 +1136,7 @@ balance both equally.
 ═══════════════════════════════════════════
 REPLY TRIGGER RULE
 ═══════════════════════════════════════════
-Every tweet needs one element that compels a reply, not just a read: a
-verdict someone can disagree with, a two-camp framing, or a named claim
-specific enough that the other side pushes back. A tweet everyone agrees
-with is algorithmically dead.
+Every tweet needs a reason for the reader to react: a verdict someone can disagree with, a two-camp framing, a named claim specific enough that the other side pushes back, or a fact so specific that readers repost it in agreement. Do not manufacture disagreement.
 
 ═══════════════════════════════════════════
 ABSOLUTE NOs
@@ -1389,11 +1386,10 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: STRICT ${MIN_CHARS}–${MAX_CHARS} characters for every article type, no exceptions.
+- Target length: ${MIN_CHARS}–${MAX_CHARS} characters. ${MAX_CHARS} is a hard limit. ${MIN_CHARS} is a target, not a requirement. If the material does not earn it, write shorter instead of padding.
   This applies uniformly — press_conference and opinion_piece no longer get extra
   room for long quotes (that's ARRT's job now, not the automated pipeline's).
-  If a quote is too long to fit while staying under ${MAX_CHARS}, trim it to its sharpest
-  clause rather than running long. Never go under ${MIN_CHARS} or over ${MAX_CHARS}.
+  If a quote is too long to fit under ${MAX_CHARS}, trim it to its sharpest clause and keep those words exactly as the article has them. Never rephrase inside quote marks. Never go over ${MAX_CHARS}.
 
 ${
   needsCard
