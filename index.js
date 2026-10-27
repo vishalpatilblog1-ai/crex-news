@@ -72,6 +72,16 @@ function runIfAwake(
   };
 }
 
+function runAlways(pollFn, label) {
+  return async () => {
+    try {
+      await pollFn();
+    } catch (err) {
+      console.error(`❌ ${label} poll error:`, err?.message || err);
+    }
+  };
+}
+
 async function bootstrap() {
   global.STATE = await loadState();
 
@@ -138,7 +148,7 @@ async function bootstrap() {
 
   if (process.env.ENABLE_NDTV_NEWS_POLLING === "true") {
     console.log("📰 NDTV NEWS POLLING IS ENABLED");
-    setInterval(runIfAwake(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
+    setInterval(runAlways(ndtvNewspolling, "NDTV"), 1000 * 60 * 3);
   }
 
   if (process.env.ENABLE_CRICKTRACKER_NEWS_POLLING === "true") {
@@ -148,18 +158,12 @@ async function bootstrap() {
 
   if (process.env.ENABLE_ESPN_NEWS_POLLING === "true") {
     console.log("📰 ESPN NEWS POLLING IS ENABLED");
-    setInterval(
-      runIfAwake(espnNewsPollingLoop, "ESPN Cricinfo"),
-      1000 * 60 * 4,
-    );
+    setInterval(runAlways(espnNewsPollingLoop, "ESPN Cricinfo"), 1000 * 60 * 4);
   }
 
   if (process.env.ENABLE_CRICBUZZ_NEWS_POLLING === "true") {
     console.log("📰 CRICBUZZ NEWS POLLING IS ENABLED");
-    setInterval(
-      runIfAwake(cricbuzzNewsPollingLoop, "Cricbuzz"),
-      1000 * 60 * 15,
-    );
+    setInterval(runAlways(cricbuzzNewsPollingLoop, "Cricbuzz"), 1000 * 60 * 15);
   }
 }
 
