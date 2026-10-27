@@ -8,30 +8,7 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
-  "breaking_news",
-  // "selection_news",
-  // "human_interest",
-  // "press_conference",
-  // "injury_news",
-  // "milestone_record",
-]);
-
-/*
-const CHAR_LIMITS = {
-  DEFAULT: { min: 200, max: 280 },
-  CB: {
-    default: { min: 200, max: 280 },
-    long: { min: 320, max: 420 },
-  },
-};
-
-function resolveCharLimit(source, isLongEligible) {
-  if (isLongEligible) return CHAR_LIMITS.CB.long;
-  if (source === "CB") return CHAR_LIMITS.CB.default;
-  return CHAR_LIMITS.DEFAULT;
-}
-*/
+export const SIGNIFICANCE_EXEMPT_TYPES = new Set(["breaking_news"]);
 
 const CHAR_LIMITS = {
   DEFAULT: { min: 200, max: 280 },
@@ -1273,6 +1250,17 @@ FINAL CHECK before outputting:
 - JUSTIFIED / DESERVED: use these words only as Gully Point's own opinion, supported by facts in the article. Never attribute that verdict to a named person or source unless they said it.
 - BIRTHPLACE AND HERITAGE: in stories about nationality, accent or heritage, include birthplace and background when the article gives them, before making any point about identity.
 - NUMBERS: if a web_search result (scorecard, official source) gives a different figure from the article for a score, wicket count or milestone, use the scorecard figure.
+- STORY SHAPE CHECK (re-read the finished tweet against every point below, and rewrite it if any point fails):
+- LEAD WITH THE NEWS: open with the newest fact (who is out, who was picked, what was said). Put backstory in the second paragraph, never the first.
+- LINE ONE: a named person plus a specific fact, number or contradiction. Never open with logistics, process or "wasn't supposed to happen this soon". Vary the opener between a named person plus a fact, a number, a short quote, and a one-sentence scene.
+- MIDDLE: add the second layer the headline skips, such as who pushed for it, what changed, what it cost, or who it contradicts. Every paragraph must add a new fact.
+- ANGLE: prefer a contradiction or double standard, a behind-the-scenes account with clear attribution ("X says"), a money number, or a decision-maker and the consequence of the decision. For routine updates, keep the tweet short and factual.
+- NO CLUB MOTIVES: never write that a club, board or selector "didn't let", "wasn't willing" or "wasn't taking the risk" unless the article says so.
+- RELATIVE DATES: keep the article's own timing ("two days away", "next week"). Never turn it into a weekday or a date.
+- STATS: say exactly what a figure counts and for whom, for example "184 wickets for Heat, the most by any player for one team". If the article's wording is unclear, leave the comparison out.
+- LAST LINE: pick whichever ending fits the material and do not default to a verdict. (a) stop on the strongest fact with no comment, (b) one plain verdict on the decision or system, never on a person, (c) a forward-looking line tied to a date or fixture in the article, (d) a number or quote that lands as a closing line. Never end with "X, not Y", "isn't X, it's Y", "That's the bar", or a line that restates the tweet in general terms.
+- LENGTH: use as much room as the material earns and no more. Do not pad.
+- Do not use colons in the tweet, and do not use the words "real" or "actually".
 - FAIR CHARACTERIZATION CHECK: if the tweet claims a named person ignored,
   dodged, or failed to address something — check the article. Did they
   actually address it? A tweet cannot accuse someone of NOT saying something
