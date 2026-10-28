@@ -8,7 +8,8 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export const SIGNIFICANCE_EXEMPT_TYPES = new Set(["breaking_news"]);
+// export const SIGNIFICANCE_EXEMPT_TYPES = new Set(["breaking_news"]);
+export const SIGNIFICANCE_EXEMPT_TYPES = new Set([]);
 
 const CHAR_LIMITS = {
   DEFAULT: { min: 140, max: 280 },
@@ -1248,6 +1249,7 @@ FINAL CHECK before outputting:
 - BIRTHPLACE AND HERITAGE: in stories about nationality, accent or heritage, include birthplace and background when the article gives them, before making any point about identity.
 - NUMBERS: if a web_search result (scorecard, official source) gives a different figure from the article for a score, wicket count or milestone, use the scorecard figure.
 - WHO OWNS THE FIGURE: before writing any figure like "five wickets for 29", "158/0 to 329" or "lost 4 for 20", check whose figure it is in the article. If the article says a team lost wickets or conceded runs, it belongs to that team. Never turn a team or session figure into one bowler's, batter's or captain's figure, and never write that a named player "took over", "won the session" or "did the damage" unless the article credits that player by name. If the article credits the plan or the session to "Australia" or "the attack", write Australia or the attack. Use a player's own wickets and runs only from the scorecard line (for example "Starc 6-72").
+- SHORT ARTICLES: if the article is under 1,500 characters, the tweet may only use facts stated in it. Do not add rules, penalty scales, records, history or context from memory, and do not call anything "the lightest", "the first" or "the most" unless the article says so. Write fewer lines instead of adding material. Two or three plain sentences are fine.
 - STORY SHAPE CHECK (re-read the finished tweet against every point below, and rewrite it if any point fails):
 - LEAD WITH THE NEWS: open with the newest fact (who is out, who was picked, what was said). Put backstory in the second paragraph, never the first.
 - LINE ONE: a named person plus a specific fact, number or contradiction. Never open with logistics, process or "wasn't supposed to happen this soon". Vary the opener between a named person plus a fact, a number, a short quote, and a one-sentence scene.
