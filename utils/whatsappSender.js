@@ -111,7 +111,11 @@ function dedupeParagraphs(text) {
  * Ready to upload as-is to Claude / GPT.
  */
 function buildTxtContent({ tweetText, headline, source, articleText }) {
-  const article = dedupeParagraphs(articleText).join("\n\n");
+  // const article = dedupeParagraphs(articleText).join("\n\n");
+
+  const paras = dedupeParagraphs(articleText);
+  if (paras[0] === String(headline || "").trim()) paras.shift();
+  const article = paras.join("\n\n");
   return [
     String(tweetText || "").trim(),
     "",
