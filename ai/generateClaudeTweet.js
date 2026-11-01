@@ -11,6 +11,30 @@ const client = new Anthropic({
 // export const SIGNIFICANCE_EXEMPT_TYPES = new Set(["breaking_news"]);
 export const SIGNIFICANCE_EXEMPT_TYPES = new Set([]);
 
+// Big-franchise stories (MI, CSK, RCB) skip the significance gate.
+const FRANCHISE_NAME_RE =
+  /\b(Mumbai Indians|Chennai Super Kings|Royal Challengers(?: Bengaluru| Bangalore)?)\b/gi;
+const FRANCHISE_ABBR_RE = /\b(MI|CSK|RCB)\b/g; // case-sensitive on purpose
+
+export function isBigFranchiseStory(fullText) {
+  if (!fullText || typeof fullText !== "string") return false;
+  const count = (re, s) => (s.match(re) || []).length;
+  const headline = fullText.split("\n")[0] || "";
+
+  // Headline names the franchise -> always exempt
+  if (
+    count(FRANCHISE_NAME_RE, headline) + count(FRANCHISE_ABBR_RE, headline) >
+    0
+  ) {
+    return true;
+  }
+  // Otherwise the franchise must be a real subject of the article (3+ mentions),
+  // so a passing mention in a list doesn't qualify
+  return (
+    count(FRANCHISE_NAME_RE, fullText) + count(FRANCHISE_ABBR_RE, fullText) >= 3
+  );
+}
+
 const CHAR_LIMITS = {
   DEFAULT: { min: 140, max: 280 },
   long: { min: 300, max: 560 },
@@ -879,16 +903,20 @@ line out loud to a friend watching the match, don't write it.
 ═══════════════════════════════════════════
 CLOSING LINE RULE (STRICT)
 ═══════════════════════════════════════════
-The closing line is a verdict someone can disagree with, not a possibility
-and not a description of tension. Never hedge ("might", "could", "suggests",
-"perhaps") and never just describe that a debate exists. The final line
-should deliver a clear verdict, create a strong contradiction, force the
-reader to pick a side, or leave a sharp, slightly uncomfortable truth —
-avoid soft or observational closers.
+The closing line is Gully Point's own read on the story, said the way a sharp
+friend would say it. One plain line that a fan can agree or argue with.
+- Commit on the facts. Hedge on motives, intentions, the future and anything
+  about a named person's state of mind. Hedge words: "looks like", "it seems",
+  "sounds like", "reportedly", "may", "might", "if that report is right". The
+  hedge sits on YOUR read, never on a stat or a quote.
+- Rotate the hedge. Never use "By the sound of it". Do not reuse the hedge
+  that closed the previous tweet.
+- Never restate the tweet, never add a moral, never label a pattern ("a habit
+  worth naming", "that's how little room", "says it all").
+- Never guess at what someone feels or is thinking ("the nerves might be what
+  keep him this good"). Tie the read to a fact already in the tweet.
 WEAK: "It highlights the selectors' priorities in a pivotal cycle."
-STRONG: "Saransh has earned that spot on form. Jadeja's comeback shouldn't come at his expense."
-If you can't commit, use an Open Verdict (Pattern E) — deliberate tension,
-not uncertainty: "The selection makes sense on paper. Whether it holds in a knockout is a different question" (allowed) vs "This might be India's smartest tactical shift" (banned hedge).
+STRONG: "It looks like this cycle gets decided in Wellington, long before Nagpur."
 Test: could a reasonable fan reply "disagree" or "nah" and mean it? If not,
 rewrite it.
 
@@ -1148,6 +1176,58 @@ or ethnic identity framing unless the article explicitly and centrally
 discusses it — no "Hindu"/"Muslim"/"faith"/"religion" unless the source
 uses those words itself.
 
+═══════════════════════════════════════════
+HOUSE EDITS (STRICT) — WHAT THE ACCOUNT OWNER FIXES BY HAND TODAY
+═══════════════════════════════════════════
+Drafts used to be rewritten by hand before posting. Write the finished
+version the first time.
+
+1. VOICE. Talk like a friend who watched the match, not an analyst reading a
+   brief. Short plain sentences and everyday words. If a line sounds like a
+   press release or a motivational poster, rewrite it.
+2. FACTS VERSUS SPICE. Stats, names and quotes come only from the article (or
+   a search result you ran), word for word. The drama, the angle and the read
+   are Gully Point's own and stay opinion. Spice never adds a new fact, and
+   never says what a person planned, meant or taught beyond what the article
+   says.
+3. THIRD ANGLE. Build it from the article's own numbers or quotes: two figures
+   that pull against each other, who loses if the other side wins, a quote
+   that cuts against the scoreline. Check it compares like with like (a
+   current figure against a hypothetical one is not a fair comparison).
+4. CLOSER. Follow the CLOSING LINE RULE: one plain read, hedged on motives and
+   the future, hedge wording rotated, no moral, no label, no restating.
+5. FEWER NUMBERS. Three figures at most unless the numbers are the whole story.
+6. QUOTES. Never open the tweet with a quote mark. The comma goes inside the
+   closing quote mark. Never reword inside quote marks.
+7. ATTRIBUTE ONCE. If a claim comes from a named outlet or person, say so
+   once, then move on.
+
+BEFORE AND AFTER (copy the move, never the wording):
+
+Example 1 — reaction story.
+DRAFT CLOSER (tidy, reads AI): "New Zealand's bowler walks into this ODI series
+having already scouted the plan his opponent built with him."
+FINISHED: "Kohli taught him the pitches and studied him in the same sessions.
+It sounds like Wednesday will show who took better notes."
+Why it works: it uses the player's own quote ("he'll have good preparation"),
+the hedge sits on the read, and it ends on what the match will answer.
+
+Example 2 — table story.
+DRAFT: "Gill's side need the sweep and help from above. The permutations don't
+owe them a top-two finish just for playing clean cricket."
+FINISHED: "But two of those seven are in New Zealand. Win there and the leaders
+come down with them." then a new line "It looks like this cycle gets decided
+in Wellington, long before Nagpur."
+Why it works: the third angle comes from the article's own fixtures, and the
+closer is a hedged read tied to a place and a date.
+
+SHAPES THAT GET REWRITTEN EVERY TIME:
+- "The pattern isn't luck anymore. It's a habit worth naming." (reject then
+  assert across two sentences, plus a label)
+- "By the sound of it, the nerves might be what keep him this good." (stock
+  hedge around a guess about someone's mind)
+- "That's how little room India have left." (restates the tweet)
+
 ${ENGAGEMENT_FRAMEWORKS}
 
 `;
@@ -1291,7 +1371,7 @@ FINAL CHECK before outputting:
   reporting. Fix: attribute the claim to its actual source explicitly
   (name the outlet/report), and don't extend the claim's certainty
   beyond what the article itself commits to.
-- Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed on YOUR verdict — this is separate from the Hedging Preservation Check above, which governs uncertain source claims, not your own stated opinion.)
+- CLOSER CHECK: is the closing line one plain read in a human voice, committed on the facts and hedged only on motives, the future or a named person's state of mind ("looks like", "it seems", "sounds like", "reportedly")? Is the hedge different from "By the sound of it" and from the last tweet's hedge? Does it avoid restating the tweet, a moral or a label? If not, rewrite it.
 - Does the closing line (or any line) reject one framing to assert another —
   "isn't just X, it's Y" or "That's not X, that's Y" in any order or paraphrase,
   OR rank a "real" point above a lesser one ("real argument/point/story/issue",
@@ -1339,7 +1419,7 @@ FINAL CHECK before outputting:
   position is exaggerated beyond what the article shows — REWRITE.
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
-  The reader should finish thinking "but wait, actually..." or "no, I think..."
+  The reader should finish thinking "but wait..." or "no, I think..."
   BANNED closing patterns (these only describe tension, they don't take a side):
   - Does the closing line end in a question mark instead of a stated verdict?
   A question is an escape hatch — it lets the writer avoid committing to a
@@ -1762,6 +1842,29 @@ function hasCertaintyProblem(articleText, tweet) {
   return (unconfirmed && asserts) || badAge;
 }
 
+// ─── AI-CLOSER GUARD + HEDGE ROTATION ──────────────────────────────────────
+// Backstop for HOUSE EDITS / CLOSING LINE RULE. Catches the closers that keep
+// getting rewritten by hand, and stops the same hedge closing two tweets in a row.
+const AI_CLOSER_PATTERNS = [
+  /\bby the sound of it\b/i,
+  // "The pattern isn't luck anymore. It's a habit..." (reject-then-assert across two sentences)
+  /\b(?:isn'?t|aren'?t)\b[^.!?\n]{1,60}[.!?]\s+(?:It|That|This|They)(?:'s|\s+is|\s+are)\b/i,
+  /\b(?:worth naming|says it all|says everything|tells you everything|speaks volumes|that'?s how (?:little|much|big|thin))\b/i,
+];
+const HEDGE_RE =
+  /\b(looks like|it seems|sounds like|reportedly|if that report is right)\b/i;
+let lastClosingHedge = null;
+
+function hasAiCloser(text) {
+  const closer = getClosingLine(text);
+  return AI_CLOSER_PATTERNS.some((re) => re.test(closer));
+}
+
+function getClosingHedge(text) {
+  const m = getClosingLine(text).match(HEDGE_RE);
+  return m ? m[1].toLowerCase() : null;
+}
+
 async function generateWithRetry(
   articleText,
   articleType,
@@ -1833,6 +1936,35 @@ async function generateWithRetry(
   // Closing-line shape variety check runs AFTER reject-then-assert resolves,
   // on whatever text is about to ship.
   if (!result.tweetText) return result;
+
+  // AI-closer / repeated-hedge check: one retry, then ship what we have.
+  {
+    const hedgeNow = getClosingHedge(result.tweetText);
+    const repeatedHedge = hedgeNow && hedgeNow === lastClosingHedge;
+    if (hasAiCloser(result.tweetText) || repeatedHedge) {
+      console.warn(
+        `⚠️ AI-sounding or repeated-hedge closer, retrying once: ${getClosingLine(result.tweetText)}`,
+      );
+      const closerRetry = await _generateTweet(
+        articleText,
+        articleType,
+        source,
+        isLongEligible,
+        `Your closing line sounds AI-written or repeats the previous tweet's hedge${
+          lastClosingHedge ? ` ("${lastClosingHedge}")` : ""
+        }. Rewrite ONLY the closing line as one plain, human read of the story. Hedge it on motives or the future with a different wording ("it seems", "sounds like", "reportedly", "may", "if that report is right"). Do not use "By the sound of it", do not restate the tweet, do not add a moral or a label, and do not write "isn't X. It's Y". Keep every fact and quote exactly as before.`,
+      );
+      if (
+        closerRetry.tweetText &&
+        !hasAiCloser(closerRetry.tweetText) &&
+        !hasRejectThenAssert(closerRetry.tweetText) &&
+        !hasCertaintyProblem(articleText, closerRetry.tweetText)
+      ) {
+        result = closerRetry;
+      }
+    }
+    lastClosingHedge = getClosingHedge(result.tweetText);
+  }
 
   if (usesImpliedContrastFamily(result.tweetText)) {
     if (consecutiveImpliedContrastCloses < IMPLIED_CONTRAST_STREAK_LIMIT) {
