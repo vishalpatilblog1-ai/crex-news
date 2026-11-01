@@ -1604,10 +1604,31 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  tweetText = tweetText.replace(
-    /^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i,
-    "",
-  );
+  // tweetText = tweetText.replace(
+  //   /^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i,
+  //   "",
+  // );
+
+  // ── Strip leaked meta/preamble before the real tweet ──────────────────────
+  // Rule 1: a tweet never has a colon (house rule), so any leading paragraph
+  // that ends with ":" is the model announcing the tweet. Drop it.
+  // Rule 2: drop leading paragraphs that talk about searching/ignoring/the report.
+  const META_PARA_RE =
+    /\b(?:filler|irrelevant|accidental)\s+(?:search|query)\b|\b(?:ignoring|disregard(?:ing)?)\s+(?:it|that|this|the\s+search)\b|\b(?:here'?s|here\s+is)\s+(?:the\s+|my\s+)?(?:final\s+)?tweet\b|\bbased\s+(?:solely\s+)?on\s+the\s+(?:match\s+report|article)\b|^(?:good,?\s+confirmed|confirmed|got it|verified|let me|i\s+(?:searched|found|ran|used))\b/i;
+
+  for (let i = 0; i < 4; i++) {
+    const [first, ...rest] = tweetText.split(/\n{2,}/);
+    if (!rest.length) break;
+    const isMeta = /:\s*$/.test(first.trim()) || META_PARA_RE.test(first);
+    if (!isMeta) break;
+    tweetText = rest.join("\n\n").trim();
+  }
+
+  // Backstop: if meta still leaked into the opening, reject instead of shipping it.
+  if (META_PARA_RE.test(tweetText.slice(0, 250))) {
+    console.warn("⚠️ Meta/preamble leaked into tweet — rejecting draft");
+    return { tweetText: null, card: null };
+  }
 
   if (!tweetText || tweetText.length < 30) {
     console.warn("⚠️ Claude returned empty or too-short tweet");

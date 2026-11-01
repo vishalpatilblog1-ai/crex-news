@@ -17,7 +17,11 @@
 //      TWILIO_AUTH_TOKEN=your_auth_token_here
 //      TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 //      TWILIO_WHATSAPP_TO=whatsapp:+91XXXXXXXXXX
-// 5. npm install twilio
+//    Optional — second message with a .txt file (tweet + "add more spice" +
+//    full article), uploaded to Cloudinary and attached via Twilio:
+//      SEND_VIA_TXT=true
+//      CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
+// 5. npm install twilio cloudinary
 //
 // Common failure codes (these show up AFTER Twilio accepts the message):
 //   63015 -> your number is not joined to the sandbox (send the join code)
@@ -27,6 +31,7 @@
 
 import twilio from "twilio";
 import dotenv from "dotenv";
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
@@ -35,9 +40,21 @@ const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const FROM = process.env.TWILIO_WHATSAPP_FROM;
 const TO = process.env.TWILIO_WHATSAPP_TO;
 
+// SEND_VIA_TXT=true  -> after the normal tweet message, send a 2nd message
+// carrying a .txt file: tweet, "add more spice", then the full article.
+// Unset / false      -> behaves exactly like before (one message only).
+const SEND_VIA_TXT = ["true", "1", "yes", "on"].includes(
+  String(process.env.SEND_VIA_TXT ?? "")
+    .trim()
+    .toLowerCase(),
+);
+
+console.log("value of SEND_VIA_TXT is ::", SEND_VIA_TXT);
+
 // How long to wait before checking final delivery status (ms).
 // Twilio accepts first and fails async a few seconds later.
 const STATUS_CHECK_DELAY_MS = 8000;
+const TXT_STATUS_CHECK_DELAY_MS = 6000;
 
 let client = null;
 if (ACCOUNT_SID && AUTH_TOKEN) {
@@ -48,10 +65,139 @@ if (ACCOUNT_SID && AUTH_TOKEN) {
   );
 }
 
+const CLOUDINARY_READY = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET,
+);
+if (CLOUDINARY_READY) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+if (SEND_VIA_TXT && !CLOUDINARY_READY) {
+  console.log(
+    "⚠️ SEND_VIA_TXT is on but CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET are missing — the .txt message will be skipped.",
+  );
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Splits the article into non-empty lines and drops exact repeats (the
+ * scrapers often return the same paragraphs twice).
+ */
+function dedupeParagraphs(text) {
+  const seen = new Set();
+  return String(text || "")
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p && !seen.has(p) && seen.add(p));
+}
+
+/**
+ * Content of the .txt file:
+ *   original tweet
+ *   add more spice
+ *   full article
+ * Ready to upload as-is to Claude / GPT.
+ */
+function buildTxtContent({ tweetText, headline, source, articleText }) {
+  const article = dedupeParagraphs(articleText).join("\n\n");
+  return [
+    String(tweetText || "").trim(),
+    "",
+    "add more spice",
+    "",
+    `===== SOURCE ARTICLE (${source}) =====`,
+    headline,
+    "",
+    article,
+    "===== END ARTICLE =====",
+    "",
+  ].join("\n");
+}
+
+async function uploadTxtToCloudinary(content, source, headline) {
+  const safeSource =
+    String(source || "src")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "") || "src";
+  const slug =
+    String(headline || "article")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "article";
+
+  const result = await cloudinary.uploader.upload(
+    `data:text/plain;base64,${Buffer.from(content, "utf8").toString("base64")}`,
+    {
+      resource_type: "raw",
+      // For raw files the extension must be part of the public_id.
+      public_id: `gp_articles/${safeSource}-${slug}-${Date.now()}.txt`,
+      overwrite: true,
+    },
+  );
+  return result.secure_url;
+}
+
+/**
+ * Message #2: the .txt file (tweet + "add more spice" + full article).
+ * Returns true if Twilio did not reject/fail it.
+ */
+async function sendTxtMessage({ source, headline, tweetText, articleText }) {
+  if (!CLOUDINARY_READY) {
+    console.log("⚠️ Skipping .txt message — Cloudinary env vars are missing.");
+    return false;
+  }
+
+  const content = buildTxtContent({ tweetText, headline, source, articleText });
+  const url = await uploadTxtToCloudinary(content, source, headline);
+  console.log(`📎 Article .txt uploaded: ${url}`);
+
+  const msg = await client.messages.create({
+    from: FROM,
+    to: TO,
+    body: `📎 ${source} tweet + article (.txt)`,
+    mediaUrl: [url],
+  });
+
+  await sleep(TXT_STATUS_CHECK_DELAY_MS);
+
+  let check = null;
+  try {
+    check = await client.messages(msg.sid).fetch();
+  } catch (fetchError) {
+    console.log(
+      "⚠️ Could not verify .txt delivery status:",
+      fetchError?.message || fetchError,
+    );
+  }
+
+  if (check && ["failed", "undelivered"].includes(check.status)) {
+    console.log(
+      `❌ WhatsApp ${source} .txt ${check.status} — error ${check.errorCode}: ${check.errorMessage || ""}. The tweet message was delivered; the full article is in the log above.`,
+    );
+    return false;
+  }
+
+  console.log(
+    `✅ Sent ${source} .txt to WhatsApp (status: ${check?.status ?? "unknown"})`,
+  );
+  return true;
+}
+
 /**
  * Sends a generated tweet draft to your WhatsApp for manual review.
  * The tweet text is ALWAYS printed to the console first, so a failed
  * WhatsApp delivery never loses the draft (copy it from the Railway log).
+ *
+ * Message 1: the tweet draft (always).
+ * Message 2: a .txt file with tweet + "add more spice" + full article
+ *            (only when SEND_VIA_TXT=true).
  *
  * @param {Object} draft
  * @param {string} draft.source - "SK" | "CB" | "CA" etc.
@@ -116,7 +262,7 @@ export async function sendTweetDraftToWhatsApp(draft) {
 
     // create() only means Twilio ACCEPTED the message. Delivery failures
     // (63015, 63016, ...) happen a few seconds later, so check final status.
-    await new Promise((resolve) => setTimeout(resolve, STATUS_CHECK_DELAY_MS));
+    await sleep(STATUS_CHECK_DELAY_MS);
 
     let check = null;
     try {
@@ -143,6 +289,23 @@ export async function sendTweetDraftToWhatsApp(draft) {
     console.log(
       `✅ Sent ${source} draft to WhatsApp (status: ${check?.status ?? "unknown"})`,
     );
+
+    // Message 2 (optional): .txt with tweet + "add more spice" + full article.
+    // A failure here never affects message 1, which is already delivered.
+    if (SEND_VIA_TXT && articleText) {
+      try {
+        await sendTxtMessage({ source, headline, tweetText, articleText });
+      } catch (txtError) {
+        console.log(
+          `❌ Failed to send ${source} .txt message:`,
+          txtError?.code
+            ? `${txtError.code} — ${txtError.message}`
+            : txtError?.message || txtError,
+          "\nThe tweet message was delivered; the full article is in the log above.",
+        );
+      }
+    }
+
     return true;
   } catch (error) {
     console.log(

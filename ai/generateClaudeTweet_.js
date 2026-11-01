@@ -8,44 +8,26 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export const SIGNIFICANCE_EXEMPT_TYPES = new Set([
-  "breaking_news",
-  // "selection_news",
-  // "human_interest",
-  // "press_conference",
-  // "injury_news",
-  // "milestone_record",
-]);
+// export const SIGNIFICANCE_EXEMPT_TYPES = new Set(["breaking_news"]);
+export const SIGNIFICANCE_EXEMPT_TYPES = new Set([]);
 
 const CHAR_LIMITS = {
-  DEFAULT: { min: 200, max: 280 },
-  CB: {
-    default: { min: 200, max: 280 },
-    long: { min: 320, max: 420 },
-  },
+  DEFAULT: { min: 140, max: 280 },
+  long: { min: 300, max: 560 },
 };
 
 function resolveCharLimit(source, isLongEligible) {
-  if (source === "CB" && isLongEligible) return CHAR_LIMITS.CB.long;
-  if (source === "CB") return CHAR_LIMITS.CB.default;
-  return CHAR_LIMITS.DEFAULT;
+  return isLongEligible ? CHAR_LIMITS.long : CHAR_LIMITS.DEFAULT;
 }
-
-// ─── LONG-TWEET ELIGIBILITY (Cricbuzz only) ───────────────────────────────────
-// Cheap, deterministic, no-API-call gate — runs in the polling loop BEFORE
-// generation so we only pay for a longer completion when the source article
-// actually has enough material to fill it. Duplicated from generate-gpt-tweet.js
-// intentionally (both generators need the same gate, no shared import between
-// the two standalone files).
 
 export function isLongTweetEligible(articleText) {
   if (!articleText || typeof articleText !== "string") return false;
 
   const text = articleText.trim();
-  if (text.length < 600) return false;
+  if (text.length < 500) return false;
 
   const sentenceCount = (text.match(/[.!?](\s|$)/g) || []).length;
-  if (sentenceCount < 6) return false;
+  if (sentenceCount < 5) return false;
 
   const hasQuote = /["“][^"”]{15,}["”]/.test(text);
   const namedEntityCount = (
@@ -70,6 +52,7 @@ Classify this cricket article into ONE of these types:
 - milestone_record    (record broken, landmark achieved)
 - tactical_analysis   (breakdown of how/why a game unfolded — bowling plans, field settings, team decisions)
 - opinion_piece       (column or personal account by a named individual)
+- rivalry_bait        (the article itself stages a two-sided friction — player-vs-player, team-vs-team, era-vs-era, an on-field clash, a snub framed against a rival's selection. The tension must exist IN the article, not be invented.)
 - breaking_news       (single confirmed event, minutes-to-hours relevance, immediate match impact)
 
 Classification Rules (apply in order):
@@ -89,11 +72,18 @@ Classification Rules (apply in order):
    These go to injury_news, selection_news, or the appropriate type instead.
 
 0b. An article whose PRIMARY purpose is to compare two named players, two teams, or two eras
-   (e.g. "Kohli vs Rohit as captains", "CSK vs MI dynasty debate", "Gill vs Pant for the No. 4
-   slot") is NOT its own type. Route it to whichever of the standard types fits the underlying
+   (e.g. "Kohli vs Rohit as captains", "CSK vs MI dynasty debate", "Gill vs Pant for the No. 4 slot") is NOT its own type. Route it to whichever of the standard types fits the underlying
    news peg: a comparison driven by a selection/lineup decision → selection_news; a comparison
    built on stats/performance trend → player_form; a comparison that's fundamentally a column or
    personal take → opinion_piece.
+
+0c. Choose rivalry_bait ONLY if the article's own reporting stages a real two-sided
+   tension — an actual on-field clash between named individuals, a direct rivalry
+   angle the article itself frames (not one you'd have to construct), or a snub
+   explicitly framed against who got picked instead. Do NOT use rivalry_bait for
+   a plain selection decision (→ selection_news), a plain form comparison (→
+   player_form), or a plain opinion column (→ opinion_piece) just because two
+   names appear — the article must present them IN TENSION, not just together.
 
 1. Choose tactical_analysis if the article's core focus is WHY a team's decisions shaped the game — bowling rotation, field setting, powerplay strategy — even if a match result is mentioned.
 2. Choose opinion_piece if a named journalist, former player, or analyst is the primary author sharing their personal view.
@@ -135,9 +125,11 @@ export async function classifyArticle(articleText) {
   const usage = response.usage;
   const inputCost = (usage.input_tokens / 1_000_000) * 1;
   const outputCost = (usage.output_tokens / 1_000_000) * 5;
-  // console.log(
-  //   `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
-  // );
+  console.log(
+    `💰 classifyArticle (Haiku) — input: ${usage.input_tokens} tok, output: ${
+      usage.output_tokens
+    } tok, cost: $${(inputCost + outputCost).toFixed(4)}`,
+  );
 
   return response?.content?.[0]?.text?.trim()?.toLowerCase() || "player_form";
 }
@@ -147,7 +139,7 @@ ENGAGEMENT MECHANICS — apply at least ONE per tweet:
 
 PATTERN A — THE REFRAME
 Start with what everyone thinks, then flip it.
-"Everyone's talking about the 96-run win. The real story is the six overs before anyone was watching."
+"Everyone's talking about the 96-run win. The six overs before anyone was watching decided it."
 
 PATTERN B — THE SPECIFIC CONTRADICTION
 Name the exact decision that contradicted the team's own plan.
@@ -202,8 +194,8 @@ PATTERN J — THE UNCOMFORTABLE TRUTH
 State something obviously true that mainstream cricket media isn't saying out loud.
 Fans feel validated. Critics feel challenged. Both reply.
 Examples (structure only — NEVER repeat these lines):
-"Gambhir's best asset isn't tactics. It's that the players believe him."
-"The bowling attack didn't improve. The pitches did."
+"Gambhir's best asset is that the players believe him."
+"The bowling attack stayed the same. The pitches got easier."
 Rules:
 - Must be grounded in something the article supports — not manufactured controversy
 - Calm delivery only — the discomfort comes from the truth, not the tone
@@ -212,8 +204,7 @@ Rules:
 PATTERN K — THE BEFORE/AFTER CONTRAST
 Two states separated by one event. Visually clean as plain text. Extremely shareable.
 Examples (structure only — NEVER repeat these lines):
-"Six weeks ago Samson was watching from the dugout.
-Today he holds the Player of the Tournament trophy."
+"Six weeks ago Samson was watching from the dugout. Today he holds the Player of the Tournament trophy."
 Rules:
 - The contrast must be concrete — specific timeframe, specific state
 - One line before, one line after, separated by a line break
@@ -229,26 +220,37 @@ Rules:
 - The insight between them must connect the two, not just list them
 - Works best for milestone_record and player_form types
 
+PATTERN M — THE DIVIDING LINE
+Name the two sides of a real tension the article stages, then plant a flag —
+don't just describe the clash, take a position on who's right or what it costs.
+Examples (structure only — NEVER repeat these lines):
+"Kohli walked off to a standing ovation. Gambhir didn't clap once."
+"One team is building a dynasty. The other is still arguing about who's captain."
+Rules:
+- The tension must exist in the article's own reporting — never manufacture a rivalry
+- Land on a stance, not just a description of the clash (avoid pure "both sides have a point")
+- Works best for rivalry_bait; also usable for selection_news and player_form when a real two-sided comparison is the actual news peg
+
+PATTERN N — THE ARC
+A short run-up in two or three beats, then the moment, then one closing line that names what changed.
+Use only when the article shows a real low point first: dropped, doubted, written off, a long drought, or a return after absence.
+Examples (structure only — NEVER repeat these lines):
+"Left out in March. Back in August. A hundred on Tuesday.
+The question about his place just changed."
+"Eleven months without a Test ton. One innings later, the debate is about where he bats, not whether."
+Rules:
+- Every date, score and setback must come from the article. Never invent a backstory or doubters
+- Two or three short beats, then the moment, then ONE closing line about what it changes, not how anyone should feel
+- No hype words (haters, king, arrived, era), no emoji, no all-caps. The feeling comes from the sequence, not adjectives
+- If the article has no earlier low point, use C, D or L instead
+- Works best for player_form and milestone_record; also usable for human_interest when the journey is the story
+
 PATTERN DIVERSITY RULE (important):
 Do not default to the same pattern repeatedly.
 Rotate across patterns based on what the article genuinely supports.
-If the last tweet used Pattern H, prefer A, B, C, I, J, K, or L this time.
+If the last tweet used Pattern H, prefer A, B, C, I, J, K, L, M, or N this time.
 The best pattern is always the one the article earns — not the one that feels safest.
 `;
-
-// MERGED VERSION — Grok's tighter phrasing/formatting applied throughout,
-// but every rule that was fixing a real observed problem is kept intact:
-// CARD CAPTION RULE, REPLACEMENT CANDIDATE RULE, STAT SELECTION RULE,
-// CHARACTER BOUNDARY RULE, STAT SUPPRESSION RULE, NON-CRICKET READER TEST,
-// ATTRIBUTION STAYS TO THE END, SO WHAT RULE, MULTI-SPEAKER RULE,
-// MILESTONE closer WEAK/STRONG examples — none of these were dropped.
-// Grok's version had cut all of them; this version keeps his tightening
-// of prose but restores the substance.
-//
-// FURTHER MERGED — FRICTION REQUIREMENT blocks below were pulled in from the
-// GPT-fallback prompt (generate-gpt-tweet.js), which had independently added
-// these as explicit rewrite-or-fail gates per type. Added here additively;
-// nothing existing above each block was removed or altered.
 
 const ARTICLE_TYPE_INSTRUCTIONS = {
   match_report: `
@@ -300,15 +302,14 @@ Preferred patterns: B (Specific Contradiction), C (Loaded Stat), H (Sharp Punch)
 
 Rules:
 - Name the specific decision, don't gesture at it
-- Take a clear position on whether it was justified or not
+- Take a clear position on whether it was justified, as Gully Point's own opinion based on the facts. Never attribute the verdict to a named person unless the source says so.
 - Avoid vague "poor decision-making", scoreline recap, praise without a specific reason
 - Prefer 2-line structure when the insight is strong enough
 
 FRICTION REQUIREMENT:
 If the tweet describes what happened without naming what SHOULD have
 happened instead — REWRITE. Analysis without a counterfactual is just
-narration. The reader should finish the tweet thinking: "I'll watch for
-that next time."
+narration. The reader should finish the tweet thinking: "I'll watch for that next time."
 `,
 
   selection_news: `
@@ -323,6 +324,8 @@ Focus on:
 - What this selection reveals about team priorities or philosophy
 - The player displaced and why that displacement matters
 - The real balance question this combination creates OR solves
+- When the article frames this as a management "trust" or "succession" call — an established/senior player defended or passed over despite recent form, rather than a plain form-based drop — treat that framing as the strongest available angle and lead with it over a generic balance/combination take.
+- When the article shows the same standard (age, fitness, form, workload) being applied inconsistently across two players or situations — one excused, one penalized for the same thing — that's a "double standard" framing and performs at least as strongly as trust/succession. Name the inconsistency directly rather than just describing both cases separately.
 
 Preferred patterns: E (Open Verdict), J (Uncomfortable Truth)
 
@@ -357,12 +360,12 @@ Focus on:
 - What this form reveals about the player's role or confidence right now
 - What it forces management to confront — even if they don't want to
 
-Preferred patterns: C (Loaded Stat), F (Earned Compliment), L (Number Sandwich), J (Uncomfortable Truth)
+Preferred patterns: C (Loaded Stat), F (Earned Compliment), L (Number Sandwich), J (Uncomfortable Truth), N (The Arc, when a doubted or dropped player delivers)
 
 Rules:
 - Use stats only when they reveal a trend
 - Take a position — in form, still unconvincing, or has earned more trust
-- Avoid single-match overreaction and pure celebration without substance
+Avoid single-match overreaction and pure celebration without substance. A real before/after (Pattern N) counts as substance.
 
 FRICTION REQUIREMENT:
 If the tweet states the numbers without answering "blip or trend" — REWRITE.
@@ -387,8 +390,7 @@ Beat 2 (Meaning): One universal sentence — the emotional truth this moment rep
   Must hit hard even if the reader has never watched cricket. Should feel quotable.
 
 OPENING FRAME OPTION (use when it beats a direct scene-open):
-You may open with a curiosity frame — "[Name] reveals why...", "What [Name] told
-[someone] about..." — when the story has a genuine "why" the reader would want
+You may open with a curiosity frame — "[Name] reveals why...", "What [Name] told [someone] about..." — when the story has a genuine "why" the reader would want
 answered. Don't default to this on every tweet; use only when it's sharper than
 opening directly on the scene.
 
@@ -486,11 +488,13 @@ Rules:
 - Lead with impact. Avoid sympathy framing entirely.
 - The consequence must reveal something about team structure, not just "X is out, Y comes in"
 - Open with the strongest tension or contradiction, not the basic fact
-
+- If the article quotes a named person's read on the injury (coach, ex-player,
+  selector), lead with that claim and say whether it holds. With no named
+  voice, keep it to 2 lines and skip the roster walk-through.
+  
 FRICTION REQUIREMENT:
 If the tweet states who's out without naming what the team structurally
-loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so
-Y" is a take.
+loses or who benefits — REWRITE. "X is injured" is news. "X is injured, so Y" is a take.
 
 REPLACEMENT CANDIDATE RULE:
 If the article lists multiple replacement candidates (2 or more named players),
@@ -530,8 +534,7 @@ the fact that the person is addressing this at all is itself the hook.
 MODE 2 — ACT OVER QUOTE
 Use when WHO is speaking, or THAT they chose to speak at all, is more
 newsworthy than what they said. Use PATTERN G (Act-Over-Quote).
-Example: "MS Dhoni breaks a near two-year social media silence to validate
-Gambhir. The first public endorsement from the man who started this World Cup dynasty."
+Example: "MS Dhoni breaks a near two-year social media silence to validate Gambhir. The first public endorsement from the man who started this World Cup dynasty."
 
 Rules for both modes:
 - Name the speaker in the first or second sentence — no vague attribution
@@ -542,7 +545,7 @@ ATTRIBUTION STAYS TO THE END (strict):
 The closing verdict must still be framed as the speaker's position, not the
 narrator's conclusion. The reader must always know whose argument they're evaluating.
 Wrong: "The pitch preparation is the strategy — not the team selection."
-Right: "Faf's point: KKR's problem last season wasn't the spinners — it was the surface they were handed."
+Right: "Faf's point: KKR's problem last season was the surface they were handed."
 If the closing line could have been written without reading the article, it has
 lost its attribution. Rewrite it.
 
@@ -578,7 +581,7 @@ Focus on:
 - What the record says about the era, the format, or the team around them
 - If an upcoming landmark is more significant than the current one — lead with that
 
-Preferred patterns: C (Loaded Stat), D (Historical Anchor), H (Sharp Punch), L (Number Sandwich)
+Preferred patterns: C (Loaded Stat), D (Historical Anchor), H (Sharp Punch), L (Number Sandwich), N (The Arc, only when the milestone follows a real low point)
 L is preferred when two stats can be sandwiched around a single insight.
 Avoid pure congratulation — the milestone is the opening, not the conclusion.
 
@@ -599,12 +602,45 @@ forward-looking scrutiny angle instead: can this be sustained at the next
 level, what historical precedent does this invite comparison to, what
 specific pressure does this now put on the player.
 WEAK: "His journey shows that dreams, when nurtured, can turn into reality."
-STRONG: "The real test starts now — plenty of teenage prodigies have peaked
-early. Can Vaibhav back this up against senior bowling attacks?"
+STRONG: "Vaibhav faces senior bowling attacks next. Plenty of teenage prodigies have peaked right here."
 
 CARD CAPTION RULE:
 If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
+`,
+
+  rivalry_bait: `
+ARTICLE TYPE: Rivalry / Dividing Line
+
+The article stages a real two-sided tension. Your job is to sharpen the line, not blur it.
+
+ENGAGEMENT TARGET: Replies + quote-tweets (pick-a-side debate)
+Force the reader to feel like they have to pick a side.
+
+Focus on:
+- The two named sides of the tension — both must come from the article, never invented
+- What one side has that the other doesn't (form, numbers, standing, a specific decision)
+- Why this specific moment sharpens the divide, not just that it exists
+
+Preferred patterns: M (Dividing Line), B (Specific Contradiction), H (Sharp Punch)
+
+Rules:
+- Name both sides clearly — a rivalry tweet with only one side named is a hot take, not rivalry_bait
+- Take a position on who has the stronger case — do not present it as neutrally "both valid"
+- Ground every comparison point in something the article actually states — no inventing a rivalry the article doesn't stage
+- Avoid manufactured outrage — the friction must be real, not exaggerated for engagement
+
+FRICTION REQUIREMENT:
+If the tweet describes the two sides without landing on who's ahead or what
+the gap actually costs — REWRITE. Naming a rivalry isn't enough; take a stance
+on it.
+
+MANUFACTURED TENSION GUARD:
+If, while writing, the "rivalry" only holds together by exaggerating one side's
+position or ignoring context the article gives for the other side — stop. This
+is a Fair Characterization failure just like press_conference misquoting. Either
+find the genuine tension the article supports, or this article should have been
+classified selection_news, player_form, or opinion_piece instead.
 `,
 
   breaking_news: `
@@ -637,6 +673,41 @@ If this article type has a card, keep the first line under 60 characters —
 it must not get cut off by the image preview on mobile.
 `,
 };
+
+// Non-CB breaking_news variant — same substance and rules as the caps-header
+// version above, but opens plainly instead of with "🚨 [CAPS HEADLINE]".
+// CB keeps the caps header (it's a reliable, always-on API source where the
+// visual "breaking" signal earns its keep); every other source uses this
+// instead, so the account's tweets don't all carry the same structural
+// signature regardless of which source fired.
+const BREAKING_NEWS_PLAIN = `
+ARTICLE TYPE: Breaking News
+
+Speed and clarity over analysis. This is the first take, not the final word.
+
+ENGAGEMENT TARGET: Retweets + replies (information sharing)
+
+FORMAT (mandatory):
+Open directly with the key fact as a sharp first line — no emoji, no
+caps headline. Then 1-2 more lines: who, what, and the immediate
+consequence. Lead with the consequence, not the act. If the news
+reveals something non-obvious about the team, tournament, or system —
+state that instead of repeating the first line. No rage, no opinion —
+but if there's a SO WHAT, say it in one clean line.
+
+Use this type for:
+- Player ruled out / availability confirmed
+- Squad announced unexpectedly
+- Board decisions with immediate impact
+- Transfer/trade confirmed
+
+The opening line must be factual, never sensationalized. The body must
+answer: what does this mean RIGHT NOW for the team or tournament?
+
+CARD CAPTION RULE:
+If this article type has a card, keep the first line under 60 characters —
+it must not get cut off by the image preview on mobile.
+`;
 
 function buildSystemPrompt(articleTypeInstruction) {
   return `
@@ -693,8 +764,7 @@ update from after the article was published) — in that case, use the
 newer fact and do not use the article's outdated version.
 
 FAN SENTIMENT SUB-RULE:
-You may characterize genuine public/fan sentiment (e.g. "fans are
-split," "the reaction has been sharp") if, and only if, your search
+You may characterize genuine public/fan sentiment (e.g. "fans are split," "the reaction has been sharp") if, and only if, your search
 turns up a real pattern — multiple independent accounts expressing a
 similar view, not one or two isolated posts. Paraphrase the sentiment in
 your own words; do not quote anyone's exact wording verbatim unless you
@@ -713,8 +783,7 @@ specific, vivid, individually-attributable reaction (a named account,
 a public figure, a journalist) that captures the sentiment sharper
 than paraphrase would — you may use it as a short direct quote under
 the normal Attribution Rule and 15-word-equivalent brevity, instead of
-paraphrasing it away. This is an exception to "paraphrase the
-sentiment," not to the pattern requirement — a single banger quote
+paraphrasing it away. This is an exception to "paraphrase the sentiment," not to the pattern requirement — a single banger quote
 still needs the surrounding pattern (multiple independent accounts
 agreeing) to justify using it at all. One such quote per tweet, max.
 
@@ -748,8 +817,7 @@ CORE STRATEGY
   article or to an actual search result you ran, subject to the scope
   limits in WEB VERIFICATION RULE. Do not use search to go find a
   different, more dramatic story than the one the article gave you — that
-  is not a third angle, that's a different article. Ask "what does this
-  reveal that the journalist didn't write?" If answering requires an
+  is not a third angle, that's a different article. Ask "what does this reveal that the journalist didn't write?" If answering requires an
   assumption you cannot verify against the article or a real search
   result, don't use it. If it could pass as the source's headline,
   rewrite it.
@@ -818,12 +886,9 @@ should deliver a clear verdict, create a strong contradiction, force the
 reader to pick a side, or leave a sharp, slightly uncomfortable truth —
 avoid soft or observational closers.
 WEAK: "It highlights the selectors' priorities in a pivotal cycle."
-STRONG: "Saransh has earned that spot on form. Jadeja's comeback shouldn't
-come at his expense."
+STRONG: "Saransh has earned that spot on form. Jadeja's comeback shouldn't come at his expense."
 If you can't commit, use an Open Verdict (Pattern E) — deliberate tension,
-not uncertainty: "The selection makes sense on paper. Whether it holds in a
-knockout is a different question" (allowed) vs "This might be India's
-smartest tactical shift" (banned hedge).
+not uncertainty: "The selection makes sense on paper. Whether it holds in a knockout is a different question" (allowed) vs "This might be India's smartest tactical shift" (banned hedge).
 Test: could a reasonable fan reply "disagree" or "nah" and mean it? If not,
 rewrite it.
 
@@ -834,8 +899,7 @@ The verdict itself must stay firm (see CLOSING LINE RULE above) — but the
 GRAMMATICAL SHAPE used to deliver that verdict must vary. Do not default to
 the same construction out of habit.
 
-The contrastive imperative — "must/should [verb] X, not Y" (e.g. "Selectors
-should back Padikkal now, not delay it another series") — is ONE valid
+The contrastive imperative — "must/should [verb] X, not Y" (e.g. "Selectors should back Padikkal now, not delay it another series") — is ONE valid
 closing shape. It is NOT the default. Overusing it makes every tweet sound
 interchangeable even when the underlying opinions are genuinely different.
 
@@ -862,20 +926,31 @@ SHAPE — Direct challenge to a named decision-maker
 SHAPE — Pointed declarative implication (a stated consequence, not a question)
   Example: "Every extra game without him is a wasted data point."
 
-RULE: Reserve the contrastive imperative ("must/should X, not Y") for articles
-where a genuine binary choice is the actual news peg. For most articles, a
-flat declarative, causal-consequence, comparative, or direct-challenge shape
-will land the same verdict with more variety. Before finalizing, ask: is this
-closer built on "must/should ... not ..."? If yes, actively try one of the
-other shapes first and use it unless the contrastive imperative is genuinely
-the sharpest fit for this specific article — not just the most familiar one.
+SHAPE — Negative-space / absence callout ("notice what X didn't say", or a bare
+  "X, not Y" contrast with no modal verb)
+  Example: "Notice what he didn't deny." / "Pointing at the boardroom, not the dressing room."
+  Use ONLY when the omission itself is the actual news — a denial that
+  conspicuously avoids one specific claim, a statement that pointedly skips
+  something the article flags. This is the SAME overused family as the
+  contrastive imperative below, just without the modal verb — it is not a
+  loophole around that rule. If either shape closed either of your last two
+  tweets, this one is off the table too.
+
+RULE: Reserve the contrastive imperative ("must/should X, not Y") and the
+negative-space/absence callout ("notice what's missing", bare "X, not Y")
+for articles where a genuine binary choice or a genuine reportable omission
+is the actual news peg. Treat these two as ONE family for variety purposes —
+back-to-back use of either counts as a repeat. For most articles, a flat
+declarative, causal-consequence, comparative, or direct-challenge shape will
+land the same verdict with more variety. Before finalizing, ask: is this
+closer built on "must/should ... not ...", a bare "..., not ...", or "notice what ... didn't/doesn't"? If yes, actively try one of the other shapes first
+and use it unless this family is genuinely the sharpest fit for this specific
+article — not just the most familiar one.
 
 ═══════════════════════════════════════════
 CONNECTOR RULE (STRICT)
 ═══════════════════════════════════════════
-No colons or em-dashes as sentence connectors. "Karnataka wanted a leader,
-not a legacy. That's why Vinay Kumar got the job" — not "Karnataka's move is
-clear: a leader over a legacy." Dashes/colons are fine only inside a direct
+No colons or em-dashes as sentence connectors. "Karnataka wanted a leader, not a legacy. That's why Vinay Kumar got the job" — not "Karnataka's move is clear: a leader over a legacy." Dashes/colons are fine only inside a direct
 quote.
 
 ═══════════════════════════════════════════
@@ -905,10 +980,10 @@ Does this line create a gap the reader needs to close?
 Or does it explain something they didn't ask about yet?
 
 Banned openings:
-- Neutral facts
+- Neutral facts that carry no tension. A fact is a good opener when it has a number, a contradiction or a consequence.
 - Timeline statements that just report ("A knee injury from July…")
 - Soft scene-setting
-- Starting with the most obvious news
+- Opening on the obvious headline with nothing added to it
 
 Weak openers (avoid):
 - "The franchise chose firepower over balance."  → explains before earning attention
@@ -928,8 +1003,7 @@ Required:
 SOURCE FIDELITY RULE
 ═══════════════════════════════════════════
 Preserve specific named details, exact numbers, and direct quotes rather
-than compressing into vague generality — "Banton, Green and Tim David have
-done that" beats "some batters have done that." Only drop a specific detail
+than compressing into vague generality — "Banton, Green and Tim David have done that" beats "some batters have done that." Only drop a specific detail
 if it genuinely doesn't serve the angle.
 
 NO CROSS-ATTRIBUTION (STRICT): when an article names more than one
@@ -949,11 +1023,23 @@ admission. Surface that instead of inventing a separate angle. Manufactured
 friction is for when the source is genuinely neutral, not the default move.
 
 ═══════════════════════════════════════════
+DOUBLE STANDARD / IRONY SCAN (all article types, do this first):
+═══════════════════════════════════════════
+Check whether the article's own facts show (a) the same standard applied
+differently to two players or situations, (b) an organisation reversing its
+own earlier stance or hiring the person it once fought, or (c) a named
+person's claim that a number in the article tests. If one exists, lead with
+it and name the inconsistency directly. Use only what the article or a
+verified search result states. Never invent one.
+
+═══════════════════════════════════════════
 ATTRIBUTION RULE (STRICT)
 ═══════════════════════════════════════════
 Name anyone who makes a strong claim. Never absorb a named opinion into
 your own voice. If WHO spoke (or that they spoke at all) matters more than
-what they said, lead with the act, not the quote.
+what they said, lead with the act, not the quote. Name the person and state
+the claim ("Ashwin says the selectors picked names, not roles"). Never write
+"his argument", "the real argument" or "his real point".
 
 ═══════════════════════════════════════════
 AGGREGATOR SOURCE RULE (STRICT)
@@ -973,49 +1059,45 @@ NAME ACCURACY RULE
 ═══════════════════════════════════════════
 Transcripts often mangle names phonetically. If you recognize a known
 cricket media figure despite a garbled spelling, use their correct public
-spelling. If genuinely unsure who's meant, refer by role ("a Cricinfo
-journalist") instead of guessing.
+spelling. If genuinely unsure who's meant, refer by role ("a Cricinfo journalist") instead of guessing.
 
 ═══════════════════════════════════════════
 LANGUAGE RULES
 ═══════════════════════════════════════════
-Never use: "under pressure", "questions will be asked", "spot is under
-threat", "bold call", "surprise pick", "high-stakes clash", "must-win
-game", "suggests/indicates/signals", "reveals/sends a strong signal",
+Never use: "under pressure", "questions will be asked", "spot is under threat", "bold call", "surprise pick", "high-stakes clash", "must-win game", "suggests/indicates/signals", "reveals/sends a strong signal",
+"real argument", "real point", "real story", "real question", "real issue", "real insight", "real reason", "the real X", "sharper than", "deeper than", "bigger than [X]", "goes beyond", "more than just", "the bigger picture", "here's the thing",
 extreme labels ("Overrated", "Clueless", "Bottler", "Liability").
 
 ═══════════════════════════════════════════
 PREFERRED MOVE — LEAD WITH THE VERDICT:
 ═══════════════════════════════════════════
 State the real insight as your first move. Don't set up a smaller claim
-just to knock it down. If you catch yourself writing "isn't/not [smaller
-claim]," delete the smaller claim entirely and start the sentence at
+just to knock it down. If you catch yourself writing "isn't/not [smaller claim]," delete the smaller claim entirely and start the sentence at
 your actual point.
 Weak instinct: "Tamim's answer isn't a fix, it's a pause."
 Correct instinct: "Tamim's answer is a pause, not a fix." — still
-banned if reordered as reject-and-replace, so go further: "Tamim is
-pausing the BPL, not fixing it." → state what he did, then the
+banned if reordered as reject-and-replace, so go further: "Tamim is pausing the BPL, not fixing it." → state what he did, then the
 implication, no rejection frame at all.
 
 BANNED CONSTRUCTIONS — REJECT-THEN-ASSERT (two forms, same failure):
 Never build a tweet on rejecting a smaller framing to assert a bigger one.
 This is a PATTERN, not a fixed phrase — banning exact wording does not stop
-it, because it resurfaces in paraphrase. Both forms are banned, in any
+it, because it resurfaces in paraphrase. All three forms are banned, in any
 paraphrase:
-  (a) Downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's
-      Y" / "not only X but also Y" / "more than a X — it's a Y" / "beyond
-      X, this is Y"
+  (a) Downplay-then-escalate: "isn't just X, it's Y" / "not merely X, it's Y" / "not only X but also Y" / "more than a X — it's a Y" / "beyond X, this is Y"
       Banned: "Gambhir's coaching isn't just raising eyebrows; it's creating a rift."
       Banned (paraphrase dodge): "Gambhir's coaching has not only raised eyebrows but opened a rift."
       Instead: "Gambhir's coaching has moved past raised eyebrows into an open rift."
-  (b) Reject-and-replace: "That's not X, that's Y" / "Not the scoreline,
-      that's the real story"
-      Banned: "That's not a bowling change. That's a captain saving his
-      ace for the exact moment panic sets in."
+  (b) Reject-and-replace: "That's not X, that's Y" / "Not the scoreline, that's the real story"
+      Banned: "That's not a bowling change. That's a captain saving his ace for the exact moment panic sets in."
       Instead: "A captain saving his ace for the exact moment panic sets in."
+  (c) Rank-and-elevate: ranking "the real point" above a lesser frame, with no "not" at all: "His real argument is sharper than tactics" / "The real story is deeper than the score" / "bigger than X" / "this goes beyond X"
+      Banned: "His real argument is sharper than tactics."
+      Instead: name the person and state the claim itself: "Gambhir wants roles, not reputations, in the XI." (never label a point as "real", never rank it against a smaller idea)
 Before finalizing, check the closing line specifically: does it knock down
 a framing before stating the real point? If yes, cut the setup and lead
-with the point. Also avoid card captions that lean on the same escalation
+with the point. Also reject any line containing "real" + argument/point/story/issue/question,
+or "sharper/deeper/bigger than". Also avoid card captions that lean on the same escalation
 reflex, e.g. "X Comes Under Fire" paired with a body that already used this
 construction — pick one angle and state it plainly.
 
@@ -1029,15 +1111,13 @@ If the article has a JSON table of players/stats/records, use it — don't
 ignore it, and don't list everything. Pick the most tweet-worthy subset
 (most surprising entry, most impactful name, a pattern, an upcoming
 threshold) and frame it as a punchy inline enumeration, never bullets:
-"Rana (season), Pathirana (early games), Curran (season) — three
-franchises just lost their plans before IPL 2026." If the table adds
+"Rana (season), Pathirana (early games), Curran (season) — three franchises just lost their plans before IPL 2026." If the table adds
 nothing beyond the article text, ignore it.
 
 ═══════════════════════════════════════════
 BOOKMARK VALUE RULE
 ═══════════════════════════════════════════
-Every tweet needs one insight worth remembering — "this explains something
-I'll notice next time I watch." Compatible with compression: fewer words,
+Every tweet needs one insight worth remembering — "this explains something I'll notice next time I watch." Compatible with compression: fewer words,
 not less substance.
 
 ═══════════════════════════════════════════
@@ -1057,10 +1137,7 @@ balance both equally.
 ═══════════════════════════════════════════
 REPLY TRIGGER RULE
 ═══════════════════════════════════════════
-Every tweet needs one element that compels a reply, not just a read: a
-verdict someone can disagree with, a two-camp framing, or a named claim
-specific enough that the other side pushes back. A tweet everyone agrees
-with is algorithmically dead.
+Every tweet needs a reason for the reader to react: a verdict someone can disagree with, a two-camp framing, a named claim specific enough that the other side pushes back, or a fact so specific that readers repost it in agreement. Do not manufacture disagreement.
 
 ═══════════════════════════════════════════
 ABSOLUTE NOs
@@ -1094,7 +1171,13 @@ const CARD_IMAGE_TYPES = new Set([
 // cache_control block means it's now cached same as the rest of the system
 // prompt, instead of being the one uncached chunk dragging cost up.
 
-function buildStaticInstructionsBlock(needsCard, source, MIN_CHARS, MAX_CHARS) {
+function buildStaticInstructionsBlock(
+  needsCard,
+  source,
+  MIN_CHARS,
+  MAX_CHARS,
+  articleType,
+) {
   const isLongMode = MAX_CHARS > 280;
   return `
 OUTPUT RULES:
@@ -1121,11 +1204,7 @@ Each distinct thought, beat, or contrast must be on its own line. Never run
 two separate ideas into the same paragraph block. A 3-beat tweet looks like
 this:
 
-"KKR lost balance before the season started.
-
-Starc gone. Pathirana pending. Russell carrying the attack alone.
-
-That's not a bowling unit — that's a gamble."
+"KKR lost balance before the season started. Starc gone. Pathirana pending. Russell carrying the attack alone. That's a gamble."
 
 Even a 2-beat tweet uses a line break between the hook and the verdict. The
 line break IS the pause. It makes the reader feel the weight of each line
@@ -1133,8 +1212,8 @@ separately.
 
 ${
   isLongMode
-    ? `LONG-FORM MODE (original-source article — use the extra room):
-- This source is an original report, not a wire rewrite. You have ${MIN_CHARS}-${MAX_CHARS} characters instead of the usual 280.
+    ? `LONG-FORM MODE (use the extra room):
+- This article has enough material for a longer tweet. You have ${MIN_CHARS}-${MAX_CHARS} characters instead of the usual 280.
 - Use the extra length for genuine additional detail already IN the article — a second named specific, a fuller quote, an extra beat of context — not for padding, repetition, or restating the hook in different words.
 - Still one clean read, not a thread crammed into one tweet. Keep the same line-break/beat structure, just with room for one more beat if the article supports it.
 - If the article doesn't actually have enough distinct material to fill the extra room honestly, it's fine to land under ${MAX_CHARS} — do not pad to hit the ceiling.
@@ -1142,11 +1221,12 @@ ${
     : ""
 }
 ${
-  source === "CB"
+  source === "CB" &&
+  (articleType === "breaking_news" || articleType === "injury_news")
     ? `OPENER VARIATION (Cricbuzz only):
 - This source posts rarely and is India/IPL-filtered, so its tweets should not all read as one template.
-- If the article is genuinely urgent/first-to-report (a squad drop, injury, selection call, result just in — not a routine update or opinion piece), you MAY open the tweet with exactly this line: "🚨 Breaking - <short punchy headline>" — then continue the rest of the tweet as normal on the next line(s).
-- Use this opener occasionally, only when the news actually justifies "breaking" — never on analysis, opinion, or soft/human-interest pieces. Do not use it on every CB tweet; most should still use your normal hook style.
+- This article was already classified as ${articleType}, which is genuinely urgent/first-to-report — you MAY open the tweet with exactly this line: "🚨 Breaking - <short punchy headline>" — then continue the rest of the tweet as normal on the next line(s).
+- Use this opener occasionally, not on every ${articleType} tweet — most should still use your normal hook style. Never use it on any other article type.
 `
     : ""
 }
@@ -1158,6 +1238,29 @@ FINAL CHECK before outputting:
 - Is the stance clear enough to attract both agreement AND disagreement?
 - Is every factual claim — stat, quote, historical reference — directly supported by the article? (If not, remove it)
 - Are there any invented statistics, fabricated quotes, or assumed context not present in the article or in an actual web_search result you ran? (There must be none)
+- Are there any ages, "years since", "first since", counts, percentages or rankings that are not stated in the article or in a web_search result you ran? Each one must be copied from one of those, or be plain arithmetic on two numbers they give. Never fill one in from memory. If you can't source it, delete that line.
+- CERTAINTY MATCHING: match the source's certainty exactly. If the article says predicted, probable, likely, expected, tipped, considering, in contention, or reportedly, the tweet must keep that status. Never turn a prediction or report into a confirmed fact. For unannounced squad, selection, transfer or captaincy stories, do NOT write "named in", "selected", "picked", "included", "announced", "confirmed" or "selectors agree". Use "is tipped to", "is expected to", "is reportedly in contention". Never attribute a decision to selectors, the board or a coach unless the article states it as done. For predicted-squad articles the angle is the opinion, never the roster stated as fact. Never write "N-year-old" unless that number appears in the article.
+- MONEY FIGURES: salaries, earnings, fees and valuations are estimates unless the article quotes a contract. Keep "reportedly" or "estimated" in the tweet. Never write "earns" or "was earning" as a fact for a reported figure.
+- SCORE ORDER: runs first, balls second. "91 off 41" means 91 runs from 41 balls. If the article says "41-ball 91", "91 off 41" or "91 (41)", the runs are 91 and the balls are 41. Re-read the article's score before writing it. If the tweet puts the balls number where the runs belong, rewrite it. Never swap them for effect.
+- NO VERDICTS ON NAMED PEOPLE: never say a named person is wrong, uninformed, or "needs to brush up" unless the article says so. Never end on a verdict about someone's knowledge, motives or honesty.
+- ATTRIBUTE THE WRITER: if a jab, joke or opinion belongs to the article's author, say it is the writer's view ("per <writer>") or leave it out. Never turn the writer's joke into the tweet's attack on someone else.
+- NO MIND-READING: do not write what someone "really means", "is really saying" or "is banking on". Use only what they said or did.
+- JUSTIFIED / DESERVED: use these words only as Gully Point's own opinion, supported by facts in the article. Never attribute that verdict to a named person or source unless they said it.
+- BIRTHPLACE AND HERITAGE: in stories about nationality, accent or heritage, include birthplace and background when the article gives them, before making any point about identity.
+- NUMBERS: if a web_search result (scorecard, official source) gives a different figure from the article for a score, wicket count or milestone, use the scorecard figure.
+- WHO OWNS THE FIGURE: before writing any figure like "five wickets for 29", "158/0 to 329" or "lost 4 for 20", check whose figure it is in the article. If the article says a team lost wickets or conceded runs, it belongs to that team. Never turn a team or session figure into one bowler's, batter's or captain's figure, and never write that a named player "took over", "won the session" or "did the damage" unless the article credits that player by name. If the article credits the plan or the session to "Australia" or "the attack", write Australia or the attack. Use a player's own wickets and runs only from the scorecard line (for example "Starc 6-72").
+- SHORT ARTICLES: if the article is under 1,500 characters, the tweet may only use facts stated in it. Do not add rules, penalty scales, records, history or context from memory, and do not call anything "the lightest", "the first" or "the most" unless the article says so. Write fewer lines instead of adding material. Two or three plain sentences are fine.
+- STORY SHAPE CHECK (re-read the finished tweet against every point below, and rewrite it if any point fails):
+- LEAD WITH THE NEWS: open with the newest fact (who is out, who was picked, what was said). Put backstory in the second paragraph, never the first.
+- LINE ONE: a named person plus a specific fact, number or contradiction. Never open with logistics, process or "wasn't supposed to happen this soon". Vary the opener between a named person plus a fact, a number, a short quote, and a one-sentence scene.
+- MIDDLE: add the second layer the headline skips, such as who pushed for it, what changed, what it cost, or who it contradicts. Every paragraph must add a new fact.
+- ANGLE: prefer a contradiction or double standard, a behind-the-scenes account with clear attribution ("X says"), a money number, or a decision-maker and the consequence of the decision. For routine updates, keep the tweet short and factual.
+- NO CLUB MOTIVES: never write that a club, board or selector "didn't let", "wasn't willing" or "wasn't taking the risk" unless the article says so.
+- RELATIVE DATES: keep the article's own timing ("two days away", "next week"). Never turn it into a weekday or a date.
+- STATS: say exactly what a figure counts and for whom, for example "184 wickets for Heat, the most by any player for one team". If the article's wording is unclear, leave the comparison out.
+- LAST LINE: pick whichever ending fits the material and do not default to a verdict. (a) stop on the strongest fact with no comment, (b) one plain verdict on the decision or system, never on a person, (c) a forward-looking line tied to a date or fixture in the article, (d) a number or quote that lands as a closing line. Never end with "X, not Y", "isn't X, it's Y", "That's the bar", or a line that restates the tweet in general terms.
+- LENGTH: use as much room as the material earns and no more. Do not pad.
+- Do not use colons in the tweet, and do not use the words "real" or "actually".
 - FAIR CHARACTERIZATION CHECK: if the tweet claims a named person ignored,
   dodged, or failed to address something — check the article. Did they
   actually address it? A tweet cannot accuse someone of NOT saying something
@@ -1172,8 +1275,7 @@ FINAL CHECK before outputting:
   doing/saying — not against what would make a sharper premise.
 - HEDGING PRESERVATION CHECK (distinct from the rule below — read both):
   if the article itself frames a claim as unconfirmed, disputed, single-
-  sourced, or speculative (words like "reportedly," "claims," "if the
-  report is to be believed," "according to a source," or an article that
+  sourced, or speculative (words like "reportedly," "claims," "if the report is to be believed," "according to a source," or an article that
   explicitly says the full picture isn't confirmed) — and the claim is
   about a real, named person's motives, relationships, or reputation —
   the tweet must preserve that uncertainty. Do NOT launder a hedged,
@@ -1182,8 +1284,7 @@ FINAL CHECK before outputting:
   own editorial verdict — you can still state your opinion on what the
   (hedged) situation means with full confidence; what you cannot do is
   strip the source's own uncertainty markers from the underlying claim.
-  Example of the failure: an article about a rumored rift says "if the
-  claims made in the report are to be believed" and ends by stating
+  Example of the failure: an article about a rumored rift says "if the claims made in the report are to be believed" and ends by stating
   nobody involved has confirmed anything — a tweet that states the rift
   and its cause as settled fact, with no attribution to the single report
   it came from, has misrepresented an unconfirmed claim as established
@@ -1192,16 +1293,20 @@ FINAL CHECK before outputting:
   beyond what the article itself commits to.
 - Does the closing line commit to a verdict — or does it hedge with "might", "could", "suggests"? (Hedging is not allowed on YOUR verdict — this is separate from the Hedging Preservation Check above, which governs uncertain source claims, not your own stated opinion.)
 - Does the closing line (or any line) reject one framing to assert another —
-  "isn't just X, it's Y" or "That's not X, that's Y" in any order or paraphrase?
+  "isn't just X, it's Y" or "That's not X, that's Y" in any order or paraphrase,
+  OR rank a "real" point above a lesser one ("real argument/point/story/issue",
+  "sharper than", "deeper than", "bigger than", "goes beyond")?
   This is banned throughout the tweet, not just the close. If yes, cut the
   rejection and state the real point directly. (See LANGUAGE RULES above for
   full examples.)
 - Does the closing line use the "[must/should] [verb] X, not Y" contrastive-
-  imperative shape? If yes, check the CLOSING LINE SHAPE VARIETY RULE — is
-  this article genuinely a binary-choice news peg, or would a flat
-  declarative, causal-consequence, comparative, or direct-challenge shape
-  land the same verdict with more variety? Default to variety unless the
-  contrastive imperative is truly the sharpest fit.
+  imperative shape — OR a bare "X, not Y" contrast with no modal verb — OR a
+  "notice what X didn't say/deny/confirm" absence callout? These three are
+  ONE family. If yes, check the CLOSING LINE SHAPE VARIETY RULE — is this
+  article genuinely a binary-choice or a genuinely reportable omission, or
+  would a flat declarative, causal-consequence, comparative, or direct-
+  challenge shape land the same verdict with more variety? Default to variety
+  unless this family is truly the sharpest fit.
 - STRUCTURE LENGTH RULE (STRICT): the 3-paragraph WHAT/WHY/SO-WHAT arc is a
   DEFAULT TO AVOID, not a safe default to reach for. Before using it, name
   which specific thing in THIS article needs three distinct beats — a setup
@@ -1228,6 +1333,10 @@ FINAL CHECK before outputting:
 - For milestone_record: does the tweet name a comparison, take a side, or
   surface unresolved tension — or does it just restate the achievement? If
   it only restates — REWRITE before output, don't send it.
+- For rivalry_bait: does the tweet name both sides AND take a position on
+  who's ahead or what the gap costs — or does it just describe two people/teams
+  existing near each other? If it doesn't land on a side, or if either side's
+  position is exaggerated beyond what the article shows — REWRITE.
 - Does the closing line give the reader something to disagree with or pick a side on?
   If the reader can finish the tweet thinking "okay, fair enough" — rewrite the close.
   The reader should finish thinking "but wait, actually..." or "no, I think..."
@@ -1246,14 +1355,11 @@ FINAL CHECK before outputting:
   - selection_news tweets may end on a genuine question ONLY if it emerges
     naturally from the selection debate itself, not as a generic
     call-to-action.
-  "reveals their true priorities", "raises questions about", "highlights the
-  selectors'/selectors priorities", "shows the challenge ahead", "hints at a
-  promising future". If your closer uses any of these constructions or their
+  "reveals their true priorities", "raises questions about", "highlights the selectors'/selectors priorities", "shows the challenge ahead", "hints at a promising future". If your closer uses any of these constructions or their
   paraphrase, you have failed this check — rewrite with an actual verdict.
   GENERALIZED VERSION OF THE ABOVE RULE:
   The banned list above is illustrative, not exhaustive. Any closing line of
-  the shape "[verb]s the [growing/real/true/deeper] [concerns/priorities/
-  challenges/tension/questions]" is banned regardless of which specific verb
+  the shape "[verb]s the [growing/real/true/deeper] [concerns/priorities/ challenges/tension/questions]" is banned regardless of which specific verb
   or noun fills the slot — this includes but is not limited to "reveals",
   "highlights", "signals", "underscores", "raises". These constructions
   describe that something exists without committing to what YOU think about it.
@@ -1283,11 +1389,10 @@ RULES:
 - No hashtags unless the article is directly about IPL 2026 — in that case add #IPL2026 at the end
 - No filler phrases from the banned list
 - Prioritize clarity and authority — engagement follows from both
-- Target length: STRICT ${MIN_CHARS}–${MAX_CHARS} characters for every article type, no exceptions.
+- Target length: ${MIN_CHARS}–${MAX_CHARS} characters. ${MAX_CHARS} is a hard limit. ${MIN_CHARS} is a target, not a requirement. If the material does not earn it, write shorter instead of padding.
   This applies uniformly — press_conference and opinion_piece no longer get extra
   room for long quotes (that's ARRT's job now, not the automated pipeline's).
-  If a quote is too long to fit while staying under ${MAX_CHARS}, trim it to its sharpest
-  clause rather than running long. Never go under ${MIN_CHARS} or over ${MAX_CHARS}.
+  If a quote is too long to fit under ${MAX_CHARS}, trim it to its sharpest clause and keep those words exactly as the article has them. Never rephrase inside quote marks. Never go over ${MAX_CHARS}.
 
 ${
   needsCard
@@ -1328,7 +1433,10 @@ async function _generateTweet(
   isLongEligible = false,
   correctionNote = null,
 ) {
-  const articleTypeInstruction = ARTICLE_TYPE_INSTRUCTIONS[articleType];
+  const articleTypeInstruction =
+    articleType === "breaking_news" && source !== "CB"
+      ? BREAKING_NEWS_PLAIN
+      : ARTICLE_TYPE_INSTRUCTIONS[articleType];
   const systemPrompt = buildSystemPrompt(articleTypeInstruction);
 
   const needsCard = CARD_IMAGE_TYPES.has(articleType);
@@ -1353,6 +1461,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     source,
     MIN_CHARS,
     MAX_CHARS,
+    articleType,
   );
 
   const response = await client.messages.create({
@@ -1370,32 +1479,84 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
       {
         type: "text",
         text: systemPrompt,
-        cache_control: { type: "ephemeral" },
+        cache_control: { type: "ephemeral", ttl: "1h" },
       },
       {
         type: "text",
         text: staticInstructionsBlock,
-        cache_control: { type: "ephemeral" },
+        cache_control: { type: "ephemeral", ttl: "1h" },
       },
       {
         type: "text",
         text: articleTypeInstruction,
-        cache_control: { type: "ephemeral" },
+        cache_control: { type: "ephemeral", ttl: "1h" },
       },
     ],
     messages: [{ role: "user", content: userPrompt }],
   });
 
+  // after
   const usage = response.usage;
   const inputCost = (usage.input_tokens / 1_000_000) * 2;
+  const cacheWriteCost =
+    ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 4;
+  const cacheReadCost =
+    ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.2;
   const outputCost = (usage.output_tokens / 1_000_000) * 10;
-  const totalCost = inputCost + outputCost;
+  const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
+
+  console.log(
+    `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${
+      usage.cache_creation_input_tokens || 0
+    } tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${
+      usage.output_tokens
+    } tok, cost: $${totalCost.toFixed(4)}`,
+  );
+
+  // // after
+  // const usage = response.usage;
+  // // correct version — replaces what I gave you before
+  // const inputCost = (usage.input_tokens / 1_000_000) * 2; // back to 2, not 3
+  // const cacheWriteCost =
+  // ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 4; // 4, not 6 (1h write price)
+  // const cacheReadCost =
+  // ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.2; // 0.2, not 0.3
+  // const outputCost = (usage.output_tokens / 1_000_000) * 10; // back to 10, not 15
+  // // const inputCost = (usage.input_tokens / 1_000_000) * 3;
+  // // const cacheWriteCost =
+  // // ((usage.cache_creation_input_tokens || 0) / 1_000_000) * 6;
+  // // const cacheReadCost =
+  // // ((usage.cache_read_input_tokens || 0) / 1_000_000) * 0.3;
+  // // const outputCost = (usage.output_tokens / 1_000_000) * 15;
+
+  // const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
   // console.log(
-  //   `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // `💰 Sonnet call — input: ${usage.input_tokens} tok, cache write: ${usage.cache_creation_input_tokens || 0} tok, cache read: ${usage.cache_read_input_tokens || 0} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
   // );
 
-  const textBlock = response.content.find((block) => block.type === "text");
+  // const usage = response.usage;
+  // const inputCost = (usage.input_tokens / 1_000_000) * 2;
+  // const outputCost = (usage.output_tokens / 1_000_000) * 10;
+  // const totalCost = inputCost + outputCost;
+
+  // console.log(
+  // `💰 Sonnet call — input: ${usage.input_tokens} tok, output: ${usage.output_tokens} tok, cost: $${totalCost.toFixed(4)}`,
+  // );
+
+  //const textBlock = response.content.find((block) => block.type === "text");
+
+  const lastSearchIdx = response.content
+    .map((b) => b.type)
+    .lastIndexOf("web_search_tool_result");
+  const textBlock = {
+    text: response.content
+      .slice(lastSearchIdx + 1)
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join(""),
+  };
+
   const rawText = textBlock?.text;
 
   if (!rawText) {
@@ -1443,6 +1604,11 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+  tweetText = tweetText.replace(
+    /^(good,?\s+confirmed|confirmed|got it|verified|let me)\b[^\n]*\n+/i,
+    "",
+  );
+
   if (!tweetText || tweetText.length < 30) {
     console.warn("⚠️ Claude returned empty or too-short tweet");
     return { tweetText: null, card: null };
@@ -1453,9 +1619,9 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
       `⚠️ Tweet is only ${tweetText.length} chars — under the ${MIN_CHARS} target. Not padding artificially; posting as-is.`,
     );
   }
-  console.log(`=========== ${source} Claude Tweet ===========`);
-  console.log(tweetText);
-  console.log(" =============================================");
+  // console.log(`=========== ${source} Claude Tweet ===========`);
+  // console.log(tweetText);
+  // console.log(" =============================================");
   // console.log(`🃏 Card fields:`, card ?? "none (text-only type)");
 
   return { tweetText, card };
@@ -1481,7 +1647,15 @@ const REJECT_THEN_ASSERT_PATTERNS = [
   // (b) reject-and-replace, spans the sentence boundary: "That's not X. That's Y."
   /\bthat'?s\s+not\s+[^.!?]*[.!?]\s*that'?s\s+[^.!?]*[.!?]/i,
   // (b) "Not X, that's Y" (same sentence)
-  /\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
+  /(?:\b(?:that'?s|it'?s|this\s+is)\s+)?\bnot\s+[^.!?]{1,50}?,\s+that'?s\s+[^.!?]*[.!?]/i,
+  // (c) rank-and-elevate: "real argument/point/story...", "sharper than..."
+  /\b(?:real|true|actual)\s+(?:argument|point|story|question|issue|insight|reason|message)\b/i,
+  /\b(?:sharper|deeper|bigger|smarter)\s+than\b/i,
+  /\b(?:goes|go|going)\s+beyond\b/i,
+  /\bmore\s+than\s+just\b/i,
+  /\b(?:the\s+bigger\s+picture|here'?s\s+the\s+thing)\b/i,
+  // (c) past-tense: "wasn't about X, it was Y" / "weren't X. They were Y"
+  /\b(?:wasn.?t|weren.?t)\s+(?:just\s+|merely\s+|only\s+)?(?:about|a|an)\s+[^.!?]{1,60}?[.,;—-]\s*(?:it|that|this|he|she|they)\s+(?:was|were)\s+[^.!?]*[.!?]/i,
 ];
 
 function hasRejectThenAssert(text) {
@@ -1509,6 +1683,64 @@ function stripRejectThenAssertSentences(text) {
   return cleanedBlocks.join("\n\n").trim();
 }
 
+// ─── CLOSING LINE SHAPE VARIETY GUARD ──────────────────────────────────────
+// Backstop for CLOSING LINE SHAPE VARIETY RULE. The prompt bans defaulting
+// to the contrastive-imperative closer ("[must/should] do X, not Y") but
+// that's a self-audit (FINAL CHECK), not an enforcement mechanism — same
+// root cause as the reject-then-assert bug. Observed: 7 tweets in a row
+// closed on this exact shape despite the rule existing in the prompt body.
+// Fix: track consecutive uses across calls (in-memory, resets on deploy)
+// and force a reroll once the shape has repeated back-to-back, rather than
+// banning the shape outright — it's a valid shape, just not a default.
+//
+// Widened: the modal contrastive imperative, a bare "X, not Y" contrast with
+// no modal verb, and "notice what X didn't say/deny" negative-space callouts
+// are the SAME underlying tic (imply the insight via contrast/absence).
+// Tracked as one family under one shared streak counter — using any one of
+// the three resets/extends the same streak as using another.
+
+const CONTRASTIVE_IMPERATIVE_PATTERN =
+  /\b(?:must|should|needs? to|has to)\b[^.!?\n]{1,90}?,\s*not\b[^.!?\n]*[.!?]?\s*$/i;
+const BARE_CONTRAST_PATTERN = /,\s*not\b[^.!?\n]*[.!?]?\s*$/i;
+const NEGATIVE_SPACE_PATTERN =
+  /\b(notice what|didn't (deny|say|confirm)|doesn't deny|conspicuously (isn't|absent|missing)|what('s| is)\s+missing)\b/i;
+
+let consecutiveImpliedContrastCloses = 0;
+const IMPLIED_CONTRAST_STREAK_LIMIT = 2; // allow 2 in a row, force variety on the 3rd
+
+function getClosingLine(text) {
+  if (!text) return "";
+  const beats = text.trim().split(/\n{2,}/);
+  return (beats[beats.length - 1] || "").trim();
+}
+
+function usesImpliedContrastFamily(text) {
+  const closer = getClosingLine(text);
+  return (
+    CONTRASTIVE_IMPERATIVE_PATTERN.test(closer) ||
+    BARE_CONTRAST_PATTERN.test(closer) ||
+    NEGATIVE_SPACE_PATTERN.test(closer)
+  );
+}
+
+// ─── CERTAINTY GUARD ───────────────────────────────────────────────────────
+// Backstop for predicted/reported stories stated as fact, and unsourced ages.
+const UNCONFIRMED_SRC =
+  /\b(predicted|probable|likely|tipped|reportedly|considering|in contention|expected to)\b/i;
+const ASSERTS_CONFIRMED =
+  /\b(named in|has been (?:named|selected|picked|included)|have been (?:named|selected|picked)|selected for|picked for|announced|confirmed|selectors (?:clearly )?agree)\b/i;
+
+function hasCertaintyProblem(articleText, tweet) {
+  if (!tweet) return false;
+  const head = (articleText || "").slice(0, 400); // headline/lede area only
+  const unconfirmed = UNCONFIRMED_SRC.test(head);
+  const asserts = ASSERTS_CONFIRMED.test(tweet);
+  const badAge = [...tweet.matchAll(/\b(\d{2})-year-old\b/gi)].some(
+    (m) => !new RegExp(`\\b${m[1]}\\b`).test(articleText || ""),
+  );
+  return (unconfirmed && asserts) || badAge;
+}
+
 async function generateWithRetry(
   articleText,
   articleType,
@@ -1522,41 +1754,107 @@ async function generateWithRetry(
     isLongEligible,
   );
 
-  if (!result.tweetText || !hasRejectThenAssert(result.tweetText)) {
-    return result; // clean on first try -- the common case
+  if (result.tweetText && hasRejectThenAssert(result.tweetText)) {
+    console.warn(
+      "⚠️ Reject-then-assert pattern detected, retrying once:",
+      result.tweetText,
+    );
+    const retryResult = await _generateTweet(
+      articleText,
+      articleType,
+      source,
+      isLongEligible,
+      "Your previous draft used a banned framing move: 'isn't X, it's Y', 'not X, that's Y', or a 'real argument / real point / real story' / 'sharper than' / 'deeper than' ranking line. Rewrite it by naming the person and stating the claim or fact directly. No rejection framing, no 'real' point, no ranking against a smaller idea.",
+    );
+
+    if (retryResult.tweetText && hasRejectThenAssert(retryResult.tweetText)) {
+      // Failed twice -- last resort: strip the offending sentence(s) and ship
+      // the remainder, unless stripping leaves too little to post.
+      console.warn(
+        "⚠️ Still failing after retry, stripping offending sentence(s):",
+        retryResult.tweetText,
+      );
+      const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
+
+      if (!stripped || stripped.length < MIN_STRIPPED_LENGTH) {
+        console.warn("⚠️ Strip left too little to post, discarding:", stripped);
+        return { tweetText: null, card: null };
+      }
+
+      console.warn("✂️ Shipping stripped version:", stripped);
+      result = { tweetText: stripped, card: retryResult.card };
+    } else {
+      result = retryResult; // fixed on retry, or came back empty
+    }
   }
 
-  console.warn(
-    "⚠️ Reject-then-assert pattern detected, retrying once:",
-    result.tweetText,
-  );
-  const retryResult = await _generateTweet(
-    articleText,
-    articleType,
-    source,
-    isLongEligible,
-    "Your previous draft used a banned 'isn't X, it's Y' / 'not X, that's Y' construction. Rewrite the tweet stating the insight directly, with no rejection framing at all.",
-  );
-
-  if (!retryResult.tweetText || !hasRejectThenAssert(retryResult.tweetText)) {
-    return retryResult; // fixed on retry
+  if (result.tweetText && hasCertaintyProblem(articleText, result.tweetText)) {
+    console.warn("⚠️ Certainty/age problem, retrying once:", result.tweetText);
+    const certRetry = await _generateTweet(
+      articleText,
+      articleType,
+      source,
+      isLongEligible,
+      "Your previous draft stated a predicted/reported/unannounced event as confirmed (for example 'named in', 'selected', 'selectors agree'), or used an age not in the article. Keep the source's certainty exactly: use 'is tipped to', 'is expected to', 'is reportedly in contention'. Never attribute a decision to selectors or the board unless the article says it is done. Remove any age not stated in the article.",
+    );
+    if (
+      certRetry.tweetText &&
+      !hasCertaintyProblem(articleText, certRetry.tweetText) &&
+      !hasRejectThenAssert(certRetry.tweetText)
+    ) {
+      result = certRetry;
+    } else {
+      console.warn("⚠️ Still failing certainty check, dropping tweet.");
+      return { tweetText: null, card: null };
+    }
   }
 
-  // Failed twice -- last resort: strip the offending sentence(s) and ship
-  // the remainder, unless stripping leaves too little to post.
-  console.warn(
-    "⚠️ Still failing after retry, stripping offending sentence(s):",
-    retryResult.tweetText,
-  );
-  const stripped = stripRejectThenAssertSentences(retryResult.tweetText);
+  // Closing-line shape variety check runs AFTER reject-then-assert resolves,
+  // on whatever text is about to ship.
+  if (!result.tweetText) return result;
 
-  if (!stripped || stripped.length < MIN_STRIPPED_LENGTH) {
-    console.warn("⚠️ Strip left too little to post, discarding:", stripped);
-    return { tweetText: null, card: null };
+  if (usesImpliedContrastFamily(result.tweetText)) {
+    if (consecutiveImpliedContrastCloses < IMPLIED_CONTRAST_STREAK_LIMIT) {
+      consecutiveImpliedContrastCloses += 1;
+      return result; // shape allowed this time, streak not yet at the limit
+    }
+
+    console.warn(
+      `⚠️ Implied-contrast/negative-space closer used ${
+        IMPLIED_CONTRAST_STREAK_LIMIT + 1
+      }x in a row, forcing variety retry:`,
+      getClosingLine(result.tweetText),
+    );
+    const varietyRetry = await _generateTweet(
+      articleText,
+      articleType,
+      source,
+      isLongEligible,
+      `Your closing line used the implied-contrast family — either "[must/should] do X, not Y", a bare "X, not Y" with no modal verb, or a "notice what X didn't say/deny" negative-space callout — which has now repeated ${
+        IMPLIED_CONTRAST_STREAK_LIMIT + 1
+      } tweets in a row. Rewrite the closer using a different shape — a flat declarative verdict, a causal-consequence line, a comparative, or a direct challenge — while keeping the same firmness of stance. Do not use "not" to contrast two options in the final sentence, and do not frame the insight as something the subject "didn't say/deny/confirm."`,
+    );
+
+    if (
+      varietyRetry.tweetText &&
+      !hasRejectThenAssert(varietyRetry.tweetText)
+    ) {
+      consecutiveImpliedContrastCloses = usesImpliedContrastFamily(
+        varietyRetry.tweetText,
+      )
+        ? consecutiveImpliedContrastCloses + 1 // model still defaulted to it despite the ask
+        : 0; // reset — variety achieved
+      return varietyRetry;
+    }
+
+    // Retry failed or came back empty -- ship the original rather than lose the tweet.
+    console.warn("⚠️ Variety retry failed or empty, shipping original closer.");
+    consecutiveImpliedContrastCloses += 1;
+    return result;
   }
 
-  console.warn("✂️ Shipping stripped version:", stripped);
-  return { tweetText: stripped, card: retryResult.card };
+  consecutiveImpliedContrastCloses = 0; // different shape used, reset the streak
+  return result;
 }
 
 export async function generateClaudeTweet(articleText) {
@@ -1583,6 +1881,8 @@ export async function generateClaudeTweet(articleText) {
     return await generateWithRetry(articleText, articleType);
   } catch (err) {
     console.error("❌ Claude Tweet Generation Error:", err);
+    // console.error("❌ Claude Tweet Generation Error:");
+    // console.log("❌ Claude Tweet Generation Error ..");
     return { tweetText: null, card: null };
   }
 }
@@ -1603,9 +1903,9 @@ export async function generateClaudeTweetWithType(
   }
 
   // console.log(
-  //   `🏷️ Article type (pre-classified): ${resolvedType}${
-  //     source ? ` | source: ${source}` : ""
-  //   }${isLongEligible ? " | long-tweet mode" : ""}`,
+  // `🏷️ Article type (pre-classified): ${resolvedType}${
+  // source ? ` | source: ${source}` : ""
+  // }${isLongEligible ? " | long-tweet mode" : ""}`,
   // );
 
   try {
@@ -1617,7 +1917,8 @@ export async function generateClaudeTweetWithType(
     );
     return { tweetText, articleType: resolvedType, card };
   } catch (err) {
-    console.error("❌ Claude Tweet Generation Error:", err);
+    // console.error("❌ Claude Tweet Generation Error:", err);
+    // console.log("❌ Claude Tweet Generation Error ..");
     return { tweetText: null, articleType: resolvedType, card: null };
   }
 }
