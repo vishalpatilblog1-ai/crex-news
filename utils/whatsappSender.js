@@ -36,7 +36,6 @@
 import twilio from "twilio";
 import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
-import PDFDocument from "pdfkit";
 
 dotenv.config();
 
@@ -140,7 +139,10 @@ function toPdfSafeText(text) {
     );
 }
 
-function buildPdfBuffer(content) {
+// pdfkit is loaded lazily so a missing package can only fail the PDF message,
+// never crash the whole app at startup.
+async function buildPdfBuffer(content) {
+  const { default: PDFDocument } = await import("pdfkit");
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 40 });
     const chunks = [];
