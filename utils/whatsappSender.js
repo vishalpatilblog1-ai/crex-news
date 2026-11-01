@@ -17,11 +17,15 @@
 //      TWILIO_AUTH_TOKEN=your_auth_token_here
 //      TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 //      TWILIO_WHATSAPP_TO=whatsapp:+91XXXXXXXXXX
-//    Optional — second message with a .txt file (tweet + "add more spice" +
-//    full article), uploaded to Cloudinary and attached via Twilio:
+//    Optional — second message with a PDF file (tweet + "add more spice" +
+//    full article), uploaded to Cloudinary and attached via Twilio.
+//    NOTE: WhatsApp (via Twilio) does NOT accept .txt, only PDF/DOC/DOCX/PPTX/XLSX,
+//    so the article is sent as a PDF. If Twilio still returns 63019, open the
+//    Cloudinary URL in a browser and check Cloudinary > Settings > Security >
+//    "Restricted media types" allows PDF delivery.
 //      SEND_VIA_TXT=true
 //      CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
-// 5. npm install twilio cloudinary
+// 5. npm install twilio cloudinary pdfkit
 //
 // Common failure codes (these show up AFTER Twilio accepts the message):
 //   63015 -> your number is not joined to the sandbox (send the join code)
@@ -32,6 +36,7 @@
 import twilio from "twilio";
 import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
+import PDFDocument from "pdfkit";
 
 dotenv.config();
 
@@ -45,11 +50,13 @@ const TO = process.env.TWILIO_WHATSAPP_TO;
 // Unset / false      -> behaves exactly like before (one message only).
 const SEND_VIA_TXT = ["true", "1", "yes", "on"].includes(
   String(process.env.SEND_VIA_TXT ?? "")
+    .replace(/["']/g, "")
     .trim()
     .toLowerCase(),
 );
-
-console.log("value of SEND_VIA_TXT is ::", SEND_VIA_TXT);
+console.log(
+  `📎 SEND_VIA_TXT=${SEND_VIA_TXT} (raw: ${JSON.stringify(process.env.SEND_VIA_TXT)})`,
+);
 
 // How long to wait before checking final delivery status (ms).
 // Twilio accepts first and fails async a few seconds later.
@@ -120,7 +127,34 @@ function buildTxtContent({ tweetText, headline, source, articleText }) {
   ].join("\n");
 }
 
-async function uploadTxtToCloudinary(content, source, headline) {
+// Helvetica (the built-in PDF font) only covers Latin-1 / WinAnsi, so swap the
+// few common characters it can't draw instead of printing boxes.
+function toPdfSafeText(text) {
+  return String(text || "")
+    .replace(/₹/g, "Rs ")
+    .replace(/[\u2010\u2011\u2012]/g, "-")
+    .replace(/\u00A0/g, " ")
+    .replace(
+      /[^\x09\x0A\x0D\x20-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026]/g,
+      "?",
+    );
+}
+
+function buildPdfBuffer(content) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 40 });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    doc.font("Helvetica").fontSize(11).text(toPdfSafeText(content), {
+      lineGap: 3,
+    });
+    doc.end();
+  });
+}
+
+async function uploadTxtToCloudinary(pdfBuffer, source, headline) {
   const safeSource =
     String(source || "src")
       .toLowerCase()
@@ -133,11 +167,11 @@ async function uploadTxtToCloudinary(content, source, headline) {
       .slice(0, 40) || "article";
 
   const result = await cloudinary.uploader.upload(
-    `data:text/plain;base64,${Buffer.from(content, "utf8").toString("base64")}`,
+    `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
     {
       resource_type: "raw",
       // For raw files the extension must be part of the public_id.
-      public_id: `gp_articles/${safeSource}-${slug}-${Date.now()}.txt`,
+      public_id: `gp_articles/${safeSource}-${slug}-${Date.now()}.pdf`,
       overwrite: true,
     },
   );
@@ -145,7 +179,7 @@ async function uploadTxtToCloudinary(content, source, headline) {
 }
 
 /**
- * Message #2: the .txt file (tweet + "add more spice" + full article).
+ * Message #2: the PDF file (tweet + "add more spice" + full article).
  * Returns true if Twilio did not reject/fail it.
  */
 async function sendTxtMessage({ source, headline, tweetText, articleText }) {
@@ -155,13 +189,14 @@ async function sendTxtMessage({ source, headline, tweetText, articleText }) {
   }
 
   const content = buildTxtContent({ tweetText, headline, source, articleText });
-  const url = await uploadTxtToCloudinary(content, source, headline);
-  console.log(`📎 Article .txt uploaded: ${url}`);
+  const pdfBuffer = await buildPdfBuffer(content);
+  const url = await uploadTxtToCloudinary(pdfBuffer, source, headline);
+  console.log(`📎 Article PDF uploaded (${pdfBuffer.length} bytes): ${url}`);
 
   const msg = await client.messages.create({
     from: FROM,
     to: TO,
-    body: `📎 ${source} tweet + article (.txt)`,
+    body: `📎 ${source} tweet + article (PDF)`,
     mediaUrl: [url],
   });
 
@@ -179,13 +214,17 @@ async function sendTxtMessage({ source, headline, tweetText, articleText }) {
 
   if (check && ["failed", "undelivered"].includes(check.status)) {
     console.log(
-      `❌ WhatsApp ${source} .txt ${check.status} — error ${check.errorCode}: ${check.errorMessage || ""}. The tweet message was delivered; the full article is in the log above.`,
+      `❌ WhatsApp ${source} PDF ${check.status} — error ${check.errorCode}: ${check.errorMessage || ""}. The tweet message was delivered; the full article is in the log above.${
+        check.errorCode === 63019
+          ? " 63019 = Twilio could not download the file. Open the Cloudinary URL above in a browser; if it does not open as a PDF, allow PDF delivery in Cloudinary > Settings > Security."
+          : ""
+      }`,
     );
     return false;
   }
 
   console.log(
-    `✅ Sent ${source} .txt to WhatsApp (status: ${check?.status ?? "unknown"})`,
+    `✅ Sent ${source} PDF to WhatsApp (status: ${check?.status ?? "unknown"})`,
   );
   return true;
 }
