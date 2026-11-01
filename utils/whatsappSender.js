@@ -17,8 +17,9 @@
 //      TWILIO_AUTH_TOKEN=your_auth_token_here
 //      TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 //      TWILIO_WHATSAPP_TO=whatsapp:+91XXXXXXXXXX
-//    Optional — second message with a PDF file (tweet + "add more spice" +
-//    full article), uploaded to Cloudinary and attached via Twilio.
+//    Optional — ONE message: a PDF (tweet + "add more spice" + full article)
+//    uploaded to Cloudinary and attached via Twilio, with the tweet draft as
+//    the PDF's caption. If the PDF step fails, the plain tweet message is sent.
 //    NOTE: WhatsApp (via Twilio) does NOT accept .txt, only PDF/DOC/DOCX/PPTX/XLSX,
 //    so the article is sent as a PDF. If Twilio still returns 63019, open the
 //    Cloudinary URL in a browser and check Cloudinary > Settings > Security >
@@ -44,9 +45,10 @@ const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const FROM = process.env.TWILIO_WHATSAPP_FROM;
 const TO = process.env.TWILIO_WHATSAPP_TO;
 
-// SEND_VIA_TXT=true  -> after the normal tweet message, send a 2nd message
-// carrying a .txt file: tweet, "add more spice", then the full article.
-// Unset / false      -> behaves exactly like before (one message only).
+// SEND_VIA_TXT=true  -> send ONE message: the PDF (tweet, "add more spice",
+// full article) with the tweet draft as its caption. If that fails, fall back
+// to the plain tweet message.
+// Unset / false      -> plain tweet message only, like before.
 const SEND_VIA_TXT = ["true", "1", "yes", "on"].includes(
   String(process.env.SEND_VIA_TXT ?? "")
     .replace(/["']/g, "")
@@ -188,7 +190,13 @@ async function uploadTxtToCloudinary(pdfBuffer, source, headline) {
  * Message #2: the PDF file (tweet + "add more spice" + full article).
  * Returns true if Twilio did not reject/fail it.
  */
-async function sendTxtMessage({ source, headline, tweetText, articleText }) {
+async function sendTxtMessage({
+  source,
+  headline,
+  tweetText,
+  articleText,
+  caption = null,
+}) {
   if (!CLOUDINARY_READY) {
     console.log("⚠️ Skipping .txt message — Cloudinary env vars are missing.");
     return false;
@@ -202,7 +210,7 @@ async function sendTxtMessage({ source, headline, tweetText, articleText }) {
   const msg = await client.messages.create({
     from: FROM,
     to: TO,
-    body: `📎 ${source} tweet + article (PDF)`,
+    body: caption || `📎 ${source} tweet + article (PDF)`,
     mediaUrl: [url],
   });
 
@@ -220,7 +228,7 @@ async function sendTxtMessage({ source, headline, tweetText, articleText }) {
 
   if (check && ["failed", "undelivered"].includes(check.status)) {
     console.log(
-      `❌ WhatsApp ${source} PDF ${check.status} — error ${check.errorCode}: ${check.errorMessage || ""}. The tweet message was delivered; the full article is in the log above.${
+      `❌ WhatsApp ${source} PDF ${check.status} — error ${check.errorCode}: ${check.errorMessage || ""}. ${caption ? "Falling back to the plain tweet message." : "The tweet message was delivered; the full article is in the log above."}${
         check.errorCode === 63019
           ? " 63019 = Twilio could not download the file. Open the Cloudinary URL above in a browser; if it does not open as a PDF, allow PDF delivery in Cloudinary > Settings > Security."
           : ""
@@ -240,9 +248,11 @@ async function sendTxtMessage({ source, headline, tweetText, articleText }) {
  * The tweet text is ALWAYS printed to the console first, so a failed
  * WhatsApp delivery never loses the draft (copy it from the Railway log).
  *
- * Message 1: the tweet draft (always).
- * Message 2: a .txt file with tweet + "add more spice" + full article
- *            (only when SEND_VIA_TXT=true).
+ * SEND_VIA_TXT=true : ONE message — a PDF (tweet + "add more spice" + full
+ *                      article) with the tweet draft as its caption.
+ *                      Falls back to the plain tweet message if that fails,
+ *                      or when the draft carries an image / is over 1000 chars.
+ * otherwise          : the plain tweet message.
  *
  * @param {Object} draft
  * @param {string} draft.source - "SK" | "CB" | "CA" etc.
@@ -290,6 +300,29 @@ export async function sendTweetDraftToWhatsApp(draft) {
   }
 
   const messageBody = `${tweetText}\n\n[${score ?? "n/a"}][${source}] article:${articleText.length} | tweet:${tweetText.length} | generator: ${generator}`;
+  // Single-message mode: PDF with the tweet as its caption (WhatsApp caption
+  // limit is 1024 chars). Any failure falls through to the plain tweet message.
+  // Drafts with an image keep the plain flow (one message can't carry both).
+  let pdfTried = false;
+  if (SEND_VIA_TXT && articleText && !imageUrl && messageBody.length <= 1000) {
+    pdfTried = true;
+    try {
+      const ok = await sendTxtMessage({
+        source,
+        headline,
+        tweetText,
+        articleText,
+        caption: messageBody,
+      });
+      if (ok) return true;
+    } catch (e) {
+      console.log(
+        `❌ Single-message PDF failed for ${source}, sending plain tweet message:`,
+        e?.code ? `${e.code} — ${e.message}` : e?.message || e,
+      );
+    }
+  }
+
   try {
     const messageOptions = {
       from: FROM,
@@ -337,7 +370,7 @@ export async function sendTweetDraftToWhatsApp(draft) {
 
     // Message 2 (optional): .txt with tweet + "add more spice" + full article.
     // A failure here never affects message 1, which is already delivered.
-    if (SEND_VIA_TXT && articleText) {
+    if (SEND_VIA_TXT && articleText && !pdfTried) {
       try {
         await sendTxtMessage({ source, headline, tweetText, articleText });
       } catch (txtError) {
