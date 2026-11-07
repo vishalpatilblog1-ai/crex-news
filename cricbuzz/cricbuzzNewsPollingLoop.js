@@ -33,6 +33,13 @@ export async function cricbuzzNewsPollingLoop() {
     return false;
   }
 
+  if (Date.now() < (global.WA_BACKOFF_UNTIL || 0)) {
+    console.log(
+      "⏸️ Cricbuzz polling paused — WhatsApp send failed recently, retrying later",
+    );
+    return false;
+  }
+
   const STATE = global.STATE;
   STATE.cricbuzz ??= {};
   STATE.cricbuzz.seen ??= {};
@@ -232,7 +239,7 @@ export async function cricbuzzNewsPollingLoop() {
       const tweetId = `${newsKey}`;
 
       if (sendViaWhatsApp) {
-        await sendTweetDraftToWhatsApp({
+        const sent = await sendTweetDraftToWhatsApp({
           source: SOURCE,
           headline: selected.hline,
           tweetText,
@@ -242,6 +249,13 @@ export async function cricbuzzNewsPollingLoop() {
           articleText: fullText,
           generator,
         });
+        if (!sent) {
+          global.WA_BACKOFF_UNTIL = Date.now() + 10 * 60 * 1000;
+          console.warn(
+            "⚠️ Cricbuzz WhatsApp send failed — NOT marking seen, backing off 10 min",
+          );
+          break;
+        }
         STATE.cricbuzz.seen[newsKey] = Date.now();
       } else {
         enqueueTweet({

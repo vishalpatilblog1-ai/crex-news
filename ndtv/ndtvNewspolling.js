@@ -42,6 +42,13 @@ export async function ndtvNewspolling() {
     return false;
   }
 
+  if (Date.now() < (global.WA_BACKOFF_UNTIL || 0)) {
+    console.log(
+      "⏸️ NDTV polling paused — WhatsApp send failed recently, retrying later",
+    );
+    return false;
+  }
+
   const STATE = global.STATE;
 
   STATE.ndtv ??= {};
@@ -280,7 +287,7 @@ export async function ndtvNewspolling() {
       tweetText = tweetText.trim().replace(/\.?$/, ".");
 
       if (sendViaWhatsApp) {
-        await sendTweetDraftToWhatsApp({
+        const sent = await sendTweetDraftToWhatsApp({
           source: SOURCE,
           headline: selected.title,
           tweetText,
@@ -291,6 +298,13 @@ export async function ndtvNewspolling() {
           articleText: fullText,
           generator,
         });
+        if (!sent) {
+          global.WA_BACKOFF_UNTIL = Date.now() + 10 * 60 * 1000;
+          console.warn(
+            "⚠️ NDTV WhatsApp send failed — NOT marking seen, backing off 10 min",
+          );
+          break;
+        }
       } else {
         enqueueTweet({
           id: cleanLink,

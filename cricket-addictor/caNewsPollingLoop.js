@@ -77,6 +77,13 @@ function saveTweetLocally(tweetText) {
 export async function caNewsPollingLoop() {
   if (!global.STATE) return false;
 
+  if (Date.now() < (global.WA_BACKOFF_UNTIL || 0)) {
+    console.log(
+      "⏸️ CA polling paused — WhatsApp send failed recently, retrying later",
+    );
+    return false;
+  }
+
   const STATE = global.STATE;
 
   STATE.ca ??= {};
@@ -275,10 +282,8 @@ export async function caNewsPollingLoop() {
     tweetText = applySourceSignature(tweetText, "CA");
     tweetText = tweetText.trim().replace(/\.?$/, ".");
 
-    STATE.ca.seen[cleanLink] = Date.now();
-
     if (sendViaWhatsApp) {
-      await sendTweetDraftToWhatsApp({
+      const sent = await sendTweetDraftToWhatsApp({
         source: "CA",
         headline: parsed.headline,
         tweetText,
@@ -289,6 +294,13 @@ export async function caNewsPollingLoop() {
         articleText: fullText,
         generator,
       });
+      if (!sent) {
+        global.WA_BACKOFF_UNTIL = Date.now() + 10 * 60 * 1000;
+        console.warn(
+          "⚠️ CA WhatsApp send failed — NOT marking seen, backing off 10 min",
+        );
+        return false;
+      }
     } else if (ENABLE_LOCAL_TWEETS) {
       saveTweetLocally(tweetText);
       console.log(`📝 Local-only mode: ${parsed.headline}`);
@@ -321,6 +333,8 @@ export async function caNewsPollingLoop() {
         STATE.usedImages[imageUrl] = Date.now();
       }
     }
+
+    STATE.ca.seen[cleanLink] = Date.now();
 
     if (
       !isLowScore &&

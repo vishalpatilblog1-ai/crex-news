@@ -48,6 +48,13 @@ export async function espnNewsPollingLoop() {
   // console.log("espnNewsPollingLoop started ...");
   if (!global.STATE) return false;
 
+  if (Date.now() < (global.WA_BACKOFF_UNTIL || 0)) {
+    console.log(
+      "⏸️ ESPN polling paused — WhatsApp send failed recently, retrying later",
+    );
+    return false;
+  }
+
   const STATE = global.STATE;
 
   STATE.espn ??= {};
@@ -256,7 +263,7 @@ export async function espnNewsPollingLoop() {
 
     // ── Enqueue ──────────────────────────────────────
     if (sendViaWhatsApp) {
-      await sendTweetDraftToWhatsApp({
+      const sent = await sendTweetDraftToWhatsApp({
         source: "ESPN",
         headline: selected.headline,
         tweetText,
@@ -267,6 +274,13 @@ export async function espnNewsPollingLoop() {
         articleText: fullText,
         generator,
       });
+      if (!sent) {
+        global.WA_BACKOFF_UNTIL = Date.now() + 10 * 60 * 1000;
+        console.warn(
+          "⚠️ ESPN WhatsApp send failed — NOT marking seen, backing off 10 min",
+        );
+        break;
+      }
       STATE.espn.seen[cleanUrl] = Date.now();
     } else {
       enqueueTweet({

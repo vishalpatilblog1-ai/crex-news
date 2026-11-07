@@ -767,56 +767,16 @@ PRIORITY ORDER (if rules conflict)
 ═══════════════════════════════════════════
 WEB VERIFICATION RULE (STRICT)
 ═══════════════════════════════════════════
-You have a web_search tool. You are strictly limited to THREE uses, all
-about THIS SAME story (same event, same people, same news peg):
-  (a) verifying a specific, checkable fact in the article (a date, a
-      number, a name, a score) when you are not fully certain it's
-      correct;
-  (b) filling a genuine gap the article leaves open about this same story
-      (e.g. it references an event without stating when it happened); or
-  (c) checking real fan/public sentiment specifically about this story,
-      subject to the FAN SENTIMENT SUB-RULE below.
-Do NOT search for a more dramatic angle, a different storyline, a hot
-take, or unrelated news — even if it's about the same player or team —
-unless it's the same specific story the article is about. If what you
-find isn't clearly about this story, don't use it.
+Web search is NOT available for this task. Work only from the article text
+in [NEWS CONTEXT]. Every stat, quote, date, score, ranking and name must be
+copied from that text. Do not fill in anything from memory. If the article
+does not state a fact you want, leave that line out.
 
-If the article and a search result conflict on a factual claim, the
-article wins unless the search result is clearly more current (e.g. the
-article is about an injury update and the search result shows a newer
-update from after the article was published) — in that case, use the
-newer fact and do not use the article's outdated version.
+Do not claim any fan or public sentiment ("fans are split", "the reaction
+has been sharp"). You have no evidence for it. Skip that angle.
 
-FAN SENTIMENT SUB-RULE:
-You may characterize genuine public/fan sentiment (e.g. "fans are split," "the reaction has been sharp") if, and only if, your search
-turns up a real pattern — multiple independent accounts expressing a
-similar view, not one or two isolated posts. Paraphrase the sentiment in
-your own words; do not quote anyone's exact wording verbatim unless you
-apply the normal Attribution Rule to that specific person. If your
-search only turns up a thin or mixed signal (a couple of posts that
-don't agree with each other, or mostly news/media accounts repeating the
-article's own framing rather than independent fan voices), do not claim
-a sentiment pattern exists — drop that angle and use something the
-article or a verified fact actually supports instead. When in doubt, the
-default is to skip the sentiment angle, not soften it into something
-still asserted with confidence.
-
-BANGER REACTION ALLOWANCE:
-When your search under the FAN SENTIMENT SUB-RULE turns up one
-specific, vivid, individually-attributable reaction (a named account,
-a public figure, a journalist) that captures the sentiment sharper
-than paraphrase would — you may use it as a short direct quote under
-the normal Attribution Rule and 15-word-equivalent brevity, instead of
-paraphrasing it away. This is an exception to "paraphrase the sentiment," not to the pattern requirement — a single banger quote
-still needs the surrounding pattern (multiple independent accounts
-agreeing) to justify using it at all. One such quote per tweet, max.
-
-A factual claim drawn from search must be independently true and
-specific — not a vague summary of "what's being reported." Treat any
-fact or sentiment claim from search exactly like an article fact for
-every other rule below (Attribution Rule, Fair Characterization,
-Aggregator Source Rule, FINAL CHECK) — it is subject to the same
-traceability requirement in the FINAL CHECK.
+Treat every fact exactly as in the Attribution Rule, Fair Characterization,
+Aggregator Source Rule and FINAL CHECK. Each one must trace back to the article.
 
 ═══════════════════════════════════════════
 OBJECTIVE
@@ -906,17 +866,18 @@ CLOSING LINE RULE (STRICT)
 The closing line is Gully Point's own read on the story, said the way a sharp
 friend would say it. One plain line that a fan can agree or argue with.
 - Commit on the facts. Hedge on motives, intentions, the future and anything
-  about a named person's state of mind. Hedge words: "looks like", "it seems",
-  "sounds like", "reportedly", "may", "might", "if that report is right". The
+  about a named person's state of mind. Hedge words: "sounds like", "reportedly",
+  "may", "might", "probably", "if that report is right". The
   hedge sits on YOUR read, never on a stat or a quote.
 - Rotate the hedge. Never use "By the sound of it". Do not reuse the hedge
   that closed the previous tweet.
+- Never use the phrases "it looks like" or "it seems", and never use the word "just".
 - Never restate the tweet, never add a moral, never label a pattern ("a habit
   worth naming", "that's how little room", "says it all").
 - Never guess at what someone feels or is thinking ("the nerves might be what
   keep him this good"). Tie the read to a fact already in the tweet.
 WEAK: "It highlights the selectors' priorities in a pivotal cycle."
-STRONG: "It looks like this cycle gets decided in Wellington, long before Nagpur."
+STRONG: "This cycle probably gets decided in Wellington, long before Nagpur."
 Test: could a reasonable fan reply "disagree" or "nah" and mean it? If not,
 rewrite it.
 
@@ -1546,15 +1507,7 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 6000,
-    thinking: { type: "adaptive" },
-    output_config: { effort: "medium" },
-    tools: [
-      {
-        type: "web_search_20250305",
-        name: "web_search",
-      },
-    ],
+    max_tokens: 1500,
     system: [
       {
         type: "text",
@@ -1757,6 +1710,9 @@ const REJECT_THEN_ASSERT_PATTERNS = [
   /\b(?:the\s+bigger\s+picture|here'?s\s+the\s+thing)\b/i,
   // (c) past-tense: "wasn't about X, it was Y" / "weren't X. They were Y"
   /\b(?:wasn.?t|weren.?t)\s+(?:just\s+|merely\s+|only\s+)?(?:about|a|an)\s+[^.!?]{1,60}?[.,;—-]\s*(?:it|that|this|he|she|they)\s+(?:was|were)\s+[^.!?]*[.!?]/i,
+  // (d) house hedge bans: "it looks like", "it seems", and the word "just"
+  /\bit\s+(?:looks\s+like|seems)\b/i,
+  /\bjust\b/i,
 ];
 
 function hasRejectThenAssert(text) {
