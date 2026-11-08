@@ -1505,28 +1505,47 @@ ${correctionNote ? `\n[CORRECTION REQUIRED]\n${correctionNote}\n` : ""}`;
     articleType,
   );
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-5",
-    max_tokens: 1500,
-    system: [
-      {
-        type: "text",
-        text: systemPrompt,
-        cache_control: { type: "ephemeral", ttl: "1h" },
-      },
-      {
-        type: "text",
-        text: staticInstructionsBlock,
-        cache_control: { type: "ephemeral", ttl: "1h" },
-      },
-      {
-        type: "text",
-        text: articleTypeInstruction,
-        cache_control: { type: "ephemeral", ttl: "1h" },
-      },
-    ],
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  // New models can spend output tokens on thinking before the text block.
+  // If the budget runs out mid-thinking there is no text block, so retry once
+  // with a bigger budget. Set CLAUDE_TWEET_THINKING=off on Railway to disable
+  // thinking where the model supports it.
+  const TWEET_MODEL = process.env.CLAUDE_TWEET_MODEL || "claude-sonnet-5";
+  const callTweetModel = (maxTokens) =>
+    client.messages.create({
+      model: TWEET_MODEL,
+      max_tokens: maxTokens,
+      ...(process.env.CLAUDE_TWEET_THINKING === "off"
+        ? { thinking: { type: "disabled" } }
+        : {}),
+      system: [
+        {
+          type: "text",
+          text: systemPrompt,
+          cache_control: { type: "ephemeral", ttl: "1h" },
+        },
+        {
+          type: "text",
+          text: staticInstructionsBlock,
+          cache_control: { type: "ephemeral", ttl: "1h" },
+        },
+        {
+          type: "text",
+          text: articleTypeInstruction,
+          cache_control: { type: "ephemeral", ttl: "1h" },
+        },
+      ],
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+  const hasText = (r) => r.content.some((b) => b.type === "text" && b.text);
+
+  let response = await callTweetModel(6000);
+  if (!hasText(response) && response.stop_reason === "max_tokens") {
+    console.warn(
+      "⚠️ Hit max_tokens before any text block. Retrying with 16000.",
+    );
+    response = await callTweetModel(16000);
+  }
 
   // after
   const usage = response.usage;
