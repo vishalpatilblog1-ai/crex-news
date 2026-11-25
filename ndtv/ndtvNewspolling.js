@@ -13,6 +13,11 @@ import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
+import {
+  IS_PDF_ENABLE,
+  PDF_PLACEHOLDER_TEXT,
+  isFranchiseExempt,
+} from "../utils/pdfMode.js";
 
 import { fetchNDTVArticle } from "./fetchNDTVArticle.js";
 import { isNDTVArticle, normalizeNDTVLink } from "./isNDTVArticle.js";
@@ -34,7 +39,8 @@ const RETENTION_MS =
   1000; // dailyContext prune window
 const MAX_PER_POLL = 5; // cap how many tweets can queue / be sent in a single poll cycle
 
-const POST_VIA_API = process.env.POST_VIA_API !== "false";
+// PDF mode always behaves like POST_VIA_API=false, so a placeholder never reaches the X API
+const POST_VIA_API = process.env.POST_VIA_API !== "false" && !IS_PDF_ENABLE;
 
 export async function ndtvNewspolling() {
   if (!global.STATE) {
@@ -153,17 +159,21 @@ export async function ndtvNewspolling() {
       const fullText = `${parsed.headline}\n${parsed.body}`;
 
       let articleType = "player_form";
-      try {
-        articleType = await classifyArticleGPT(fullText);
-        console.log(`🏷️ Classified as: ${articleType}`);
-      } catch (err) {
+      if (IS_PDF_ENABLE) {
+        articleType = "pdf";
+      } else {
         try {
           articleType = await classifyArticleGPT(fullText);
-        } catch (err2) {
-          console.warn(
-            "⚠️ NDTV classify failed twice, using default:",
-            err2?.message,
-          );
+          console.log(`🏷️ Classified as: ${articleType}`);
+        } catch (err) {
+          try {
+            articleType = await classifyArticleGPT(fullText);
+          } catch (err2) {
+            console.warn(
+              "⚠️ NDTV classify failed twice, using default:",
+              err2?.message,
+            );
+          }
         }
       }
 
@@ -203,7 +213,9 @@ export async function ndtvNewspolling() {
         continue;
       }
 
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      const isExempt = IS_PDF_ENABLE
+        ? isFranchiseExempt(selected.title, fullText)
+        : SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
       const vScore = decision?.viralityScore ?? "n/a";
 
@@ -235,62 +247,62 @@ export async function ndtvNewspolling() {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
       }
 
-      const longEligible = isLongTweetEligible(fullText);
-
-      if (longEligible) {
-        console.log("📏 NDTV article qualifies for long-tweet mode");
-      }
-
       let tweetText = null;
       let generator = "claude";
       let model = "claude";
 
-      try {
-        const result = await generateClaudeTweetWithType(
-          fullText,
-          articleType,
-          SOURCE,
-          longEligible,
-        );
-        tweetText = result?.tweetText;
-      } catch (err) {
-        console.warn("⚠️ Claude failed:", err?.message || err);
-      }
+      if (IS_PDF_ENABLE) {
+        // PDF mode: no tweet generation, article file only
+        tweetText = PDF_PLACEHOLDER_TEXT;
+        generator = "none";
+      } else {
+        const longEligible = isLongTweetEligible(fullText);
 
-      if (!tweetText || tweetText.trim().length < 30) {
-        console.warn(
-          "⚠️ NDTV Claude tweet empty or too short, GPT fallback disabled (PDF flow), skipping",
-        );
-        continue;
-      }
-      // if (!tweetText || tweetText.trim().length < 30) {
-      //   generator = "gpt";
-      //   try {
-      //     const result = await generateGPTTweetWithType(
-      //       fullText,
-      //       articleType,
-      //       SOURCE,
-      //       longEligible,
-      //     );
-      //     tweetText = result?.tweetText;
-      //     model = "GPT";
-      //   } catch (err) {
-      //     console.warn(
-      //       "⚠️ NDTV AI failed, skipping tweet:",
-      //       err?.message || err,
-      //     );
-      //     continue;
-      //   }
-      // }
+        if (longEligible) {
+          console.log("📏 NDTV article qualifies for long-tweet mode");
+        }
 
-      if (!tweetText || tweetText.trim().length < 30) {
-        console.warn("⚠️ NDTV tweet generation failed / too short");
-        STATE.ndtv.seen[cleanLink] = Date.now();
-        continue;
-      }
+        try {
+          const result = await generateClaudeTweetWithType(
+            fullText,
+            articleType,
+            SOURCE,
+            longEligible,
+          );
+          tweetText = result?.tweetText;
+        } catch (err) {
+          console.warn("⚠️ Claude failed:", err?.message || err);
+        }
 
-      tweetText = applySourceSignature(tweetText, SOURCE);
-      tweetText = tweetText.trim().replace(/\.?$/, ".");
+        if (!tweetText || tweetText.trim().length < 30) {
+          generator = "gpt";
+          try {
+            const result = await generateGPTTweetWithType(
+              fullText,
+              articleType,
+              SOURCE,
+              longEligible,
+            );
+            tweetText = result?.tweetText;
+            model = "GPT";
+          } catch (err) {
+            console.warn(
+              "⚠️ NDTV AI failed, skipping tweet:",
+              err?.message || err,
+            );
+            continue;
+          }
+        }
+
+        if (!tweetText || tweetText.trim().length < 30) {
+          console.warn("⚠️ NDTV tweet generation failed / too short");
+          STATE.ndtv.seen[cleanLink] = Date.now();
+          continue;
+        }
+
+        tweetText = applySourceSignature(tweetText, SOURCE);
+        tweetText = tweetText.trim().replace(/\.?$/, ".");
+      }
 
       if (sendViaWhatsApp) {
         const sent = await sendTweetDraftToWhatsApp({

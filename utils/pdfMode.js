@@ -1,3 +1,7 @@
+// utils/pdfMode.js
+import dotenv from "dotenv";
+dotenv.config();
+
 export const IS_PDF_ENABLE =
   String(process.env.is_pdf_enable ?? "false")
     .trim()

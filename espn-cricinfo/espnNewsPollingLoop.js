@@ -24,6 +24,11 @@ import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
 import { judgeNewsContextGPT } from "../ai/judgeNewsContextGPT.js";
+import {
+  IS_PDF_ENABLE,
+  PDF_PLACEHOLDER_TEXT,
+  isFranchiseExempt,
+} from "../utils/pdfMode.js";
 
 const MAX_AGE_MIN = 45;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
@@ -40,7 +45,8 @@ const MAX_PER_POLL = 5;
 
 // true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
 // false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
-const POST_VIA_API = process.env.POST_VIA_API !== "false";
+// PDF mode always behaves like false, so a placeholder never reaches the X API
+const POST_VIA_API = process.env.POST_VIA_API !== "false" && !IS_PDF_ENABLE;
 
 let MODEL = "claude";
 
@@ -146,11 +152,15 @@ export async function espnNewsPollingLoop() {
     const longEligible = isLongTweetEligible(fullText);
 
     let articleType = "general_news";
-    try {
-      articleType = await classifyArticleGPT(fullText);
-    } catch (err) {
-      console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED FOR CLAUDE..");
-      articleType = await classifyArticleGPT(fullText);
+    if (IS_PDF_ENABLE) {
+      articleType = "pdf";
+    } else {
+      try {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (err) {
+        console.log("⚠️ ESPN ARTICLE CLASSIFICATION FAILED FOR CLAUDE..");
+        articleType = await classifyArticleGPT(fullText);
+      }
     }
 
     let decision = null;
@@ -183,7 +193,9 @@ export async function espnNewsPollingLoop() {
       continue;
     }
 
-    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const isExempt = IS_PDF_ENABLE
+      ? isFranchiseExempt(selected.headline, fullText)
+      : SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
@@ -229,41 +241,48 @@ export async function espnNewsPollingLoop() {
     // ── Step 4: Tweet generation ────────────────────
     let tweetText = null;
     let generator = "claude";
-    try {
-      const result = await generateClaudeTweetWithType(
-        fullText,
-        articleType,
-        "ESPN",
-        longEligible,
-      );
-      tweetText = result?.tweetText;
-    } catch (err) {
-      console.warn("⚠️ Claude failed:", err?.message || err);
+
+    if (IS_PDF_ENABLE) {
+      // PDF mode: no tweet generation, article file only
+      tweetText = PDF_PLACEHOLDER_TEXT;
+      generator = "none";
+    } else {
+      try {
+        const result = await generateClaudeTweetWithType(
+          fullText,
+          articleType,
+          "ESPN",
+          longEligible,
+        );
+        tweetText = result?.tweetText;
+      } catch (err) {
+        console.warn("⚠️ Claude failed:", err?.message || err);
+      }
+
+      if (!tweetText || tweetText.trim().length < 30) {
+        console.warn(
+          "⚠️ ESPN Claude tweet empty or too short, GPT fallback disabled",
+        );
+      }
+
+      // if (!tweetText || tweetText.trim().length < 30) {
+      //   generator = "gpt";
+      //   try {
+      //     const gptResult = await generateGPTTweet(fullText);
+      //     tweetText = gptResult?.tweetText;
+      //   } catch (err) {
+      //     console.warn("⚠️ GPT fallback failed:", err?.message || err);
+      //   }
+      // }
+
+      if (!tweetText || tweetText.length < 30) {
+        console.log("❌ ESPN AI failed — skipping:", selected.headline);
+        STATE.espn.seen[cleanUrl] = Date.now();
+        continue;
+      }
+
+      tweetText = applySourceSignature(tweetText, "ESPN");
     }
-
-    if (!tweetText || tweetText.trim().length < 30) {
-      console.warn(
-        "⚠️ ESPN Claude tweet empty or too short, GPT fallback disabled (PDF flow)",
-      );
-    }
-
-    // if (!tweetText || tweetText.trim().length < 30) {
-    //   generator = "gpt";
-    //   try {
-    //     const gptResult = await generateGPTTweet(fullText);
-    //     tweetText = gptResult?.tweetText;
-    //   } catch (err) {
-    //     console.warn("⚠️ GPT fallback failed:", err?.message || err);
-    //   }
-    // }
-
-    if (!tweetText || tweetText.length < 30) {
-      console.log("❌ ESPN AI failed — skipping:", selected.headline);
-      STATE.espn.seen[cleanUrl] = Date.now();
-      continue;
-    }
-
-    tweetText = applySourceSignature(tweetText, "ESPN");
 
     // console.log("tweetText>>>", tweetText);
 
