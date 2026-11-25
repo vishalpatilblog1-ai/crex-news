@@ -13,6 +13,11 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
+import {
+  IS_PDF_ENABLE,
+  PDF_PLACEHOLDER_TEXT,
+  isFranchiseExempt,
+} from "../utils/pdfMode.js";
 import { getLiveNewsList, getNewsDetailsByNewsId } from "./cricbuzzApi.js";
 
 const SOURCE = "CB";
@@ -25,7 +30,8 @@ const MAX_PER_POLL = 5; // cap how many tweets can queue in a single poll cycle
 
 // true  = score >= 7 -> X API, score < 7 -> WhatsApp (current flow)
 // false = score >= 7 -> WhatsApp, score < 7 dropped (cutover; you post manually)
-const POST_VIA_API = process.env.POST_VIA_API !== "false";
+// PDF mode always behaves like false, so a placeholder never reaches the X API
+const POST_VIA_API = process.env.POST_VIA_API !== "false" && !IS_PDF_ENABLE;
 
 export async function cricbuzzNewsPollingLoop() {
   if (!global.STATE) {
@@ -110,11 +116,15 @@ export async function cricbuzzNewsPollingLoop() {
       }
 
       let articleType = "player_form";
-      try {
-        articleType = await classifyArticleGPT(fullText);
-      } catch (err) {
-        console.log("⚠️ CB ARTICLE CLASSIFICATION FAILED FOR CLAUDE....");
-        articleType = await classifyArticleGPT(fullText);
+      if (IS_PDF_ENABLE) {
+        articleType = "pdf";
+      } else {
+        try {
+          articleType = await classifyArticleGPT(fullText);
+        } catch (err) {
+          console.log("⚠️ CB ARTICLE CLASSIFICATION FAILED FOR CLAUDE....");
+          articleType = await classifyArticleGPT(fullText);
+        }
       }
 
       let decision = null;
@@ -152,7 +162,9 @@ export async function cricbuzzNewsPollingLoop() {
         continue;
       }
 
-      const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+      const isExempt = IS_PDF_ENABLE
+        ? isFranchiseExempt(selected.hline, fullText)
+        : SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
       const score = decision?.significanceScore ?? 10;
       const vScore = decision?.viralityScore ?? "n/a";
 
@@ -188,56 +200,57 @@ export async function cricbuzzNewsPollingLoop() {
         console.log(`✅ Significance: ${score}/10 — proceeding`);
       }
 
-      const longEligible = isLongTweetEligible(fullText);
-
-      if (longEligible) {
-        console.log("📏 Cricbuzz article qualifies for long-tweet mode");
-      }
-
       let tweetText = null;
       let generator = "claude";
-      try {
-        const result = await generateClaudeTweetWithType(
-          fullText,
-          articleType,
-          SOURCE,
-          longEligible,
-        );
-        tweetText = result.tweetText;
-        // tweetText = await generateGullyPointVoiceTweet(fullText);
-      } catch (err) {
-        console.warn("⚠️ Claude failed:", err?.message || err);
-      }
 
-      if (!tweetText || tweetText.trim().length < 30) {
-        console.warn(
-          "⚠️ Cricbuzz Claude tweet empty or too short, GPT fallback disabled (PDF flow), skipping",
-        );
-        continue;
-      }
-      // if (!tweetText || tweetText.trim().length < 30) {
-      //   generator = "gpt";
-      //   try {
-      //     const result = await generateGPTTweetWithType(
-      //       fullText,
-      //       articleType,
-      //       SOURCE,
-      //       longEligible,
-      //     );
-      //     tweetText = result.tweetText;
-      //   } catch (err) {
-      //     console.warn("⚠️ Cricbuzz AI failed, skipping tweet:", err.message);
-      //     continue;
-      //   }
-      // }
+      if (IS_PDF_ENABLE) {
+        // PDF mode: no tweet generation, article file only
+        tweetText = PDF_PLACEHOLDER_TEXT;
+        generator = "none";
+      } else {
+        const longEligible = isLongTweetEligible(fullText);
 
-      if (!tweetText || tweetText.length < 30) {
-        console.warn("⚠️ Cricbuzz tweet generation failed / too short");
-        STATE.cricbuzz.seen[newsKey] = Date.now();
-        continue;
-      }
+        if (longEligible) {
+          console.log("📏 Cricbuzz article qualifies for long-tweet mode");
+        }
 
-      tweetText = applySourceSignature(tweetText, SOURCE);
+        try {
+          const result = await generateClaudeTweetWithType(
+            fullText,
+            articleType,
+            SOURCE,
+            longEligible,
+          );
+          tweetText = result.tweetText;
+          // tweetText = await generateGullyPointVoiceTweet(fullText);
+        } catch (err) {
+          console.warn("⚠️ Claude failed:", err?.message || err);
+        }
+
+        if (!tweetText || tweetText.trim().length < 30) {
+          generator = "gpt";
+          try {
+            const result = await generateGPTTweetWithType(
+              fullText,
+              articleType,
+              SOURCE,
+              longEligible,
+            );
+            tweetText = result.tweetText;
+          } catch (err) {
+            console.warn("⚠️ Cricbuzz AI failed, skipping tweet:", err.message);
+            continue;
+          }
+        }
+
+        if (!tweetText || tweetText.length < 30) {
+          console.warn("⚠️ Cricbuzz tweet generation failed / too short");
+          STATE.cricbuzz.seen[newsKey] = Date.now();
+          continue;
+        }
+
+        tweetText = applySourceSignature(tweetText, SOURCE);
+      }
 
       const imageUrl = null;
 

@@ -19,6 +19,11 @@ import { judgeNewsContext } from "../indian-express/ai/judgeNewsContext.js";
 import { applySourceSignature, enqueueTweet } from "../twitter/tweetQueue.js";
 import { saveState } from "../utils/stateStoreCloud.js";
 import { sendTweetDraftToWhatsApp } from "../utils/whatsappSender.js";
+import {
+  IS_PDF_ENABLE,
+  PDF_PLACEHOLDER_TEXT,
+  isFranchiseExempt,
+} from "../utils/pdfMode.js";
 
 import fs from "fs";
 import path from "path";
@@ -45,7 +50,8 @@ let MODEL = "claude";
 
 // true  = score >= 7 -> X API, score < 7 -> WhatsApp
 // false = everything WITH SCORE >=7 -> WhatsApp
-const POST_VIA_API = process.env.POST_VIA_API !== "false";
+// PDF mode always behaves like false, so a placeholder never reaches the X API
+const POST_VIA_API = process.env.POST_VIA_API !== "false" && !IS_PDF_ENABLE;
 
 const ENABLE_LOCAL_TWEETS = process.env.ENABLE_LOCAL_TWEETS === "true";
 const LOCAL_TWEETS_DIR = path.join(process.cwd(), "local-tweets");
@@ -166,12 +172,16 @@ export async function caNewsPollingLoop() {
     }
 
     let articleType = "player_form";
-    try {
-      articleType = await classifyArticleGPT(fullText);
-    } catch (err) {
-      // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
-      console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED FOR CLAUDE ..");
-      articleType = await classifyArticleGPT(fullText);
+    if (IS_PDF_ENABLE) {
+      articleType = "pdf";
+    } else {
+      try {
+        articleType = await classifyArticleGPT(fullText);
+      } catch (err) {
+        // console.warn("⚠️ classifyArticle failed, using default:", err?.message);
+        console.log("⚠️ CA ARTICLE CLASSIFICATION FAILED FOR CLAUDE ..");
+        articleType = await classifyArticleGPT(fullText);
+      }
     }
 
     let decision = null;
@@ -205,7 +215,9 @@ export async function caNewsPollingLoop() {
       return false;
     }
 
-    const isExempt = SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
+    const isExempt = IS_PDF_ENABLE
+      ? isFranchiseExempt(parsed.headline, fullText)
+      : SIGNIFICANCE_EXEMPT_TYPES.has(articleType);
     const score = decision?.significanceScore ?? 10;
     const vScore = decision?.viralityScore ?? "n/a";
 
@@ -243,50 +255,49 @@ export async function caNewsPollingLoop() {
     let generator = "claude";
     let generatedPath = null;
 
-    const longEligible = isLongTweetEligible(fullText);
+    if (IS_PDF_ENABLE) {
+      // PDF mode: no tweet generation, article file only
+      tweetText = PDF_PLACEHOLDER_TEXT;
+      generator = "none";
+    } else {
+      const longEligible = isLongTweetEligible(fullText);
 
-    try {
-      const { tweetText: tweetToPost, card } =
-        await generateClaudeTweetWithType(
-          fullText,
-          articleType,
-          "CA",
-          longEligible,
-        );
-      tweetText = tweetToPost;
-    } catch (err) {
-      console.warn("⚠️ Claude failed:", err?.message || err);
+      try {
+        const { tweetText: tweetToPost, card } =
+          await generateClaudeTweetWithType(
+            fullText,
+            articleType,
+            "CA",
+            longEligible,
+          );
+        tweetText = tweetToPost;
+      } catch (err) {
+        console.warn("⚠️ Claude failed:", err?.message || err);
+      }
+
+      if (!tweetText || tweetText.trim().length < 30) {
+        generator = "gpt";
+        try {
+          const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+            fullText,
+            articleType,
+          );
+
+          tweetText = gptTweet;
+        } catch (err) {
+          console.warn("⚠️ GPT failed:", err?.message || err);
+        }
+      }
+
+      if (!tweetText || tweetText.length < 30) {
+        STATE.ca.seen[cleanLink] = Date.now();
+        await saveState(STATE, "tweet generation failed or too short");
+        return false;
+      }
+
+      tweetText = applySourceSignature(tweetText, "CA");
+      tweetText = tweetText.trim().replace(/\.?$/, ".");
     }
-
-    if (!tweetText || tweetText.trim().length < 30) {
-      console.warn(
-        "⚠️ Claude tweet empty or too short, GPT fallback disabled (PDF flow)",
-      );
-      return; // or `continue;` if this sits inside a loop
-    }
-
-    // if (!tweetText || tweetText.trim().length < 30) {
-    //   generator = "gpt";
-    //   try {
-    //     const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
-    //       fullText,
-    //       articleType,
-    //     );
-
-    //     tweetText = gptTweet;
-    //   } catch (err) {
-    //     console.warn("⚠️ GPT failed:", err?.message || err);
-    //   }
-    // }
-
-    if (!tweetText || tweetText.length < 30) {
-      STATE.ca.seen[cleanLink] = Date.now();
-      await saveState(STATE, "tweet generation failed or too short");
-      return false;
-    }
-
-    tweetText = applySourceSignature(tweetText, "CA");
-    tweetText = tweetText.trim().replace(/\.?$/, ".");
 
     if (sendViaWhatsApp) {
       const sent = await sendTweetDraftToWhatsApp({
