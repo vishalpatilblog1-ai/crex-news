@@ -1,39 +1,3 @@
-// whatsappSender.js
-//
-// Sends generated tweet drafts to your WhatsApp for manual review instead
-// of auto-posting. Uses Twilio's WhatsApp API (sandbox).
-//
-// ── SETUP ───────────────────────────────────────────────────────────────────
-// 1. Twilio Console > Messaging > Try it out > Send a WhatsApp message.
-//    Sandbox number is usually +1 415 523 8886, with a join code like
-//    "join <two-words>".
-// 2. From YOUR WhatsApp, send the join code to the Sandbox number.
-//    The join lapses after ~72h, so re-send it regularly.
-// 3. The sandbox also has a 24h customer-service window: Twilio can only
-//    send free-form messages within 24h of YOUR last message to the sandbox
-//    number. Send "hi" at least once every 24h.
-// 4. Env vars (.env locally / Railway in production):
-//      TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-//      TWILIO_AUTH_TOKEN=your_auth_token_here
-//      TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-//      TWILIO_WHATSAPP_TO=whatsapp:+91XXXXXXXXXX
-//    Optional — ONE message: a PDF (tweet + "add more spice" + full article)
-//    uploaded to Cloudinary and attached via Twilio, with the tweet draft as
-//    the PDF's caption. If the PDF step fails, the plain tweet message is sent.
-//    NOTE: WhatsApp (via Twilio) does NOT accept .txt, only PDF/DOC/DOCX/PPTX/XLSX,
-//    so the article is sent as a PDF. If Twilio still returns 63019, open the
-//    Cloudinary URL in a browser and check Cloudinary > Settings > Security >
-//    "Restricted media types" allows PDF delivery.
-//      SEND_VIA_TXT=true
-//      CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
-// 5. npm install twilio cloudinary pdfkit
-//
-// Common failure codes (these show up AFTER Twilio accepts the message):
-//   63015 -> your number is not joined to the sandbox (send the join code)
-//   63016 -> outside the 24h window (send "hi")
-//   21910 -> FROM/TO not both "whatsapp:" prefixed
-// ─────────────────────────────────────────────────────────────────────────────
-
 import twilio from "twilio";
 import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
@@ -45,10 +9,6 @@ const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const FROM = process.env.TWILIO_WHATSAPP_FROM;
 const TO = process.env.TWILIO_WHATSAPP_TO;
 
-// SEND_VIA_TXT=true  -> send ONE message: the PDF (tweet, "add more spice",
-// full article) with the tweet draft as its caption. If that fails, fall back
-// to the plain tweet message.
-// Unset / false      -> plain tweet message only, like before.
 const SEND_VIA_TXT = ["true", "1", "yes", "on"].includes(
   String(process.env.SEND_VIA_TXT ?? "")
     .replace(/["']/g, "")
@@ -59,8 +19,6 @@ console.log(
   `📎 SEND_VIA_TXT=${SEND_VIA_TXT} (raw: ${JSON.stringify(process.env.SEND_VIA_TXT)})`,
 );
 
-// How long to wait before checking final delivery status (ms).
-// Twilio accepts first and fails async a few seconds later.
 const STATUS_CHECK_DELAY_MS = 8000;
 const TXT_STATUS_CHECK_DELAY_MS = 6000;
 
@@ -87,16 +45,12 @@ if (CLOUDINARY_READY) {
 }
 if (SEND_VIA_TXT && !CLOUDINARY_READY) {
   console.log(
-    "⚠️ SEND_VIA_TXT is on but CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET are missing — the .txt message will be skipped.",
+    "⚠️ SEND_VIA_TXT is on but CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET are missing — the PDF message will be skipped.",
   );
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Splits the article into non-empty lines and drops exact repeats (the
- * scrapers often return the same paragraphs twice).
- */
 function dedupeParagraphs(text) {
   const seen = new Set();
   return String(text || "")
@@ -105,23 +59,14 @@ function dedupeParagraphs(text) {
     .filter((p) => p && !seen.has(p) && seen.add(p));
 }
 
-/**
- * Content of the .txt file:
- *   original tweet
- *   add more spice
- *   full article
- * Ready to upload as-is to Claude / GPT.
- */
 function buildTxtContent({ tweetText, headline, source, articleText }) {
-  // const article = dedupeParagraphs(articleText).join("\n\n");
-
   const paras = dedupeParagraphs(articleText);
   if (paras[0] === String(headline || "").trim()) paras.shift();
   const article = paras.join("\n\n");
   return [
     String(tweetText || "").trim(),
     "",
-    "Add as much spice as possible",
+    "Please add enough spice and enough commentary so that the post looks original",
     "",
     `===== SOURCE ARTICLE (${source}) =====`,
     headline,
@@ -132,8 +77,6 @@ function buildTxtContent({ tweetText, headline, source, articleText }) {
   ].join("\n");
 }
 
-// Helvetica (the built-in PDF font) only covers Latin-1 / WinAnsi, so swap the
-// few common characters it can't draw instead of printing boxes.
 function toPdfSafeText(text) {
   return String(text || "")
     .replace(/₹/g, "Rs ")
@@ -145,8 +88,6 @@ function toPdfSafeText(text) {
     );
 }
 
-// pdfkit is loaded lazily so a missing package can only fail the PDF message,
-// never crash the whole app at startup.
 async function buildPdfBuffer(content) {
   const { default: PDFDocument } = await import("pdfkit");
   return new Promise((resolve, reject) => {
@@ -178,7 +119,6 @@ async function uploadTxtToCloudinary(pdfBuffer, source, headline) {
     `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
     {
       resource_type: "raw",
-      // For raw files the extension must be part of the public_id.
       public_id: `gp_articles/${safeSource}-${slug}-${Date.now()}.pdf`,
       overwrite: true,
     },
@@ -186,10 +126,6 @@ async function uploadTxtToCloudinary(pdfBuffer, source, headline) {
   return result.secure_url;
 }
 
-/**
- * Message #2: the PDF file (tweet + "add more spice" + full article).
- * Returns true if Twilio did not reject/fail it.
- */
 async function sendTxtMessage({
   source,
   headline,
@@ -198,7 +134,7 @@ async function sendTxtMessage({
   caption = null,
 }) {
   if (!CLOUDINARY_READY) {
-    console.log("⚠️ Skipping .txt message — Cloudinary env vars are missing.");
+    console.log("⚠️ Skipping PDF message — Cloudinary env vars are missing.");
     return false;
   }
 
@@ -221,7 +157,7 @@ async function sendTxtMessage({
     check = await client.messages(msg.sid).fetch();
   } catch (fetchError) {
     console.log(
-      "⚠️ Could not verify .txt delivery status:",
+      "⚠️ Could not verify PDF delivery status:",
       fetchError?.message || fetchError,
     );
   }
@@ -243,26 +179,6 @@ async function sendTxtMessage({
   return true;
 }
 
-/**
- * Sends a generated tweet draft to your WhatsApp for manual review.
- * The tweet text is ALWAYS printed to the console first, so a failed
- * WhatsApp delivery never loses the draft (copy it from the Railway log).
- *
- * SEND_VIA_TXT=true : ONE message — a PDF (tweet + "add more spice" + full
- *                      article) with the tweet draft as its caption.
- *                      Falls back to the plain tweet message if that fails,
- *                      or when the draft carries an image / is over 1000 chars.
- * otherwise          : the plain tweet message.
- *
- * @param {Object} draft
- * @param {string} draft.source - "SK" | "CB" | "CA" etc.
- * @param {string} draft.headline - original article headline
- * @param {string} draft.tweetText - the generated tweet text
- * @param {string} [draft.articleUrl] - link to the source article
- * @param {string} [draft.imageUrl] - a PUBLIC image URL (Cloudinary/CDN URL,
- *   NOT a local temp file path — Twilio can only fetch public URLs)
- * @returns {Promise<boolean>} true if delivery was not rejected
- */
 export async function sendTweetDraftToWhatsApp(draft) {
   const {
     source = "?",
@@ -287,7 +203,6 @@ export async function sendTweetDraftToWhatsApp(draft) {
     `\n===== SOURCE ARTICLE (${source}, ${articleText.length} chars) =====\n${articleText}\n===== END ARTICLE =====\n`,
   );
 
-  // Always log the tweet so it can be copied manually if WhatsApp fails.
   console.log(
     `\n===== TWEET FOR MANUAL POST (${source}, ${tweetText.length} chars) =====\n${tweetText}\n===== END TWEET =====\n`,
   );
@@ -300,9 +215,7 @@ export async function sendTweetDraftToWhatsApp(draft) {
   }
 
   const messageBody = `${tweetText}\n\n[${score ?? "n/a"}][${source}] article:${articleText.length} | tweet:${tweetText.length} | generator: ${generator}`;
-  // Single-message mode: PDF with the tweet as its caption (WhatsApp caption
-  // limit is 1024 chars). Any failure falls through to the plain tweet message.
-  // Drafts with an image keep the plain flow (one message can't carry both).
+
   let pdfTried = false;
   if (SEND_VIA_TXT && articleText && !imageUrl && messageBody.length <= 1000) {
     pdfTried = true;
@@ -330,16 +243,12 @@ export async function sendTweetDraftToWhatsApp(draft) {
       body: messageBody,
     };
 
-    // Twilio can only attach a PUBLICLY reachable URL as media — a local
-    // temp file path (e.g. from downloadImageToTemp) will NOT work here.
     if (imageUrl && /^https?:\/\//.test(imageUrl)) {
       messageOptions.mediaUrl = [imageUrl];
     }
 
     const msg = await client.messages.create(messageOptions);
 
-    // create() only means Twilio ACCEPTED the message. Delivery failures
-    // (63015, 63016, ...) happen a few seconds later, so check final status.
     await sleep(STATUS_CHECK_DELAY_MS);
 
     let check = null;
@@ -368,14 +277,12 @@ export async function sendTweetDraftToWhatsApp(draft) {
       `✅ Sent ${source} draft to WhatsApp (status: ${check?.status ?? "unknown"})`,
     );
 
-    // Message 2 (optional): .txt with tweet + "add more spice" + full article.
-    // A failure here never affects message 1, which is already delivered.
     if (SEND_VIA_TXT && articleText && !pdfTried) {
       try {
         await sendTxtMessage({ source, headline, tweetText, articleText });
       } catch (txtError) {
         console.log(
-          `❌ Failed to send ${source} .txt message:`,
+          `❌ Failed to send ${source} PDF message:`,
           txtError?.code
             ? `${txtError.code} — ${txtError.message}`
             : txtError?.message || txtError,
