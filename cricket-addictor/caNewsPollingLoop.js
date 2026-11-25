@@ -253,25 +253,31 @@ export async function caNewsPollingLoop() {
           "CA",
           longEligible,
         );
-
       tweetText = tweetToPost;
     } catch (err) {
       console.warn("⚠️ Claude failed:", err?.message || err);
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
-      generator = "gpt";
-      try {
-        const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
-          fullText,
-          articleType,
-        );
-
-        tweetText = gptTweet;
-      } catch (err) {
-        console.warn("⚠️ GPT failed:", err?.message || err);
-      }
+      console.warn(
+        "⚠️ Claude tweet empty or too short, GPT fallback disabled (PDF flow)",
+      );
+      return; // or `continue;` if this sits inside a loop
     }
+
+    // if (!tweetText || tweetText.trim().length < 30) {
+    //   generator = "gpt";
+    //   try {
+    //     const { tweetText: gptTweet, card } = await generateGPTTweetWithType(
+    //       fullText,
+    //       articleType,
+    //     );
+
+    //     tweetText = gptTweet;
+    //   } catch (err) {
+    //     console.warn("⚠️ GPT failed:", err?.message || err);
+    //   }
+    // }
 
     if (!tweetText || tweetText.length < 30) {
       STATE.ca.seen[cleanLink] = Date.now();

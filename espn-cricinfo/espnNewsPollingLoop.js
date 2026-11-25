@@ -242,14 +242,20 @@ export async function espnNewsPollingLoop() {
     }
 
     if (!tweetText || tweetText.trim().length < 30) {
-      generator = "gpt";
-      try {
-        const gptResult = await generateGPTTweet(fullText);
-        tweetText = gptResult?.tweetText;
-      } catch (err) {
-        console.warn("⚠️ GPT fallback failed:", err?.message || err);
-      }
+      console.warn(
+        "⚠️ ESPN Claude tweet empty or too short, GPT fallback disabled (PDF flow)",
+      );
     }
+
+    // if (!tweetText || tweetText.trim().length < 30) {
+    //   generator = "gpt";
+    //   try {
+    //     const gptResult = await generateGPTTweet(fullText);
+    //     tweetText = gptResult?.tweetText;
+    //   } catch (err) {
+    //     console.warn("⚠️ GPT fallback failed:", err?.message || err);
+    //   }
+    // }
 
     if (!tweetText || tweetText.length < 30) {
       console.log("❌ ESPN AI failed — skipping:", selected.headline);

@@ -258,24 +258,30 @@ export async function ndtvNewspolling() {
       }
 
       if (!tweetText || tweetText.trim().length < 30) {
-        generator = "gpt";
-        try {
-          const result = await generateGPTTweetWithType(
-            fullText,
-            articleType,
-            SOURCE,
-            longEligible,
-          );
-          tweetText = result?.tweetText;
-          model = "GPT";
-        } catch (err) {
-          console.warn(
-            "⚠️ NDTV AI failed, skipping tweet:",
-            err?.message || err,
-          );
-          continue;
-        }
+        console.warn(
+          "⚠️ NDTV Claude tweet empty or too short, GPT fallback disabled (PDF flow), skipping",
+        );
+        continue;
       }
+      // if (!tweetText || tweetText.trim().length < 30) {
+      //   generator = "gpt";
+      //   try {
+      //     const result = await generateGPTTweetWithType(
+      //       fullText,
+      //       articleType,
+      //       SOURCE,
+      //       longEligible,
+      //     );
+      //     tweetText = result?.tweetText;
+      //     model = "GPT";
+      //   } catch (err) {
+      //     console.warn(
+      //       "⚠️ NDTV AI failed, skipping tweet:",
+      //       err?.message || err,
+      //     );
+      //     continue;
+      //   }
+      // }
 
       if (!tweetText || tweetText.trim().length < 30) {
         console.warn("⚠️ NDTV tweet generation failed / too short");
